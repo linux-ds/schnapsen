@@ -176,6 +176,7 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 ### 2026-11-23 – Auftrag 15
 
 - Lokales Git-Repository auf Branch `main` initialisiert. `origin` verweist auf `https://github.com/linux-ds/schnapsen.git`.
+- Initial-Commit: `7c55c4c20d5b3d0a6b07a372e2f569d3d3922e41`.
 - Quellcode, Buildkonfiguration, Desktop-Dateien und Projektdokumentation für den Initial-Commit geprüft. Generierte Rust-, Meson-, Builder- und Flatpak-Dateien werden lokal ignoriert.
 - Im GNOME SDK 51 waren `cargo fmt --check`, `cargo check`, `cargo test` und `cargo clippy` erfolgreich. Alle 49 Tests bestanden. Der Flatpak-Release-Build einschließlich Meson-Testlauf war erfolgreich.
 - Der erste Push zu GitHub steht aus und erfolgt manuell über VS Code.
