@@ -1,0 +1,45 @@
+{
+    "id": "io.github.schnapsen.Schnapsen",
+    "runtime": "org.gnome.Platform",
+    "runtime-version": "51",
+    "sdk": "org.gnome.Sdk",
+    "sdk-extensions": ["org.freedesktop.Sdk.Extension.rust-stable"],
+    "command": "schnapsen",
+    "finish-args": [
+        "--socket=wayland",
+        "--socket=fallback-x11",
+        "--share=ipc",
+        "--device=dri"
+    ],
+    "build-options": {
+        "append-path": "/usr/lib/sdk/rust-stable/bin",
+        "env": {
+            "CARGO_NET_OFFLINE": "true"
+        }
+    },
+    "modules": [
+        {
+            "name": "cargo-dependencies",
+            "buildsystem": "simple",
+            "build-commands": [
+                "install -d /app/share/schnapsen/cargo",
+                "cp -a cargo/vendor /app/share/schnapsen/cargo/",
+                "sed 's|cargo/vendor|/app/share/schnapsen/cargo/vendor|' cargo/config > /app/share/schnapsen/cargo/config.toml"
+            ],
+            "cleanup": ["/share/schnapsen/cargo"],
+            "sources": ["cargo-sources.json"]
+        },
+        {
+            "name": "schnapsen",
+            "buildsystem": "meson",
+            "run-tests": true,
+            "sources": [
+                {
+                    "type": "dir",
+                    "path": ".",
+                    "skip": [".git", "target", ".flatpak-builder", ".flatpak-build"]
+                }
+            ]
+        }
+    ]
+}

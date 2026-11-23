@@ -1,0 +1,33 @@
+# Rust, Cargo and Meson build output
+/target/
+/.cargo/.cache/
+/_build/
+/_build-*/
+/build/
+/builddir/
+/compile_commands.json
+
+# Flatpak and GNOME Builder local state
+/.flatpak-builder/
+/.flatpak-build/
+/.flatpak/
+*.flatpak
+/.gnome-builder/
+/.builder/
+/.cache/
+
+# Local editors and temporary files
+/.vscode/
+/.idea/
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+/core
+/core.[0-9]*
+
+# Local credentials and environment files
+.env
+.env.*
+!.env.example

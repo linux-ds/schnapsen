@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Schnapsen
+Comment=Ein Kartenspiel für GNOME
+Exec=schnapsen
+Icon=io.github.schnapsen.Schnapsen
+Terminal=false
+Categories=Game;CardGame;
