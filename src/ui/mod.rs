@@ -44,11 +44,8 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
     let help = gtk::CheckButton::with_label("Spielhilfe");
     help.set_tooltip_text(Some("Zulässige Karten markieren"));
     header.pack_end(&help);
-    let declare = gtk::Button::with_label("Ausmelden");
-    declare.set_sensitive(false);
-    header.pack_end(&declare);
-    let eyes = gtk::Label::new(Some("Deine Augen: 0"));
-    header.pack_end(&eyes);
+    let opponent_eyes = gtk::CheckButton::with_label("Gegnerische Augen anzeigen");
+    options.append(&opponent_eyes);
     content.append(&header);
 
     let table = gtk::DrawingArea::builder()
@@ -64,7 +61,7 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         choose_index,
     ))));
     let score = gtk::Label::builder()
-        .wrap(true)
+        .ellipsize(gtk::pango::EllipsizeMode::End)
         .margin_top(6)
         .margin_bottom(6)
         .build();
@@ -77,8 +74,17 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         .visible(false)
         .build();
     let overlay = adw::ToastOverlay::new();
-    let marriage_row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-    marriage_row.set_halign(gtk::Align::Center);
+    let table_overlay = gtk::Overlay::new();
+    table_overlay.set_vexpand(true);
+    table_overlay.set_child(Some(&table));
+    let actions = gtk::Box::new(gtk::Orientation::Horizontal, 6);
+    actions.set_halign(gtk::Align::Center);
+    actions.set_valign(gtk::Align::Center);
+    notice.set_max_width_chars(42);
+    notice.add_css_class("osd");
+    actions.append(&notice);
+    let play = gtk::Button::with_label("Ausspielen");
+    let declare = gtk::Button::with_label("Ausmelden");
     let king = gtk::Button::new();
     let ober = gtk::Button::new();
     let proceed = gtk::Button::with_label("Weiterspielen");
@@ -86,16 +92,23 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
     let advance = gtk::Button::builder()
         .visible(false)
         .halign(gtk::Align::Center)
-        .margin_bottom(8)
         .build();
     announcement.add_css_class("title-3");
-    for button in [&king, &ober, &proceed] {
+    for button in [&play, &king, &ober, &proceed, &declare, &advance] {
         button.set_visible(false);
-        marriage_row.append(button);
+        button.set_height_request(44);
+        button.set_valign(gtk::Align::Center);
+        actions.append(button);
     }
+    play.add_css_class("suggested-action");
+    advance.add_css_class("suggested-action");
     announcement.set_visible(false);
-    marriage_row.append(&announcement);
+    actions.append(&announcement);
+    table_overlay.add_overlay(&actions);
+    table_overlay.set_measure_overlay(&actions, false);
     let controls = turn::TableControls {
+        play: play.downgrade(),
+        declare: declare.downgrade(),
         king: king.downgrade(),
         ober: ober.downgrade(),
         proceed: proceed.downgrade(),
@@ -103,8 +116,7 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         score: score.downgrade(),
         advance: advance.downgrade(),
     };
-    let timers =
-        turn::TurnTimers::new(&state, &table, &notice, &overlay, &eyes, &declare, controls);
+    let timers = turn::TurnTimers::new(&state, &table, &notice, &overlay, controls);
     timers.refresh();
     let touch = input::attach(&table, &state, &timers);
     for (button, play_ober) in [(&king, false), (&ober, true)] {
@@ -112,7 +124,7 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         let turns = timers.clone();
         let area = table.downgrade();
         button.connect_clicked(move |_| {
-            if model.borrow_mut().announce_selected(play_ober) {
+            if !turns.input_blocked() && model.borrow_mut().announce_selected(play_ober) {
                 if let Some(area) = area.upgrade() {
                     area.grab_focus();
                 }
@@ -120,10 +132,26 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
             }
         });
     }
+    let play_model = state.clone();
+    let play_timers = timers.clone();
+    let play_area = table.downgrade();
+    play.connect_clicked(move |_| {
+        if play_timers.input_blocked() {
+            return;
+        }
+        play_model.borrow_mut().play_selected();
+        if let Some(area) = play_area.upgrade() {
+            area.grab_focus();
+        }
+        play_timers.refresh();
+    });
     let proceed_model = state.clone();
     let proceed_turns = timers.clone();
     let proceed_area = table.downgrade();
     proceed.connect_clicked(move |_| {
+        if proceed_turns.input_blocked() {
+            return;
+        }
         proceed_model.borrow_mut().continue_play();
         if let Some(area) = proceed_area.upgrade() {
             area.grab_focus();
@@ -131,53 +159,23 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         proceed_turns.refresh();
     });
     let declaration_timers = timers.clone();
-    let declaration_model = state.clone();
-    declare.connect_clicked(move |button| {
-        if !declaration_model.borrow().may_declare() {
-            return;
-        }
-        let Some(window) = button.root().and_downcast::<gtk::Window>() else {
-            return;
-        };
-        let dialog = adw::AlertDialog::new(
-            Some("Ausmelden?"),
-            Some("Damit endet die Hand. Bei weniger als 66 Augen gewinnt der Gegner."),
-        );
-        dialog.add_responses(&[("cancel", "Abbrechen"), ("declare", "Ausmelden")]);
-        dialog.set_default_response(Some("cancel"));
-        dialog.set_close_response("cancel");
-        let model = declaration_model.clone();
-        let timers = declaration_timers.clone();
-        dialog.connect_response(Some("declare"), move |_, _| {
-            if model.borrow_mut().declare().is_ok() {
-                timers.cancel();
-                timers.refresh();
-            }
-        });
-        dialog.present(Some(&window));
-    });
+    declare.connect_clicked(move |_| declaration_timers.request_declaration());
     let model = state.clone();
-    let reset_model = state.clone();
     let reset_timers = timers.clone();
     let reset_popover = popover.downgrade();
-    reset_bummerls.connect_clicked(move |button| {
-        let Some(window) = button.root().and_downcast::<gtk::Window>() else { return };
-        if let Some(popover) = reset_popover.upgrade() { popover.popdown(); }
-        let dialog = adw::AlertDialog::new(
-            Some("Bummerl zurücksetzen?"),
-            Some("Die Bummerl-Zähler beider Seiten werden auf null gesetzt. Der aktuelle Partiestand bleibt erhalten."),
-        );
-        dialog.add_responses(&[("cancel", "Abbrechen"), ("reset", "Zurücksetzen")]);
-        dialog.set_default_response(Some("cancel"));
-        dialog.set_close_response("cancel");
-        dialog.set_response_appearance("reset", adw::ResponseAppearance::Destructive);
-        let model = reset_model.clone();
-        let timers = reset_timers.clone();
-        dialog.connect_response(Some("reset"), move |_, _| {
-            model.borrow_mut().reset_bummerls();
-            timers.refresh();
-        });
-        dialog.present(Some(&window));
+    reset_bummerls.connect_clicked(move |_| {
+        if let Some(popover) = reset_popover.upgrade() {
+            popover.popdown();
+        }
+        reset_timers.request_reset_bummerls();
+    });
+    let learning_model = state.clone();
+    let learning_timers = timers.clone();
+    opponent_eyes.connect_toggled(move |help| {
+        learning_model
+            .borrow_mut()
+            .set_show_opponent_eyes(help.is_active());
+        learning_timers.refresh();
     });
     let help_area = table.downgrade();
     let help_model = state.clone();
@@ -189,6 +187,9 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
     });
     let area = table.downgrade();
     advance.connect_clicked(move |_| {
+        if timers.input_blocked() {
+            return;
+        }
         let rules = if variant.selected() == 1 {
             Variant::Sharp
         } else {
@@ -224,21 +225,26 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         let state = state.borrow();
         let placements = layout::arrange(&state, width.into(), height.into());
         let focus = state.focus().filter(|_| area.has_visible_focus());
-        if let Err(error) = paint::table(cr, &placements, focus) {
+        if let Err(error) = paint::table(cr, &placements, focus).and_then(|()| {
+            paint::eyes(
+                cr,
+                width.into(),
+                height.into(),
+                state.local_eyes(),
+                state.opponent_eyes(),
+            )
+        }) {
             eprintln!("Could not draw the card table: {error}");
         }
     });
-    content.append(&table);
-    content.append(&marriage_row);
-    content.append(&notice);
-    content.append(&advance);
+    content.append(&table_overlay);
     overlay.set_child(Some(&content));
 
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title("Schnapsen")
-        .default_width(920)
-        .default_height(650)
+        .default_width(680)
+        .default_height(560)
         .content(&overlay)
         .build();
     GtkWindowExt::set_focus(&window, Some(&table));

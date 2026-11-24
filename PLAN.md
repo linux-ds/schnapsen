@@ -18,7 +18,7 @@
 - [RULE_AUDIT.md](RULE_AUDIT.md) vergleicht die implementierten Profile mit drei Regelquellen und dokumentiert Abweichungen und Stabilitätsprüfungen.
 
 - `src/app/mod.rs` verwaltet den Lebenszyklus der Anwendung und öffnet oder aktiviert das Fenster.
-- `src/ui/mod.rs` bindet den Kartentisch über eine `GtkDrawingArea` in das Fenster ein. Die Zeichenfläche hat eine Mindestgröße von 560 × 400 logischen Pixeln. Die Fensterhöhe umfasst zusätzlich die Titelleiste.
+- `src/ui/mod.rs` bindet den Kartentisch über eine `GtkDrawingArea` in das Fenster ein. Die Zeichenfläche hat eine Mindestgröße von 560 × 400 logischen Pixeln. Titelleiste und Partiestand liegen außerhalb. Die Zielgröße des Fensters ist 680 × 560. Kontextaktionen und Ergebnisse liegen in einer ungemessenen GTK-Overlay-Ebene.
 - `src/core/game.rs` prüft Ausspielaktionen und löst vollständige Stiche auf. Eine Ansage prüft Ausspielrecht, Paar und Profil und spielt atomar eine Karte aus. Stichaugen und vorgemerkte oder wirksame Ansageaugen werden aus Stichpaaren und Ansageereignissen abgeleitet. Der Abschlussgrund und die Spielpunkte stehen in `Finished`.
 - Der Trumpftausch ersetzt den Trumpf-Unter in der Hand durch die offene Trumpfkarte. Der Unter bleibt als letzte Karte des Talons liegen. Tausch und Zudrehen teilen dieselbe Hausregelprüfung. Sie verlangen einen abgeschlossenen ersten Stich, aktuelles Ausspielrecht vor Stichbeginn und mindestens vier Karten im offenen Talon einschließlich der Trumpfkarte. Die Engine prüft beim Tausch zusätzlich den Besitz des Trumpf-Unters.
 - Zudrehen sperrt den Stapel und speichert den wirksamen Augenstand und die Stichzahl des Gegners für die Wertung. Ab dann gelten dieselben Bedienpflichten wie bei einem regulär leeren Talon. Die gesperrten Karten bleiben erhalten.
@@ -26,13 +26,13 @@
 - `src/core/match_play.rs` verwaltet die aktuelle Hand, Restpunkte, Handanzahl, Vorhand und Bummerl. Jede abgeschlossene Hand wird einmal angerechnet. Null Restpunkte beenden die Partie.
 - `src/ui/table.rs` hält die Partie sowie Auswahl und Fokus. Die Layout-Sicht erhält nur eigene und öffentliche Kartenwerte sowie Anzahlen für verdeckte Karten. Ein Handwechsel setzt die handbezogenen Bedienelemente zurück.
 - `src/ui/layout.rs` platziert Hände, beide Stichstapel, Talon mit Trumpfkarte und bis zu zwei ausgespielte Karten. Die GTK-unabhängige Berechnung hebt ausgewählte Karten um 12 Prozent ihrer Höhe an. Trefferprüfung und Zeichnung verwenden dieselben Positionen und die Kartenkontur. Bei wenig Breite überlappt die Hand stärker.
-- `src/ui/input.rs` bindet Linksklick und kurzes Tippen an die Auswahl. Pfeiltasten bewegen den Fokus, Enter wechselt die Auswahl, Escape hebt sie auf. Leertaste und Rechtsklick spielen eine einzeln ausgewählte Karte aus. Eine Wischgeste nach oben kann die berührte Karte direkt ausspielen.
+- `src/ui/input.rs` bindet Linksklick und kurzes Tippen an die Auswahl. Pfeiltasten bewegen den Fokus, Enter wechselt die Auswahl, Escape hebt sie auf. Leertaste und Rechtsklick spielen eine einzeln ausgewählte Karte aus. Ein Doppelklick spielt die angeklickte Karte oder verwendet die gültige vorbereitete Paaransage. Eine Wischgeste nach oben kann die berührte Karte direkt ausspielen.
 - Mit ausgewähltem Trumpf-Unter tauschen **T**, ein Klick oder ein Tippen auf die offene Trumpfkarte. Die neue Handkarte erhält den Fokus. Der Computer prüft den Tausch über dieselbe Engine vor seinem Ausspiel.
 - Klick oder Tippen auf den verdeckten Stapel und **Z** starten die Bestätigung zum Zudrehen. Die bisher offene Trumpfkarte erscheint danach verdeckt quer auf dem Stapel.
 - `src/ui/turn.rs` steuert Computerzug und Stichauflösung mit GLib-Timern. Der Computer beginnt auch als Vorhand. Beim Hand- oder Partiewechsel werden alte Timer entfernt.
 - `src/ui/review.rs` zeigt die erlaubten Stichpaare in einem eingebetteten, abgedunkelten Dialog mit anpassbarer Spaltenzahl und vertikalem Scrollen. Die Kartenzeichnung stammt vom Kartentisch.
 - `src/ui/paint.rs` zeichnet Kartenfronten, einheitliche Rückseiten, Rahmen und Schatten mit Cairo. Ausgewählte Karten erhalten einen goldenen Rand, der sichtbare Tastaturfokus eine gestrichelte Innenlinie.
-- Die abschaltbare **Spielhilfe** markiert die legalen Karten. Die Kopfzeile zeigt die eigenen Augen und aktiviert **Ausmelden**, wenn die Engine die Aktion erlaubt. Die Ergebnisanzeige bietet **Nächste Hand** oder **Neue Partie** an.
+- Die abschaltbare **Spielhilfe** markiert die legalen Karten. Die Stichstapel zeigen die wirksamen eigenen Augen und optional die gegnerischen Augen über eine separate Lernhilfe. Kontextaktionen liegen in der Tischmitte. Die Ergebnisanzeige bietet **Nächste Hand** oder **Neue Partie** an.
 - Das Menü **Partie** konfiguriert Regelprofil und Schneiderwertung für die nächste Partie. Die erste Partie startet weich mit doppelter Schneiderwertung. Bummerl lassen sich über eine getrennte Aktion mit Bestätigung zurücksetzen.
 - `src/lib.rs` exportiert `core::cards` mit Kartenidentität, Augenwert und vollständigem 20er-Kartensatz. Das Modul verwendet nur die Rust-Standardbibliothek.
 - `Cargo.toml` und `Cargo.lock` definieren die Anwendung und ihre Abhängigkeiten. GTK4 wird über libadwaita eingebunden. Die App-ID `io.github.schnapsen.Schnapsen` ist vorläufig.
@@ -121,7 +121,7 @@
 
 ## In Arbeit
 
-Die neuen Profilfestlegungen sind in [SPEC.md](SPEC.md) verbindlich dokumentiert. Physischer Touch, HiDPI, Klick und Tippen auf beide Stichstapel sowie Scrollen bleiben zur manuellen Abnahme offen.
+Die Tischdarstellung und die Stich-Hausregel sind in [SPEC.md](SPEC.md) dokumentiert. Physischer Touch, HiDPI, Klick und Tippen auf beide Stichstapel sowie Scrollen bleiben zur manuellen Abnahme offen.
 
 ## Nächster Schritt
 
@@ -172,6 +172,14 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-24 – Auftrag 17
+
+- Die Zeichenfläche bleibt bei Kontextaktionen, Handergebnis und modalen Bestätigungen gleich groß. Im mittleren Tischbereich stehen kontextabhängige Schaltflächen mit mindestens 44 logischen Pixeln Höhe. Bestätigungen sperren Eingaben, pausieren geplante Spielzüge und geben den Fokus zurück.
+- Doppelklick verwendet die ursprünglich angeklickte Karte auch nach Verschiebung durch die Auswahl. Vorbereitete Paaransagen haben Vorrang. Im weichen Profil liegt der erste Computerstich offen beim Stapel. Wirksame eigene Augen stehen am eigenen Stapel, gegnerische Augen sind eine getrennte, standardmäßig ausgeschaltete Lernhilfe.
+- Formatierung, Cargo-Check, alle 54 Tests einschließlich der Simulation über 768 Hände und Clippy im GNOME SDK 51 erfolgreich. Neue Tests prüfen Aktionszone, sichtbares Computerpaar ohne doppelte Darstellung, Doppelklick und Augenanzeige. Flatpak-Release-Build und Wayland-Fensterstart waren erfolgreich. Das Settings-Portal und der Session-D-Bus meldeten beim Start die bekannten Warnungen.
+- Isolierte GTK-Tests unter Wayland bei Fenstergrößen 560 × 475 (Zeichenfläche 560 × 400), 680 × 560 und 920 × 680 bestätigten stabile Zeichenfläche, zentrierte Aktion, Eingabesperre und Fokusrückgabe nach Abbrechen. Das mittige Ausspielen hat in jeder Größe genau eine Karte ausgespielt. Die Escape-Abbruchantwort war konfiguriert. Ein separates Escape-Ereignis an der Bestätigung wurde nicht eingespeist. Synthetische GTK-Eingaben unter Broadway prüften Einzel- und Doppelklick, vorbereitete Ansage, Enter und Leertaste, Rechtsklick, Tippen und Wischen sowie Auswahl beim Größenwechsel.
+- Physischer Touch und HiDPI bleiben manuell zu prüfen.
 
 ### 2026-11-24 – Auftrag 16
 

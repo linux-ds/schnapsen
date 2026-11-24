@@ -148,7 +148,7 @@ Bei Talonsperre hat Wienerisch-Wertung Vorrang. Meldet sich der Zudreher falsch 
 - **Unten:** Eigene Hand, größer und gut lesbar.
 - **Rechts unten:** Eigener gewonnener Stichstapel; gegnerischer Stapel in dessen Nähe auf der Gegenseite.
 
-Die Bereiche sollen sich an Fenstergröße und Seitenverhältnis anpassen. Kartengrößen sind **absichtlich nicht überall gleich**. Priorität hat die Lesbarkeit der eigenen Karten und des aktuellen Stichs.
+Die Zielgröße des Fensters beträgt ungefähr 680 × 560 logische Pixel. Die Bereiche passen sich an Fenstergröße und Seitenverhältnis an. Eine geringe Fensterhöhe begrenzt die Kartengröße. Meldungen, kontextabhängige Aktionen und modale Bestätigungen liegen über der Zeichenfläche und ändern ihre Geometrie nicht. Kartengrößen sind **absichtlich nicht überall gleich**. Priorität hat die Lesbarkeit der eigenen Karten und des aktuellen Stichs.
 
 ### Physische Anmutung
 
@@ -165,7 +165,8 @@ Die Bereiche sollen sich an Fenstergröße und Seitenverhältnis anpassen. Karte
 - Es können höchstens zwei Karten zur Vorbereitung einer gültigen Ansage markiert werden; eine Ansage benötigt eine eindeutige Bestätigung samt Wahl der tatsächlich auszuspielenden Karte.
 - **Leertaste** spielt die eindeutig ausgewählte Karte, sofern die Aktion gültig ist.
 - Eine Touch-Wischbewegung in Richtung Tischmitte kann eine Karte ausspielen.
-- Für reine Mausbedienung muss es ebenfalls eine klare Bestätigung ohne Tastatur geben (z. B. Doppelklick oder kontextabhängige Aktion; konkret im Prototyp validieren).
+- Ein Doppelklick spielt die angeklickte Handkarte. Eine vorbereitete gültige Paaransage hat Vorrang. Rechtsklick und zentrale Aktionsschaltflächen bleiben verfügbar.
+- Die Tischmitte reserviert Platz für Aktionsschaltflächen. Ihre Anzeige folgt den zulässigen Aktionen. Modale Bestätigungen sperren Eingaben am Tisch und geben den Fokus nach dem Schließen zurück. Escape bricht die Bestätigung ab.
 - `Esc` schließt Overlays und hebt gegebenenfalls eine Auswahl auf.
 - Interaktive Tischobjekte wie der Talon dürfen kontextbezogene Aktionen anbieten, z. B. Zudrehen oder Trumpftausch; kritische Aktionen benötigen eine erkennbare Bestätigung, wo sinnvoll.
 
@@ -174,7 +175,8 @@ Die Bereiche sollen sich an Fenstergröße und Seitenverhältnis anpassen. Karte
 - Ein Klick/Tippen auf einen gewonnenen Stapel oder ein Tastenkürzel öffnet ein Overlay über dem Tisch.
 - Die Übersicht kann Karten nach Stichfolge darstellen; eine zusätzliche Sortierung nach Farbe ist optional.
 - Ob und welche eigenen oder gegnerischen Stiche eingesehen werden dürfen, hängt vom gewählten Regelprofil ab.
-- Die Freigabe des ersten gegnerischen Stichs ist eine Festlegung des weichen Projektprofils.
+- Im weichen Profil liegen die beiden Karten des ersten vom Computer gewonnenen Stichs dauerhaft offen neben seinem Stapel. Der Stapel enthält nur die übrigen gewonnenen Karten. Im scharfen Profil bleiben alle Karten des Stapels verdeckt. Das ist eine projektbezogene Hausregel. Die bisherige Stichübersicht bleibt verfügbar.
+- Am eigenen Stapel stehen wirksame Augen einschließlich gutgeschriebener Ansagen. Die unabhängige Lernhilfe „Gegnerische Augen anzeigen“ ist standardmäßig aus. Restpunkte und Bummerl stehen separat.
 - Spielhilfen, die mehr Informationen als die klassische Regel erlauben, müssen ausdrücklich als solche gekennzeichnet und optional sein.
 - Das Overlay ist auch mit Tastatur und Touch vollständig bedienbar.
 

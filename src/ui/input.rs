@@ -25,7 +25,7 @@ pub(super) fn attach(
     let model = state.clone();
     let turns = timers.clone();
     keys.connect_key_pressed(move |_, key, _, modifiers| {
-        if turns.review_open() {
+        if turns.input_blocked() {
             return glib::Propagation::Stop;
         }
         if modifiers.intersects(
@@ -36,6 +36,7 @@ pub(super) fn attach(
             return glib::Propagation::Proceed;
         }
         let mut table = model.borrow_mut();
+        table.cancel_mouse_click();
         match key {
             gdk::Key::Left => table.move_focus(-1),
             gdk::Key::Right => table.move_focus(1),
@@ -77,8 +78,9 @@ pub(super) fn attach(
     mouse.set_button(0);
     let model = state.clone();
     let turns = timers.clone();
-    mouse.connect_released(move |gesture, _, x, y| {
-        if turns.review_open() {
+    mouse.connect_released(move |gesture, count, x, y| {
+        if turns.input_blocked() {
+            model.borrow_mut().cancel_mouse_click();
             return;
         }
         let Some(event) = gesture.current_event() else {
@@ -97,11 +99,21 @@ pub(super) fn attach(
             return;
         };
         let mut table = model.borrow_mut();
+        if event.button() == gdk::BUTTON_PRIMARY && count > 1 {
+            if count == 2 {
+                table.mouse_double_click();
+                drop(table);
+                widget.grab_focus();
+                turns.refresh();
+            }
+            return;
+        }
+        table.cancel_mouse_click();
         let Some((target, _)) = target_at(&widget, &table, x, y) else {
             return;
         };
         match (event.button(), target) {
-            (gdk::BUTTON_PRIMARY, Target::Hand(card)) => table.toggle(card),
+            (gdk::BUTTON_PRIMARY, Target::Hand(card)) => table.mouse_click(card),
             (gdk::BUTTON_PRIMARY, Target::OpenTrump) => table.exchange_selected(),
             (gdk::BUTTON_PRIMARY, Target::Talon) => {
                 drop(table);
@@ -144,7 +156,7 @@ pub(super) fn attach(
         let Some((target, height)) = start.take() else {
             return;
         };
-        if turns.review_open() {
+        if turns.input_blocked() {
             return;
         }
         if !gesture

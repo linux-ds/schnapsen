@@ -1,6 +1,6 @@
 # Regel-Audit für GNOME Schnapsen
 
-Maßstab für die Implementierung sind SPEC.md und die Festlegungen der Aufträge 04 bis 16. Die drei Referenzen beschreiben zum Teil unterschiedliche Spielweisen. „Abweichung“ bezeichnet auch gewollte Unterschiede zum Tischspiel. „Ungeklärt“ kennzeichnet eine ausstehende Profilentscheidung.
+Maßstab für die Implementierung sind SPEC.md und die Festlegungen der Aufträge 04 bis 17. Die drei Referenzen beschreiben zum Teil unterschiedliche Spielweisen. „Abweichung“ bezeichnet auch gewollte Unterschiede zum Tischspiel. „Ungeklärt“ kennzeichnet eine ausstehende Profilentscheidung.
 
 | Regel oder Sonderfall | Aktuelle Implementierung | Referenzregel | Bewertung | Empfohlene Maßnahme |
 |---|---|---|---|---|
@@ -21,7 +21,8 @@ Maßstab für die Implementierung sind SPEC.md und die Festlegungen der Aufträg
 | Letzter Stich | Regulär ein Spielpunkt bei ausbleibender Ausmeldung. Bei Sperre entscheidet die Ausmeldung. | K und T nehmen die Sperre von der Letztstichregel aus. P gibt regulär einen Punkt. | Korrekt nach Korrektur des vorzeitigen Abschlusssignals | Letzten Stich erst auflösen, dann gegebenenfalls auf Ausmeldung oder Verzicht warten |
 | Restpunkte und Bummerl | Ab 7:7 bis null. Eine Wertung pro Hand. Verlierer erhält ein Bummerl oder bei 0:7 und aktiver Schneiderregel zwei. Bummerl summieren sich über neue Partien. | K, P und T beschreiben die 7-Punkte-Zählung. K und T nennen die traditionelle Doppelwertung, die Turnierausnahme und Begegnungen über mehrere Bummerl. | Korrekt für den Projektumfang | Einzelergebnis bis null und kumulierte Zählung beibehalten |
 | Sticheinsicht | Weich eigene Stiche und genau der erste Gegnerstich, auch nach Handende. Scharf gesperrt. | T entspricht dem Umfang. K nennt den Ausspieler. P beschränkt die gegnerische Einsicht auf den gerade beendeten Stich vor dem nächsten Ausspiel. | Bewusstes Projektprofil ohne Rollenbindung und Stich-Zeitfenster. GTK wartet weiterhin auf einen stabilen Zustand. | Keine weiteren gegnerischen Stiche freigeben |
-| Augen im scharfen Profil | Die eigene Augenzahl ist als Tischanzeige sichtbar. | P und T beschreiben eigenes Mitzählen. | Abweichung, digitale Bedienhilfe | Bei Profilabnahme entscheiden, ob die Anzeige der Spielhilfe zugeordnet wird |
+| Dauerhaft offener erster Computerstich | Weich liegt das erste tatsächlich vom Computer gewonnene Kartenpaar offen neben dem übrigen verdeckten Stapel. Scharf bleibt es verdeckt. | K, P und T beschreiben eine Einsicht in abgelegte Karten mit jeweils eigenen Bedingungen. | Bewusste Hausregel für die Tischdarstellung. | Erstes Paar aus den vorhandenen Stichen ableiten und nur einmal zeichnen. |
+| Augen im scharfen Profil | Die wirksamen eigenen Augen stehen am Stapel. Gegnerische Augen der laufenden Hand erfordern eine separate Lernhilfe. | P und T beschreiben eigenes Mitzählen. | Abweichung, digitale Bedienhilfe | Bei Profilabnahme entscheiden, ob die Anzeige der Spielhilfe zugeordnet wird |
 
 **Referenzen**  
 K · [Landjugend Bezirk Kirchdorf, Schnapsen – Die Regeln](https://www.bezirkkirchdorf.landjugend.at/uploads/tx_siwaeventinfo/Schnapsen.pdf)  

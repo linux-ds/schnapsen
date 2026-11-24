@@ -16,6 +16,8 @@ use schnapsen::core::{
 use super::{review, table::Table};
 
 pub(super) struct TableControls {
+    pub play: glib::WeakRef<gtk::Button>,
+    pub declare: glib::WeakRef<gtk::Button>,
     pub king: glib::WeakRef<gtk::Button>,
     pub ober: glib::WeakRef<gtk::Button>,
     pub proceed: glib::WeakRef<gtk::Button>,
@@ -44,6 +46,12 @@ impl TableControls {
                 "Nächste Hand"
             });
             advance.set_visible(table.result().is_some());
+        }
+        if let Some(play) = self.play.upgrade() {
+            play.set_visible(table.can_play_selected());
+        }
+        if let Some(declare) = self.declare.upgrade() {
+            declare.set_visible(table.may_declare());
         }
         let marriage = table.selected_marriage();
         if let Some(king) = self.king.upgrade() {
@@ -74,7 +82,7 @@ impl TableControls {
                 .set_visible(table.waiting_for_declaration() || table.awaiting_final_declaration());
         }
         if let Some(label) = self.announcement.upgrade() {
-            let event = table.announcement();
+            let event = table.announcement().filter(|_| table.result().is_none());
             if let Some(event) = event {
                 let player = if event.player == Player::Local {
                     "Du"
@@ -93,14 +101,12 @@ pub(super) struct TurnTimers {
     area: glib::WeakRef<gtk::DrawingArea>,
     notice: glib::WeakRef<gtk::Label>,
     overlay: glib::WeakRef<adw::ToastOverlay>,
-    eyes: glib::WeakRef<gtk::Label>,
-    declare: glib::WeakRef<gtk::Button>,
     feedback: RefCell<Option<adw::Toast>>,
     pending: RefCell<Option<glib::SourceId>>,
     controls: TableControls,
     shown_effects: Cell<(Option<Announcement>, Option<Exchange>)>,
     effects_timer: RefCell<Option<glib::SourceId>>,
-    review_open: Cell<bool>,
+    modal_open: Cell<bool>,
 }
 
 impl TurnTimers {
@@ -109,8 +115,6 @@ impl TurnTimers {
         area: &gtk::DrawingArea,
         notice: &gtk::Label,
         overlay: &adw::ToastOverlay,
-        eyes: &gtk::Label,
-        declare: &gtk::Button,
         controls: TableControls,
     ) -> Rc<Self> {
         Rc::new(Self {
@@ -118,14 +122,12 @@ impl TurnTimers {
             area: area.downgrade(),
             notice: notice.downgrade(),
             overlay: overlay.downgrade(),
-            eyes: eyes.downgrade(),
-            declare: declare.downgrade(),
             feedback: RefCell::new(None),
             pending: RefCell::new(None),
             controls,
             shown_effects: Cell::new((None, None)),
             effects_timer: RefCell::new(None),
-            review_open: Cell::new(false),
+            modal_open: Cell::new(false),
         })
     }
 
@@ -179,44 +181,77 @@ impl TurnTimers {
     }
 
     pub fn request_close(self: &Rc<Self>) {
+        if self.input_blocked() {
+            return;
+        }
         if let Err(error) = self.state.borrow().check_close_talon() {
             self.show_feedback(close_message(error));
             return;
         }
-        let Some(window) = self
-            .area
-            .upgrade()
-            .and_then(|area| area.root())
-            .and_downcast::<gtk::Window>()
-        else {
-            return;
-        };
-        let dialog = adw::AlertDialog::new(
-            Some("Talon zudrehen?"),
-            Some("Ihr zieht keine Karten mehr nach. Ab jetzt gilt Farb-, Stich- und Trumpfzwang. Du musst dich mit mindestens 66 Augen ausmelden, sonst gewinnt der Computer."),
-        );
-        dialog.add_responses(&[("cancel", "Abbrechen"), ("close-talon", "Zudrehen")]);
-        dialog.set_close_response("cancel");
-        dialog.set_default_response(Some("cancel"));
-        dialog.set_response_appearance("close-talon", adw::ResponseAppearance::Destructive);
-        let timers = Rc::downgrade(self);
-        dialog.connect_response(Some("close-talon"), move |_, _| {
-            if let Some(timers) = timers.upgrade() {
+        self.confirm(
+            "Talon zudrehen?",
+            "Ihr zieht keine Karten mehr nach. Ab jetzt gilt Farb-, Stich- und Trumpfzwang. Du musst dich mit mindestens 66 Augen ausmelden, sonst gewinnt der Computer.",
+            "Zudrehen",
+            |timers| {
                 let result = timers.state.borrow_mut().close_talon();
                 let message = result.err().map_or("Talon zugedreht", close_message);
                 timers.show_feedback(message);
-                timers.refresh();
-            }
-        });
-        dialog.present(Some(&window));
+            },
+        );
     }
 
-    pub fn review_open(&self) -> bool {
-        self.review_open.get()
+    pub fn request_declaration(self: &Rc<Self>) {
+        if !self.input_blocked() && self.state.borrow().may_declare() {
+            self.confirm(
+                "Ausmelden?",
+                "Damit endet die Hand. Bei weniger als 66 Augen gewinnt der Gegner.",
+                "Ausmelden",
+                |timers| {
+                    if timers.state.borrow_mut().declare().is_ok() {
+                        timers.cancel();
+                    }
+                },
+            );
+        }
+    }
+
+    pub fn request_reset_bummerls(self: &Rc<Self>) {
+        self.confirm(
+            "Bummerl zurücksetzen?",
+            "Die Bummerl-Zähler beider Seiten werden auf null gesetzt. Der aktuelle Partiestand bleibt erhalten.",
+            "Zurücksetzen",
+            |timers| timers.state.borrow_mut().reset_bummerls(),
+        );
+    }
+
+    fn confirm(
+        self: &Rc<Self>,
+        title: &str,
+        body: &str,
+        action: &str,
+        apply: impl Fn(&Self) + 'static,
+    ) {
+        let dialog = adw::AlertDialog::new(Some(title), Some(body));
+        dialog.set_presentation_mode(adw::DialogPresentationMode::Floating);
+        dialog.add_responses(&[("cancel", "Abbrechen"), ("confirm", action)]);
+        dialog.set_close_response("cancel");
+        dialog.set_default_response(Some("cancel"));
+        dialog.set_response_appearance("confirm", adw::ResponseAppearance::Destructive);
+        let timers = Rc::downgrade(self);
+        dialog.connect_response(Some("confirm"), move |_, _| {
+            if let Some(timers) = timers.upgrade() {
+                apply(&timers);
+            }
+        });
+        self.present_modal(&dialog);
+    }
+
+    pub fn input_blocked(&self) -> bool {
+        self.modal_open.get()
     }
 
     pub fn request_review(self: &Rc<Self>, owner: Player) {
-        if self.review_open() {
+        if self.input_blocked() {
             return;
         }
         if self.pending.borrow().is_some() {
@@ -236,6 +271,13 @@ impl TurnTimers {
                 return;
             }
         };
+        self.present_modal(&review::dialog(owner, tricks));
+    }
+
+    fn present_modal(self: &Rc<Self>, dialog: &impl IsA<adw::Dialog>) {
+        if self.input_blocked() {
+            return;
+        }
         let Some(area) = self.area.upgrade() else {
             return;
         };
@@ -243,26 +285,33 @@ impl TurnTimers {
             return;
         };
         let previous_focus = GtkWindowExt::focus(&window).map(|widget| widget.downgrade());
-        let dialog = review::dialog(owner, tricks);
         let weak = Rc::downgrade(self);
         dialog.connect_closed(move |_| {
             if let Some(timers) = weak.upgrade() {
-                timers.review_open.set(false);
-                if let Some(widget) = previous_focus.as_ref().and_then(glib::WeakRef::upgrade) {
-                    widget.grab_focus();
-                } else if let Some(area) = timers.area.upgrade() {
-                    area.grab_focus();
-                }
+                timers.modal_open.set(false);
                 timers.refresh();
+                let restored = previous_focus
+                    .as_ref()
+                    .and_then(glib::WeakRef::upgrade)
+                    .is_some_and(|widget| widget.grab_focus());
+                if !restored {
+                    if let Some(area) = timers.area.upgrade() {
+                        area.grab_focus();
+                    }
+                }
             }
         });
-        self.review_open.set(true);
+        self.modal_open.set(true);
+        self.state.borrow_mut().cancel_mouse_click();
+        if let Some(source) = self.pending.take() {
+            source.remove();
+        }
         self.dismiss_feedback();
         dialog.present(Some(&window));
     }
 
     pub fn refresh(self: &Rc<Self>) {
-        if self.review_open() {
+        if self.input_blocked() {
             return;
         }
         let Some(area) = self.area.upgrade() else {
@@ -291,12 +340,6 @@ impl TurnTimers {
         area.set_tooltip_text(tooltip);
         self.controls.update(&table);
         self.update_effects((table.announcement(), table.exchange()));
-        if let Some(eyes) = self.eyes.upgrade() {
-            eyes.set_label(&format!("Deine Augen: {}", table.local_eyes()));
-        }
-        if let Some(declare) = self.declare.upgrade() {
-            declare.set_sensitive(table.may_declare());
-        }
         let result = table.result();
         if let Some(notice) = self.notice.upgrade() {
             if let Some(result) = result {
@@ -438,11 +481,11 @@ mod tests {
             area: glib::WeakRef::new(),
             notice: glib::WeakRef::new(),
             overlay: glib::WeakRef::new(),
-            eyes: glib::WeakRef::new(),
-            declare: glib::WeakRef::new(),
             feedback: RefCell::new(None),
             pending: RefCell::new(None),
             controls: TableControls {
+                play: glib::WeakRef::new(),
+                declare: glib::WeakRef::new(),
                 king: glib::WeakRef::new(),
                 ober: glib::WeakRef::new(),
                 proceed: glib::WeakRef::new(),
@@ -452,7 +495,7 @@ mod tests {
             },
             shown_effects: Cell::new((None, None)),
             effects_timer: RefCell::new(None),
-            review_open: Cell::new(false),
+            modal_open: Cell::new(false),
         };
         let context = glib::MainContext::default();
         let _owner = context.acquire().unwrap();

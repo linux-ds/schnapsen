@@ -15,6 +15,8 @@ pub(super) struct Table {
     selected: Vec<Card>,
     focus: Option<Card>,
     show_legal: bool,
+    show_opponent_eyes: bool,
+    first_click: Option<(Card, Option<[Card; 2]>)>,
     play_error: Option<PlayError>,
     visible_announcement: Option<Announcement>,
     visible_exchange: Option<Exchange>,
@@ -30,6 +32,8 @@ impl Table {
             selected: Vec::new(),
             focus,
             show_legal: false,
+            show_opponent_eyes: false,
+            first_click: None,
             play_error: None,
             visible_announcement: None,
             visible_exchange: None,
@@ -64,7 +68,7 @@ impl Table {
     }
 
     fn reset_hand_ui(&mut self) {
-        self.selected.clear();
+        self.clear_selection();
         self.focus = self.view().hand.first().copied();
         self.play_error = None;
         self.exchange_error = None;
@@ -74,6 +78,15 @@ impl Table {
 
     pub fn set_show_legal(&mut self, enabled: bool) {
         self.show_legal = enabled;
+    }
+
+    pub fn set_show_opponent_eyes(&mut self, enabled: bool) {
+        self.show_opponent_eyes = enabled;
+    }
+
+    pub fn opponent_eyes(&self) -> Option<u8> {
+        self.show_opponent_eyes
+            .then(|| self.session.hand().eyes(Player::Opponent))
     }
 
     pub fn highlighted_cards(&self) -> Vec<Card> {
@@ -137,6 +150,7 @@ impl Table {
     }
 
     pub fn toggle(&mut self, card: Card) {
+        self.cancel_mouse_click();
         if !self.view().hand.contains(&card) {
             return;
         }
@@ -150,6 +164,47 @@ impl Table {
 
     pub fn clear_selection(&mut self) {
         self.selected.clear();
+        self.cancel_mouse_click();
+    }
+
+    pub fn cancel_mouse_click(&mut self) {
+        self.first_click = None;
+    }
+
+    pub fn mouse_click(&mut self, card: Card) {
+        let prepared_pair = match self.selected.as_slice() {
+            &[first, second] => Some([first, second]),
+            _ => None,
+        };
+        self.toggle(card);
+        self.first_click = Some((card, prepared_pair));
+    }
+
+    pub fn mouse_double_click(&mut self) -> bool {
+        let Some((card, prepared_pair)) = self.first_click.take() else {
+            return false;
+        };
+
+        // The first click can deselect a card and move it down. Reuse its
+        // identity and restore a pair that was prepared before the gesture.
+        if let Some(pair) = prepared_pair {
+            self.selected = pair.into();
+        }
+        if self.selected.len() == 2 {
+            return self.selected_marriage().is_some_and(|marriage| {
+                if self.selected.contains(&card) {
+                    self.announce_selected(card == marriage.ober() && marriage.may_play_ober)
+                } else {
+                    false
+                }
+            });
+        }
+
+        let played = self.play_local(card);
+        if played {
+            self.focus = self.view().hand.first().copied();
+        }
+        played
     }
 
     pub fn selected_card(&self) -> Option<Card> {
@@ -223,6 +278,15 @@ impl Table {
 
     pub fn close_talon(&mut self) -> Result<(), CloseError> {
         self.session.close_talon(Player::Local)
+    }
+
+    pub fn can_play_selected(&self) -> bool {
+        self.selected_card().is_some_and(|card| {
+            self.session
+                .hand()
+                .legal_cards(Player::Local)
+                .contains(&card)
+        })
     }
 
     pub fn play_selected(&mut self) -> bool {
@@ -502,6 +566,107 @@ mod tests {
         assert!(table.announcement().is_none());
         assert_eq!(table.session.hand().variant(), Variant::Sharp);
         assert_eq!(table.view().played.len(), 1);
+    }
+
+    #[test]
+    fn double_click_plays_the_original_card_even_after_it_moves() {
+        let mut table = Table::new(Match::new(
+            Player::Local,
+            Variant::Soft,
+            SchneiderRule::Double,
+            |upper| upper - 1,
+        ));
+        let card = table.view().hand[0];
+        table.mouse_click(card);
+        assert!(table.can_play_selected());
+        table.mouse_click(card);
+        assert_eq!(table.selected_card(), None);
+        assert!(table.mouse_double_click());
+        assert_eq!(table.view().played, [(Player::Local, card)]);
+        assert!(!table.mouse_double_click());
+    }
+
+    #[test]
+    fn double_click_respects_prepared_pairs_and_invalid_turns() {
+        let deal = |leader| {
+            Match::new(leader, Variant::Soft, SchneiderRule::Double, |upper| {
+                upper - 1
+            })
+        };
+        let mut table = Table::new(deal(Player::Local));
+        let first = table.view().hand[0];
+        let second = table.view().hand[1];
+        table.toggle(first);
+        table.toggle(second);
+        table.mouse_click(first);
+        assert!(!table.mouse_double_click());
+        assert_eq!(table.selected, [first, second]);
+        assert!(table.view().played.is_empty());
+
+        table.clear_selection();
+        let marriage = table
+            .session
+            .hand()
+            .marriage(Player::Local, Suit::Bells)
+            .unwrap();
+        let king = marriage.king();
+        let ober = marriage.ober();
+        table.toggle(king);
+        table.toggle(ober);
+        table.mouse_click(ober);
+        assert!(table.mouse_double_click());
+        assert_eq!(table.announcement().unwrap().played, ober);
+        assert_eq!(table.view().played, [(Player::Local, ober)]);
+
+        replace_for_test(&mut table, deal(Player::Opponent));
+        let card = table.view().hand[0];
+        table.mouse_click(card);
+        assert!(!table.can_play_selected());
+        assert!(!table.mouse_double_click());
+        assert!(table.take_play_error().is_some());
+        assert!(table.view().played.is_empty());
+        table.mouse_click(card);
+        replace_for_test(&mut table, deal(Player::Local));
+        assert!(!table.mouse_double_click());
+        assert!(table.view().played.is_empty());
+    }
+
+    #[test]
+    fn eyes_show_effective_announcements_and_independent_opponent_help() {
+        let deal = |leader| {
+            Match::new(leader, Variant::Soft, SchneiderRule::Double, |upper| {
+                upper - 1
+            })
+        };
+        let mut table = Table::new(deal(Player::Local));
+        let marriage = table
+            .session
+            .hand()
+            .marriage(Player::Local, Suit::Bells)
+            .unwrap();
+        table.toggle(marriage.king());
+        table.toggle(marriage.ober());
+        assert!(table.announce_selected(false));
+        assert_eq!(table.local_eyes(), 0);
+        let reply = table.session.hand().legal_cards(Player::Opponent)[0];
+        table.session.play_card(Player::Opponent, reply).unwrap();
+        assert_eq!(table.session.resolve_trick(), Ok(Player::Local));
+        assert_eq!(
+            table.local_eyes(),
+            marriage.eyes + marriage.king().points() + reply.points()
+        );
+
+        replace_for_test(&mut table, after_opening_trick(deal(Player::Opponent)));
+        let eyes = table.session.hand().eyes(Player::Opponent);
+        assert!(eyes > 0);
+        table.set_show_legal(true);
+        assert_eq!(table.opponent_eyes(), None);
+        table.set_show_legal(false);
+        table.set_show_opponent_eyes(true);
+        assert_eq!(table.opponent_eyes(), Some(eyes));
+        assert!(table.highlighted_cards().is_empty());
+        replace_for_test(&mut table, deal(Player::Local));
+        assert_eq!(table.opponent_eyes(), Some(0));
     }
 
     #[test]

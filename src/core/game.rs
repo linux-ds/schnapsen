@@ -223,6 +223,7 @@ pub struct View<'a> {
     pub played: &'a [(Player, Card)],
     pub own_trick_card_count: usize,
     pub opponent_trick_card_count: usize,
+    pub opponent_open_trick: Option<[Card; 2]>,
 }
 
 impl Game {
@@ -738,6 +739,11 @@ impl Game {
             played: &self.played,
             own_trick_card_count: 2 * self.tricks[player as usize].len(),
             opponent_trick_card_count: 2 * self.tricks[player.other() as usize].len(),
+            opponent_open_trick: if self.variant == Variant::Soft {
+                self.tricks[player.other() as usize].first().copied()
+            } else {
+                None
+            },
         }
     }
 }

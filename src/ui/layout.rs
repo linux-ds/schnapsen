@@ -110,24 +110,79 @@ fn row_positions(
     (0..count).map(move |index| Rect::new(left + step * index as f64, y, width))
 }
 
+struct TableGeometry {
+    size: f64,
+    center: f64,
+    top: f64,
+    own_y: f64,
+    hand_step: f64,
+    opponent_stack: Rect,
+    own_stack: Rect,
+}
+
+impl TableGeometry {
+    fn new(width: f64, height: f64) -> Self {
+        let size = (width / 6.45).min(height / 4.55).min(138.0);
+        let center = width / 2.0;
+        let top = size * 0.18;
+        let own_y = height - size * (ASPECT + 0.25);
+        let hand_step = (width / size / 4.0 - 0.78).clamp(0.82, 1.06) * size;
+        let stack_size = size * 0.60;
+        let stack_x = center + size * 0.70 + 2.0 * hand_step;
+        Self {
+            size,
+            center,
+            top,
+            own_y,
+            hand_step,
+            opponent_stack: Rect::new(stack_x, top + stack_size * 0.19, stack_size),
+            own_stack: Rect::new(
+                stack_x,
+                height - size * 0.25 - stack_size * ASPECT,
+                stack_size,
+            ),
+        }
+    }
+
+    fn action_top(self, height: f64) -> f64 {
+        height / 2.0 - 28.0_f64.min(height * 0.07)
+    }
+}
+
+pub(super) fn eye_positions(width: f64, height: f64) -> [(f64, f64); 2] {
+    let geometry = TableGeometry::new(width, height);
+    let opponent = geometry.opponent_stack;
+    let own = geometry.own_stack;
+    [
+        (own.x + own.width / 2.0, own.y - 10.0),
+        (
+            opponent.x + opponent.width / 2.0,
+            opponent.y + opponent.height() + 20.0,
+        ),
+    ]
+}
+
 pub(super) fn arrange(table: &Table, width: f64, height: f64) -> Vec<Placement> {
     if width <= 0.0 || height <= 0.0 {
         return Vec::new();
     }
 
-    let size = (width / 6.45).min(height / 4.55).min(138.0);
-    let center = width / 2.0;
-    let top = size * 0.28;
-    let own_y = height - size * (ASPECT + 0.25);
-    let opponent_size = size * 0.55;
-    let middle = (top + opponent_size * ASPECT + own_y) / 2.0;
-    let played_size = size * 0.95;
-    let hand_step = (width / size / 4.0 - 0.78).clamp(0.82, 1.06) * size;
-    let hand_right = center + size / 2.0 + 2.0 * hand_step;
-    let stack_size = size * 0.60;
-    let stack_x = hand_right + size * 0.20;
+    let geometry = TableGeometry::new(width, height);
+    let TableGeometry {
+        size,
+        center,
+        top,
+        own_y,
+        hand_step,
+        opponent_stack,
+        own_stack,
+    } = geometry;
+    let opponent_size = size * 0.48;
+    let played_size = size * 0.71;
+    let row_bottom = geometry.action_top(height);
+    let played_y = row_bottom - played_size * ASPECT;
     let talon_size = size * 0.70;
-    let talon_y = middle - talon_size * ASPECT / 2.0;
+    let talon_y = row_bottom - talon_size * ASPECT;
     let trump_x = center - 2.73 * size;
     let view = table.view();
     let legal = table.highlighted_cards();
@@ -177,10 +232,23 @@ pub(super) fn arrange(table: &Table, width: f64, height: f64) -> Vec<Placement> 
             None,
         );
     }
-    for rect in stack_positions(
-        Rect::new(stack_x, top + stack_size * 0.19, stack_size),
-        view.opponent_trick_card_count,
-    ) {
+    let mut covered_opponent_cards = view.opponent_trick_card_count;
+    if let Some(pair) = view.opponent_open_trick {
+        let pair_size = size * 0.44;
+        let gap = size * 0.09;
+        let start = opponent_stack.x - 2.0 * pair_size - 2.0 * gap;
+        for (index, card) in pair.into_iter().enumerate() {
+            add(
+                Face::Front(card),
+                Rect::new(start + index as f64 * (pair_size + gap), top, pair_size),
+                false,
+                false,
+                Some(Player::Opponent),
+            );
+        }
+        covered_opponent_cards -= pair.len();
+    }
+    for rect in stack_positions(opponent_stack, covered_opponent_cards) {
         add(Face::Back, rect, false, false, Some(Player::Opponent));
     }
     if let Some(trump) = view.open_trump {
@@ -198,7 +266,7 @@ pub(super) fn arrange(table: &Table, width: f64, height: f64) -> Vec<Placement> 
     }
     for (&(_, card), rect) in view.played.iter().zip(row_positions(
         center,
-        middle - played_size * ASPECT / 2.0,
+        played_y,
         played_size,
         played_size * 1.18,
         view.played.len(),
@@ -214,14 +282,7 @@ pub(super) fn arrange(table: &Table, width: f64, height: f64) -> Vec<Placement> 
     )) {
         add(Face::Front(card), rect, true, false, None);
     }
-    for rect in stack_positions(
-        Rect::new(
-            stack_x,
-            height - size * 0.25 - stack_size * ASPECT,
-            stack_size,
-        ),
-        view.own_trick_card_count,
-    ) {
+    for rect in stack_positions(own_stack, view.own_trick_card_count) {
         add(Face::Back, rect, false, false, Some(Player::Local));
     }
     if view.talon_closed {
@@ -229,7 +290,7 @@ pub(super) fn arrange(table: &Table, width: f64, height: f64) -> Vec<Placement> 
             face: Face::Back,
             rect: Rect::new(
                 stock.x - talon_size * 0.15,
-                middle - talon_size * 0.56,
+                talon_y + talon_size * 0.12,
                 talon_size,
             ),
             in_hand: false,
@@ -329,6 +390,104 @@ mod tests {
                 .count(),
             9
         );
+    }
+
+    #[test]
+    fn first_computer_trick_is_open_only_in_soft_and_counts_once() {
+        for variant in [Variant::Soft, Variant::Sharp] {
+            let mut session =
+                Match::new(Player::Opponent, variant, SchneiderRule::Double, |upper| {
+                    upper - 1
+                });
+            let mut first = None;
+            for _ in 0..2 {
+                let pair = [Player::Opponent, Player::Local].map(|player| {
+                    let card = session.hand().legal_cards(player)[0];
+                    session.play_card(player, card).unwrap();
+                    card
+                });
+                assert_eq!(session.resolve_trick(), Ok(Player::Opponent));
+                first.get_or_insert(pair);
+            }
+            let table = Table::new(session);
+            let expected = if variant == Variant::Soft {
+                first
+            } else {
+                None
+            };
+            assert_eq!(table.view().opponent_open_trick, expected);
+
+            for (width, height) in [(560.0, 400.0), (680.0, 560.0), (920.0, 650.0)] {
+                let cards = arrange(&table, width, height);
+                assert_eq!(cards.len(), 20);
+                let computer_tricks: Vec<_> = cards
+                    .iter()
+                    .filter(|entry| entry.trick_owner == Some(Player::Opponent))
+                    .collect();
+                assert_eq!(computer_tricks.len(), 4);
+                let open: Vec<_> = computer_tricks
+                    .iter()
+                    .filter_map(|entry| match entry.face {
+                        Face::Front(card) => Some(card),
+                        Face::Back => None,
+                    })
+                    .collect();
+                assert_eq!(open, expected.into_iter().flatten().collect::<Vec<_>>());
+                for card in open {
+                    assert_eq!(
+                        cards
+                            .iter()
+                            .filter(
+                                |entry| matches!(entry.face, Face::Front(shown) if shown == card)
+                            )
+                            .count(),
+                        1
+                    );
+                }
+                let opponent_hand_right = cards[..5]
+                    .iter()
+                    .map(|entry| entry.rect.x + entry.rect.width)
+                    .fold(0.0, f64::max);
+                assert!(computer_tricks
+                    .iter()
+                    .all(|entry| entry.rect.x > opponent_hand_right));
+            }
+        }
+    }
+
+    #[test]
+    fn board_reserves_a_clear_center_action_row_with_two_cards_in_play() {
+        let mut session = Match::new(
+            Player::Local,
+            Variant::Soft,
+            SchneiderRule::Double,
+            |upper| upper - 1,
+        );
+        for player in [Player::Local, Player::Opponent] {
+            let card = session.hand().legal_cards(player)[0];
+            session.play_card(player, card).unwrap();
+        }
+        let mut table = Table::new(session);
+        table.toggle(table.view().hand[0]);
+        for (width, height) in [
+            (MIN_WIDTH.into(), MIN_HEIGHT.into()),
+            (680.0, 560.0),
+            (920.0, 650.0),
+            (1440.0, 400.0),
+        ] {
+            let cards = arrange(&table, width, height);
+            let center = height / 2.0;
+            for entry in cards {
+                let rect = entry.rect;
+                let bottom = rect.y
+                    + if entry.sideways {
+                        rect.width
+                    } else {
+                        rect.height()
+                    };
+                assert!(bottom < center - 22.0 || rect.y > center + 22.0);
+            }
+        }
     }
 
     #[test]

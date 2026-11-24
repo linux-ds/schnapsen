@@ -2,7 +2,7 @@ use adw::gtk::cairo::{Context, Error, FontSlant, FontWeight};
 use schnapsen::core::cards::{Card, Rank, Suit};
 use std::f64::consts::TAU;
 
-use super::layout::{Face, Placement, ASPECT, CORNER_RADIUS};
+use super::layout::{eye_positions, Face, Placement, ASPECT, CORNER_RADIUS};
 
 pub(super) fn table(
     cr: &Context,
@@ -34,6 +34,31 @@ pub(super) fn table(
         cr.restore()?;
     }
     Ok(())
+}
+
+pub(super) fn eyes(
+    cr: &Context,
+    width: f64,
+    height: f64,
+    local: u8,
+    opponent: Option<u8>,
+) -> Result<(), Error> {
+    cr.save()?;
+    cr.select_font_face("Sans", FontSlant::Normal, FontWeight::Bold);
+    cr.set_font_size(14.0);
+    cr.set_source_rgb(0.93, 0.95, 0.87);
+    for ((x, y), value) in eye_positions(width, height)
+        .into_iter()
+        .zip([Some(local), opponent])
+    {
+        if let Some(value) = value {
+            let label = format!("{value} Augen");
+            let text_width = cr.text_extents(&label)?.x_advance();
+            cr.move_to((x - text_width / 2.0).min(width - text_width - 4.0), y);
+            cr.show_text(&label)?;
+        }
+    }
+    cr.restore()
 }
 
 fn rounded_rect(cr: &Context, x: f64, y: f64, width: f64, height: f64, radius: f64) {
