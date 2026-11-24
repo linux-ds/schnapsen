@@ -60,12 +60,6 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         SchneiderRule::default(),
         choose_index,
     ))));
-    let score = gtk::Label::builder()
-        .ellipsize(gtk::pango::EllipsizeMode::End)
-        .margin_top(6)
-        .margin_bottom(6)
-        .build();
-    content.append(&score);
     let notice = gtk::Label::builder()
         .wrap(true)
         .css_classes(["dim-label"])
@@ -109,7 +103,6 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         king: king.downgrade(),
         ober: ober.downgrade(),
         announcement: announcement.downgrade(),
-        score: score.downgrade(),
         advance: advance.downgrade(),
     };
     let timers = turn::TurnTimers::new(&state, &table, &notice, &overlay, controls);
@@ -213,7 +206,8 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
                 height.into(),
                 state.local_eyes(),
                 state.opponent_eyes(),
-            )
+            )?;
+            paint::match_status(cr, width.into(), height.into(), state.session())
         }) {
             eprintln!("Could not draw the card table: {error}");
         }

@@ -178,7 +178,7 @@ Die Zielgröße des Fensters beträgt ungefähr 680 × 560 logische Pixel. Die B
 - Die Übersicht kann Karten nach Stichfolge darstellen; eine zusätzliche Sortierung nach Farbe ist optional.
 - Ob und welche eigenen oder gegnerischen Stiche eingesehen werden dürfen, hängt vom gewählten Regelprofil ab.
 - Im weichen Profil liegen die beiden Karten des ersten vom Computer gewonnenen Stichs dauerhaft offen neben seinem Stapel. Der Stapel enthält nur die übrigen gewonnenen Karten. Im scharfen Profil bleiben alle Karten des Stapels verdeckt. Das ist eine projektbezogene Hausregel. Die bisherige Stichübersicht bleibt verfügbar.
-- Über dem eigenen Stapel stehen die wirksamen Augen einschließlich gutgeschriebener Ansagen als Zahl. Über dem gegnerischen Stapel kann dieselbe kompakte Anzeige eingeblendet werden. Beide Zahlen bleiben oberhalb der maximalen Stapelhöhe. Die unabhängige Lernhilfe „Gegnerische Augen anzeigen“ ist standardmäßig aus. Restpunkte und Bummerl stehen separat.
+- Über dem eigenen Stapel stehen die wirksamen Augen einschließlich gutgeschriebener Ansagen als Zahl. Über dem gegnerischen Stapel kann dieselbe kompakte Anzeige eingeblendet werden. Beide Zahlen bleiben oberhalb der maximalen Stapelhöhe. Die unabhängige Lernhilfe „Gegnerische Augen anzeigen“ ist standardmäßig aus. In der linken Statusspalte stehen Restpunkte und Bummerl der Gegenseite oben und die der lokalen Seite unten. Die Zahl abgeschlossener Hände steht dazwischen.
 - Spielhilfen, die mehr Informationen als die klassische Regel erlauben, müssen ausdrücklich als solche gekennzeichnet und optional sein.
 - Das Overlay ist auch mit Tastatur und Touch vollständig bedienbar.
 

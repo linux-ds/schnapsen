@@ -1,8 +1,14 @@
 use adw::gtk::cairo::{Context, Error, FontSlant, FontWeight};
-use schnapsen::core::cards::{Card, Rank, Suit};
+use schnapsen::core::{
+    cards::{Card, Rank, Suit},
+    game::Player,
+    match_play::Match,
+};
 use std::f64::consts::TAU;
 
-use super::layout::{eye_layout, Face, Placement, ASPECT, CORNER_RADIUS};
+use super::layout::{eye_layout, status_layout, Face, Placement, ASPECT, CORNER_RADIUS};
+
+const TABLE_TEXT: (f64, f64, f64) = (0.93, 0.95, 0.87);
 
 pub(super) fn table(
     cr: &Context,
@@ -47,7 +53,8 @@ pub(super) fn eyes(
     cr.select_font_face("Sans", FontSlant::Normal, FontWeight::Bold);
     let (positions, font_size) = eye_layout(width, height);
     cr.set_font_size(font_size);
-    cr.set_source_rgb(0.93, 0.95, 0.87);
+    let (r, g, b) = TABLE_TEXT;
+    cr.set_source_rgb(r, g, b);
     for ((x, y), value) in positions.into_iter().zip([Some(local), opponent]) {
         if let Some(value) = value {
             let label = eye_label(value);
@@ -56,6 +63,48 @@ pub(super) fn eyes(
             cr.show_text(&label)?;
         }
     }
+    cr.restore()
+}
+
+pub(super) fn match_status(
+    cr: &Context,
+    width: f64,
+    height: f64,
+    session: &Match,
+) -> Result<(), Error> {
+    let layout = status_layout(width, height);
+    let [top, middle, bottom] = layout.rows;
+    let unit = layout.unit;
+    let (r, g, b) = TABLE_TEXT;
+    cr.save()?;
+    cr.select_font_face("Sans", FontSlant::Normal, FontWeight::Bold);
+    let label = |text: &str, y, size, opacity| -> Result<(), Error> {
+        cr.set_source_rgba(r, g, b, opacity);
+        cr.set_font_size(size * unit);
+        let metrics = cr.text_extents(text)?;
+        if metrics.width() > layout.width {
+            cr.set_font_size(size * unit * layout.width / metrics.width());
+        }
+        let metrics = cr.text_extents(text)?;
+        cr.move_to(layout.x - metrics.x_bearing() - metrics.width() / 2.0, y);
+        cr.show_text(text)
+    };
+    for (player, y) in [(Player::Opponent, top), (Player::Local, bottom)] {
+        label(&session.remaining(player).to_string(), y, 0.28, 1.0)?;
+        label(
+            &format!("B {}", session.bummerls(player)),
+            y + unit * 0.22,
+            0.14,
+            0.80,
+        )?;
+    }
+    label("Hände", middle - unit * 0.08, 0.12, 0.80)?;
+    label(
+        &session.completed_hands().to_string(),
+        middle + unit * 0.14,
+        0.19,
+        1.0,
+    )?;
     cr.restore()
 }
 

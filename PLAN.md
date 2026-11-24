@@ -18,7 +18,7 @@
 - [RULE_AUDIT.md](RULE_AUDIT.md) vergleicht die implementierten Profile mit drei Regelquellen und dokumentiert Abweichungen und Stabilitätsprüfungen.
 
 - `src/app/mod.rs` verwaltet den Lebenszyklus der Anwendung und öffnet oder aktiviert das Fenster.
-- `src/ui/mod.rs` bindet den Kartentisch über eine `GtkDrawingArea` in das Fenster ein. Die Zeichenfläche hat eine Mindestgröße von 560 × 400 logischen Pixeln. Titelleiste und Partiestand liegen außerhalb. Die Zielgröße des Fensters ist 680 × 560. Kontextaktionen und Ergebnisse liegen in einer ungemessenen GTK-Overlay-Ebene.
+- `src/ui/mod.rs` bindet den Kartentisch über eine `GtkDrawingArea` in das Fenster ein. Die Zeichenfläche hat eine Mindestgröße von 560 × 400 logischen Pixeln. Die Titelleiste liegt außerhalb. Der Partiestand steht in einer festen Spalte links auf der Zeichenfläche und nutzt den vorhandenen Abstand zum Talon. Die Zielgröße des Fensters ist 680 × 560. Kontextaktionen und Ergebnisse liegen in einer ungemessenen GTK-Overlay-Ebene.
 - `src/core/game.rs` prüft Ausspielaktionen und löst vollständige Stiche auf. Eine Ansage prüft Ausspielrecht, Paar und Profil und spielt atomar eine Karte aus. Stichaugen und vorgemerkte oder wirksame Ansageaugen werden aus Stichpaaren und Ansageereignissen abgeleitet. Ab 66 wirksamen Augen beendet die Engine die Hand nach Stichauflösung oder Ansage automatisch. Der Abschlussgrund und die Spielpunkte stehen in `Finished`.
 - Der Trumpftausch ersetzt den Trumpf-Unter in der Hand durch die offene Trumpfkarte. Der Unter bleibt als letzte Karte des Talons liegen. Tausch und Zudrehen teilen dieselbe Hausregelprüfung. Sie verlangen einen abgeschlossenen ersten Stich, aktuelles Ausspielrecht vor Stichbeginn und mindestens vier Karten im offenen Talon einschließlich der Trumpfkarte. Die Engine prüft beim Tausch zusätzlich den Besitz des Trumpf-Unters.
 - Zudrehen sperrt den Stapel und speichert den wirksamen Augenstand und die Stichzahl des Gegners für die Wertung. Ab dann gelten dieselben Bedienpflichten wie bei einem regulär leeren Talon. Die gesperrten Karten bleiben erhalten.
@@ -32,7 +32,7 @@
 - `src/ui/turn.rs` steuert Computerzug und Stichauflösung mit GLib-Timern. Der Computer beginnt auch als Vorhand. Beim Hand- oder Partiewechsel werden alte Timer entfernt.
 - `src/ui/review.rs` zeigt die erlaubten Stichpaare in einem eingebetteten, abgedunkelten Dialog mit anpassbarer Spaltenzahl und vertikalem Scrollen. Die Kartenzeichnung stammt vom Kartentisch.
 - `src/ui/paint.rs` zeichnet Kartenfronten, einheitliche Rückseiten, Rahmen und Schatten mit Cairo. Ausgewählte Karten erhalten einen goldenen Rand, der sichtbare Tastaturfokus eine gestrichelte Innenlinie.
-- Die abschaltbare **Spielhilfe** markiert die legalen Karten. Über den Stichstapeln stehen die wirksamen eigenen Augen als Zahl und optional die gegnerischen Augen über eine separate Lernhilfe. Kontextaktionen liegen in der Tischmitte. Die Ergebnisanzeige bietet **Nächste Hand** oder **Neue Partie** an.
+- Die abschaltbare **Spielhilfe** markiert die legalen Karten. Über den Stichstapeln stehen die wirksamen eigenen Augen als Zahl und optional die gegnerischen Augen über eine separate Lernhilfe. Links stehen die Restpunkte und Bummerl beider Seiten sowie die Zahl abgeschlossener Hände. Kontextaktionen liegen in der Tischmitte. Die Ergebnisanzeige bietet **Nächste Hand** oder **Neue Partie** an.
 - Das Menü **Partie** konfiguriert Regelprofil und Schneiderwertung für die nächste Partie. Die erste Partie startet weich mit doppelter Schneiderwertung. Bummerl lassen sich über eine getrennte Aktion mit Bestätigung zurücksetzen.
 - `src/lib.rs` exportiert `core::cards` mit Kartenidentität, Augenwert und vollständigem 20er-Kartensatz. Das Modul verwendet nur die Rust-Standardbibliothek.
 - `Cargo.toml` und `Cargo.lock` definieren die Anwendung und ihre Abhängigkeiten. GTK4 wird über libadwaita eingebunden. Die App-ID `io.github.schnapsen.Schnapsen` ist vorläufig.
@@ -172,6 +172,12 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-24 – Auftrag 20a
+
+- Die obere Partiestandszeile entfällt. Die linke Spalte zeigt oben die gegnerischen und unten die eigenen Restpunkte und Bummerl. In der Mitte steht die Zahl abgeschlossener Hände. Große Ziffern, das kleinere Kürzel „B“ und die Schriftfarbe der Stichaugen gliedern die Anzeige.
+- Die Spalte wird in den freien linken Rand gezeichnet und belegt keine zusätzliche GTK-Layoutfläche. Mit jedem Neuzeichnen stammen alle Werte direkt aus dem Partiezustand. Eine Beschreibung der Werte ist für assistive Technik am Spielfeld verfügbar.
+- Formatierung, Cargo-Check, alle 57 Tests und Clippy mit `-D warnings` waren im GNOME SDK 51 erfolgreich. Die Layouttests prüfen Abstände zwischen Statusspalte und Kartenbereichen sowie die Lage der drei Gruppen bei verschiedenen Größen. Der Flatpak-Release-Build und der Wayland-Fensterstart waren erfolgreich. Cairo-Renderprüfungen bestätigten alle drei Gruppen bei 560 × 400, 680 × 560, 1280 × 720 und 1920 × 1080 logischen Pixeln. Im Vergleich unter Wayland bei unverändertem 680 × 560 großem Fenster wuchs die Zeichenfläche von 680 × 485 auf 680 × 513.
 
 ### 2026-11-24 – Auftrag 19
 

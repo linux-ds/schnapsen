@@ -165,6 +165,23 @@ pub(super) fn eye_layout(width: f64, height: f64) -> ([(f64, f64); 2], f64) {
     (positions, EYE_FONT_SIZE * geometry.size)
 }
 
+pub(super) struct StatusLayout {
+    pub x: f64,
+    pub width: f64,
+    pub rows: [f64; 3],
+    pub unit: f64,
+}
+
+pub(super) fn status_layout(width: f64, height: f64) -> StatusLayout {
+    let unit = TableGeometry::new(width, height).size;
+    StatusLayout {
+        x: unit * 0.25,
+        width: unit * 0.40,
+        rows: [unit * 0.65, height * 0.5, height - unit * 0.65],
+        unit,
+    }
+}
+
 pub(super) fn arrange(table: &Table, width: f64, height: f64) -> Vec<Placement> {
     if width <= 0.0 || height <= 0.0 {
         return Vec::new();
@@ -624,6 +641,13 @@ mod tests {
                     table.toggle(card);
                 }
                 for (width, height) in VIEWPORTS {
+                    let status = status_layout(width, height);
+                    let [top, middle, bottom] = status.rows;
+                    assert!(status.x >= status.width / 2.0);
+                    assert!(top > status.unit * 0.28);
+                    assert!(top + status.unit * 0.22 < middle - status.unit * 0.24);
+                    assert!(middle < bottom - status.unit * 0.28);
+                    assert!(bottom + status.unit * 0.22 < height);
                     let placements = arrange(&table, width, height);
                     assert_eq!(placements.len(), 20);
                     for card in placements {
@@ -633,7 +657,8 @@ mod tests {
                         } else {
                             (rect.width, rect.height())
                         };
-                        assert!(rect.x >= 0.0 && rect.x + w <= width);
+                        assert!(rect.x > status.x + status.width / 2.0);
+                        assert!(rect.x + w <= width);
                         assert!(rect.y >= 0.0 && rect.y + h <= height);
                     }
                 }

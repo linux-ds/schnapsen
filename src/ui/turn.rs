@@ -20,23 +20,12 @@ pub(super) struct TableControls {
     pub king: glib::WeakRef<gtk::Button>,
     pub ober: glib::WeakRef<gtk::Button>,
     pub announcement: glib::WeakRef<gtk::Label>,
-    pub score: glib::WeakRef<gtk::Label>,
     pub advance: glib::WeakRef<gtk::Button>,
 }
 
 impl TableControls {
     fn update(&self, table: &Table) {
         let session = table.session();
-        if let Some(score) = self.score.upgrade() {
-            score.set_label(&format!(
-                "Restpunkte Du {} · Computer {}    Hände {}    Bummerl Du {} · Computer {}",
-                session.remaining(Player::Local),
-                session.remaining(Player::Opponent),
-                session.completed_hands(),
-                session.bummerls(Player::Local),
-                session.bummerls(Player::Opponent),
-            ));
-        }
         if let Some(advance) = self.advance.upgrade() {
             advance.set_label(if session.result().is_some() {
                 "Neue Partie"
@@ -301,6 +290,16 @@ impl TurnTimers {
             self.show_feedback(&message);
         }
         let table = self.state.borrow();
+        let session = table.session();
+        let status = format!(
+            "Oben: {} Restpunkte, {} Bummerl. {} gespielte Hände. Unten: {} Restpunkte, {} Bummerl.",
+            session.remaining(Player::Opponent),
+            session.bummerls(Player::Opponent),
+            session.completed_hands(),
+            session.remaining(Player::Local),
+            session.bummerls(Player::Local),
+        );
+        area.update_property(&[gtk::accessible::Property::Description(&status)]);
         let tooltip = if table.exchange_available() {
             Some("Trumpf tauschen · T oder offene Karte antippen")
         } else if table.check_close_talon().is_ok() {
@@ -458,7 +457,6 @@ mod tests {
                 king: glib::WeakRef::new(),
                 ober: glib::WeakRef::new(),
                 announcement: glib::WeakRef::new(),
-                score: glib::WeakRef::new(),
                 advance: glib::WeakRef::new(),
             },
             shown_effects: Cell::new((None, None)),
