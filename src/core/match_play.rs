@@ -4,16 +4,10 @@ use super::{
         Announcement, CloseError, Exchange, ExchangeError, Game, MarriageError, Outcome, PlayError,
         Player, ResolveError, Variant,
     },
+    rules::MatchConfig,
 };
 
-const START_POINTS: u8 = 7;
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum SchneiderRule {
-    #[default]
-    Double,
-    Single,
-}
+pub use super::rules::SchneiderRule;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct MatchResult {
@@ -37,7 +31,7 @@ pub struct Match {
     hand_accounted: bool,
     result: Option<MatchResult>,
     bummerls: [u32; 2],
-    schneider: SchneiderRule,
+    config: MatchConfig,
 }
 
 impl Match {
@@ -47,15 +41,31 @@ impl Match {
         schneider: SchneiderRule,
         choose_index: impl FnMut(usize) -> usize,
     ) -> Self {
-        Self {
-            hand: Game::with_variant(forehand, variant, choose_index),
+        Self::with_config(
             forehand,
-            remaining: [START_POINTS; 2],
+            MatchConfig {
+                profile: variant,
+                schneider,
+                ..MatchConfig::default()
+            },
+            choose_index,
+        )
+    }
+
+    pub fn with_config(
+        forehand: Player,
+        config: MatchConfig,
+        choose_index: impl FnMut(usize) -> usize,
+    ) -> Self {
+        Self {
+            hand: Game::with_rules(forehand, config.variant, config.profile, choose_index),
+            forehand,
+            remaining: [config.variant.start_points(); 2],
             completed_hands: 0,
             hand_accounted: false,
             result: None,
             bummerls: [0; 2],
-            schneider,
+            config,
         }
     }
 
@@ -66,11 +76,15 @@ impl Match {
         self.forehand
     }
     pub fn variant(&self) -> Variant {
-        self.hand.variant()
+        self.config.profile
     }
     pub fn schneider(&self) -> SchneiderRule {
-        self.schneider
+        self.config.schneider
     }
+    pub fn config(&self) -> MatchConfig {
+        self.config
+    }
+
     pub fn remaining(&self, player: Player) -> u8 {
         self.remaining[player as usize]
     }
@@ -96,7 +110,12 @@ impl Match {
             return Err(DealError::HandInProgress);
         }
         self.forehand = self.forehand.other();
-        self.hand = Game::with_variant(self.forehand, self.variant(), choose_index);
+        self.hand = Game::with_rules(
+            self.forehand,
+            self.config.variant,
+            self.config.profile,
+            choose_index,
+        );
         self.hand_accounted = false;
         Ok(())
     }
@@ -107,10 +126,25 @@ impl Match {
         schneider: SchneiderRule,
         choose_index: impl FnMut(usize) -> usize,
     ) -> Result<(), DealError> {
+        self.new_match_with_config(
+            MatchConfig {
+                profile: variant,
+                schneider,
+                ..self.config
+            },
+            choose_index,
+        )
+    }
+
+    pub fn new_match_with_config(
+        &mut self,
+        config: MatchConfig,
+        choose_index: impl FnMut(usize) -> usize,
+    ) -> Result<(), DealError> {
         if self.result.is_none() {
             return Err(DealError::MatchInProgress);
         }
-        let mut next = Self::new(self.forehand.other(), variant, schneider, choose_index);
+        let mut next = Self::with_config(self.forehand.other(), config, choose_index);
         next.bummerls = self.bummerls;
         *self = next;
         Ok(())
@@ -162,13 +196,10 @@ impl Match {
         *remaining = remaining.saturating_sub(outcome.game_points);
         if *remaining == 0 {
             let loser = winner.other() as usize;
-            let awarded_bummerls = if self.schneider == SchneiderRule::Double
-                && self.remaining[loser] == START_POINTS
-            {
-                2
-            } else {
-                1
-            };
+            let awarded_bummerls = self
+                .config
+                .schneider
+                .bummerls(self.remaining[loser], self.config.variant.start_points());
             self.bummerls[loser] += u32::from(awarded_bummerls);
             self.result = Some(MatchResult {
                 winner,
@@ -198,6 +229,41 @@ mod tests {
             reason: FinishReason::Reached66,
             closure: None,
         }
+    }
+
+    #[test]
+    fn match_configuration_changes_only_after_the_match_finishes() {
+        use super::super::rules::RuleProfile;
+
+        let initial = MatchConfig::default();
+        let mut selection = initial;
+        let mut game = Match::with_config(Player::Local, selection, ordered);
+        selection.profile = RuleProfile::Sharp;
+        selection.schneider = SchneiderRule::Single;
+        assert_eq!(
+            game.new_match_with_config(selection, ordered),
+            Err(DealError::MatchInProgress)
+        );
+
+        for _ in 0..2 {
+            game.account_outcome(points(Player::Local, 3));
+            assert_eq!(
+                game.new_match_with_config(selection, ordered),
+                Err(DealError::MatchInProgress)
+            );
+            game.next_hand(ordered).unwrap();
+            assert_eq!(game.config(), initial);
+            assert_eq!(game.hand().variant(), initial.profile);
+            assert_eq!(game.hand().game_variant(), initial.variant);
+        }
+
+        game.account_outcome(points(Player::Local, 1));
+        assert_eq!(game.bummerls(Player::Opponent), 2);
+        game.new_match_with_config(selection, ordered).unwrap();
+        assert_eq!(game.config(), selection);
+        assert_eq!(game.hand().variant(), selection.profile);
+        assert_eq!(game.hand().game_variant(), selection.variant);
+        assert_eq!(game.bummerls(Player::Opponent), 2);
     }
 
     #[test]

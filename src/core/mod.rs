@@ -1,3 +1,4 @@
 pub mod cards;
 pub mod game;
 pub mod match_play;
+pub mod rules;

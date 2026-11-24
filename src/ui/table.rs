@@ -4,9 +4,10 @@ use schnapsen::{
         cards::Card,
         game::{
             Announcement, CloseError, Exchange, ExchangeError, HandResult, Marriage, PlayError,
-            Player, Variant, View,
+            Player, View,
         },
-        match_play::{DealError, Match, SchneiderRule},
+        match_play::{DealError, Match},
+        rules::MatchConfig,
     },
 };
 
@@ -57,11 +58,10 @@ impl Table {
 
     pub fn new_match(
         &mut self,
-        variant: Variant,
-        schneider: SchneiderRule,
+        config: MatchConfig,
         choose_index: impl FnMut(usize) -> usize,
     ) -> Result<(), DealError> {
-        self.session.new_match(variant, schneider, choose_index)?;
+        self.session.new_match_with_config(config, choose_index)?;
         self.reset_hand_ui();
         Ok(())
     }
@@ -87,12 +87,12 @@ impl Table {
     }
 
     pub fn opponent_eyes(&self) -> Option<u8> {
-        self.show_opponent_eyes
+        (self.show_opponent_eyes && self.session.config().profile.allows_opponent_eyes_help())
             .then(|| self.session.hand().eyes(Player::Opponent))
     }
 
     pub fn highlighted_cards(&self) -> Vec<Card> {
-        if self.show_legal {
+        if self.show_legal && self.session.config().profile.allows_legal_card_help() {
             self.session.hand().legal_cards(Player::Local)
         } else {
             Vec::new()
@@ -354,6 +354,7 @@ mod tests {
     use schnapsen::core::{
         cards::{Rank, Suit},
         game::{FinishReason, Variant},
+        rules::SchneiderRule,
     };
 
     fn replace_for_test(table: &mut Table, session: Match) {
@@ -391,7 +392,14 @@ mod tests {
                 let loser = result.winner.other();
                 let total = table.session.bummerls(loser);
                 table
-                    .new_match(Variant::Sharp, SchneiderRule::Single, ordered)
+                    .new_match(
+                        MatchConfig {
+                            profile: Variant::Sharp,
+                            schneider: SchneiderRule::Single,
+                            ..MatchConfig::default()
+                        },
+                        ordered,
+                    )
                     .unwrap();
                 assert_eq!(table.session.remaining(Player::Local), 7);
                 assert_eq!(table.session.remaining(Player::Opponent), 7);

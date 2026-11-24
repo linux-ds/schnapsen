@@ -1,7 +1,8 @@
 use adw::{gtk, prelude::*};
 use schnapsen::core::{
-    game::{Player, Variant},
-    match_play::{Match, SchneiderRule},
+    game::Player,
+    match_play::Match,
+    rules::{MatchConfig, SchneiderRule},
 };
 use std::{cell::RefCell, rc::Rc};
 
@@ -20,7 +21,8 @@ fn choose_index(upper: usize) -> usize {
 pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let header = adw::HeaderBar::new();
-    let title = adw::WindowTitle::new("Schnapsen", "Weiches Schnapsen");
+    let initial_config = MatchConfig::default();
+    let title = adw::WindowTitle::new("Schnapsen", initial_config.profile.label());
     header.set_title_widget(Some(&title));
     let options = gtk::Box::new(gtk::Orientation::Vertical, 8);
     options.set_margin_start(12);
@@ -28,11 +30,23 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
     options.set_margin_top(12);
     options.set_margin_bottom(12);
     options.append(&gtk::Label::new(Some("Für die nächste Partie")));
-    let variant = gtk::DropDown::from_strings(&["Weich", "Scharf"]);
-    options.append(&variant);
+    let game_variant = initial_config.variant;
+    options.append(&gtk::Label::new(Some(game_variant.label())));
+    let profiles = game_variant.profiles();
+    let labels: Vec<_> = profiles.iter().map(|profile| profile.label()).collect();
+    let profile = gtk::DropDown::from_strings(&labels);
+    profile.set_selected(
+        profiles
+            .iter()
+            .position(|&profile| profile == initial_config.profile)
+            .expect("the default profile belongs to the game variant") as u32,
+    );
+    profile.update_property(&[gtk::accessible::Property::Label("Regelprofil")]);
+    options.append(&profile);
     let schneider = gtk::CheckButton::with_label("Schneider zählt doppelt");
-    schneider.set_active(true);
+    schneider.set_active(initial_config.schneider == SchneiderRule::Double);
     options.append(&schneider);
+    options.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
     let reset_bummerls = gtk::Button::with_label("Bummerl zurücksetzen …");
     options.append(&reset_bummerls);
     let popover = gtk::Popover::new();
@@ -55,10 +69,9 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         .vexpand(true)
         .focusable(true)
         .build();
-    let state = Rc::new(RefCell::new(table::Table::new(Match::new(
+    let state = Rc::new(RefCell::new(table::Table::new(Match::with_config(
         Player::Local,
-        Variant::Soft,
-        SchneiderRule::default(),
+        initial_config,
         choose_index,
     ))));
     let overlay = adw::ToastOverlay::new();
@@ -148,26 +161,21 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
     });
     let touch = touch.downgrade();
     timers.set_advance(move |model| {
-        let rules = if variant.selected() == 1 {
-            Variant::Sharp
+        if model.session().result().is_some() {
+            let config = MatchConfig {
+                variant: game_variant,
+                profile: profiles[profile.selected() as usize],
+                schneider: if schneider.is_active() {
+                    SchneiderRule::Double
+                } else {
+                    SchneiderRule::Single
+                },
+            };
+            model.new_match(config, choose_index)?;
         } else {
-            Variant::Soft
-        };
-        let rule = if schneider.is_active() {
-            SchneiderRule::Double
-        } else {
-            SchneiderRule::Single
-        };
-        let result = if model.session().result().is_some() {
-            model.new_match(rules, rule, choose_index)
-        } else {
-            model.next_hand(choose_index)
-        };
-        result?;
-        title.set_subtitle(match model.session().variant() {
-            Variant::Soft => "Weiches Schnapsen",
-            Variant::Sharp => "Scharfes Schnapsen",
-        });
+            model.next_hand(choose_index)?;
+        }
+        title.set_subtitle(model.session().config().profile.label());
         if let Some(touch) = touch.upgrade() {
             touch.reset();
         }

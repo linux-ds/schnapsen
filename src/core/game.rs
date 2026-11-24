@@ -1,11 +1,9 @@
-use super::cards::{full_deck, Card, Rank, Suit};
+use super::{
+    cards::{Card, Rank, Suit},
+    rules::{GameVariant, ProfileRules, RuleProfile},
+};
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum Variant {
-    #[default]
-    Soft,
-    Sharp,
-}
+pub use super::rules::RuleProfile as Variant;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ExchangeError {
@@ -201,7 +199,8 @@ pub struct Game {
     played: Vec<(Player, Card)>,
     tricks: [Vec<[Card; 2]>; 2],
     trick_winners: Vec<Player>,
-    variant: Variant,
+    game_variant: GameVariant,
+    profile: RuleProfile,
     announcements: Vec<Announcement>,
     phase: Phase,
 }
@@ -227,33 +226,28 @@ impl Game {
     pub fn with_variant(
         leader: Player,
         variant: Variant,
-        mut choose_index: impl FnMut(usize) -> usize,
+        choose_index: impl FnMut(usize) -> usize,
     ) -> Self {
-        let mut deck = full_deck();
-        for upper in (2..=deck.len()).rev() {
-            deck[..upper].swap(upper - 1, choose_index(upper));
-        }
+        Self::with_rules(leader, GameVariant::default(), variant, choose_index)
+    }
 
-        let mut hands = [Vec::with_capacity(5), Vec::with_capacity(5)];
-        let forehand = leader as usize;
-        let dealer = leader.other() as usize;
-        hands[forehand].extend_from_slice(&deck[..3]);
-        hands[dealer].extend_from_slice(&deck[3..6]);
-        let trump = deck[6];
-        hands[forehand].extend_from_slice(&deck[7..9]);
-        hands[dealer].extend_from_slice(&deck[9..11]);
-        let mut talon = deck[11..].to_vec();
-        talon.push(trump);
-
+    pub fn with_rules(
+        leader: Player,
+        game_variant: GameVariant,
+        profile: RuleProfile,
+        choose_index: impl FnMut(usize) -> usize,
+    ) -> Self {
+        let deal = game_variant.deal(leader, choose_index);
         Self {
-            hands,
-            talon,
-            trump_suit: trump.suit,
+            hands: deal.hands,
+            talon: deal.talon,
+            trump_suit: deal.trump_suit,
             leader,
             played: Vec::new(),
             tricks: [Vec::new(), Vec::new()],
             trick_winners: Vec::new(),
-            variant,
+            game_variant,
+            profile,
             announcements: Vec::new(),
             phase: Phase::OpenTalon,
         }
@@ -328,10 +322,10 @@ impl Game {
         if self.leader != player {
             return Err(CloseError::CannotLead);
         }
-        if self.trick_index() == 0 {
+        if self.trick_index() < self.rules().minimum_completed_tricks_for_talon_action {
             return Err(CloseError::FirstTrickNotCompleted);
         }
-        if self.talon.len() < 4 {
+        if self.talon.len() < self.rules().minimum_talon_cards_for_action {
             return Err(CloseError::NotEnoughTalonCards);
         }
         Ok(())
@@ -358,7 +352,7 @@ impl Game {
         self.phase = Phase::Finished(Outcome {
             winner: closure.closer.other(),
             reason: FinishReason::FailedClosure,
-            game_points: failed_closure_points(closure),
+            game_points: self.rules().failed_closure_points(closure),
             closure: Some(closure),
         });
     }
@@ -376,13 +370,18 @@ impl Game {
             .filter(|event| event.player == player)
             .map(|event| event.marriage.eyes)
             .sum();
-        let (effective_announcements, pending_announcements) = if tricks.is_empty() {
-            (0, announced)
-        } else {
-            (announced, 0)
-        };
+        let (effective_announcements, pending_announcements) =
+            if self.rules().require_trick_for_announcement_eyes && tricks.is_empty() {
+                (0, announced)
+            } else {
+                (announced, 0)
+            };
         EyeBreakdown {
-            tricks: tricks.iter().flatten().copied().map(Card::points).sum(),
+            tricks: tricks
+                .iter()
+                .flatten()
+                .map(|&card| self.game_variant.card_points(card))
+                .sum(),
             effective_announcements,
             pending_announcements,
         }
@@ -396,7 +395,15 @@ impl Game {
     }
 
     pub fn variant(&self) -> Variant {
-        self.variant
+        self.profile
+    }
+
+    pub fn game_variant(&self) -> GameVariant {
+        self.game_variant
+    }
+
+    fn rules(&self) -> &'static ProfileRules {
+        self.profile.rules()
     }
 
     pub fn announcements(&self) -> &[Announcement] {
@@ -410,7 +417,7 @@ impl Game {
         let marriage = Marriage {
             suit,
             eyes: if suit == self.trump_suit { 40 } else { 20 },
-            may_play_ober: self.variant == Variant::Soft,
+            may_play_ober: self.rules().allow_ober_marriage,
         };
         if self
             .announcements
@@ -423,7 +430,7 @@ impl Game {
         if !hand.contains(&marriage.king()) || !hand.contains(&marriage.ober()) {
             return Err(MarriageError::PairMissing);
         }
-        if self.variant == Variant::Sharp && self.tricks[player as usize].is_empty() {
+        if self.rules().require_trick_to_announce && self.tricks[player as usize].is_empty() {
             return Err(MarriageError::NoTrickWon);
         }
         Ok(marriage)
@@ -476,14 +483,10 @@ impl Game {
 
     /// Review from the local player's perspective, using the active rule profile.
     pub fn review_tricks(&self, owner: Player) -> Result<Vec<ReviewedTrick>, TrickReviewError> {
-        if self.variant == Variant::Sharp {
+        let limit = self.rules().review_limit(owner);
+        if limit == 0 {
             return Err(TrickReviewError::Forbidden);
         }
-        let limit = if owner == Player::Local {
-            usize::MAX
-        } else {
-            1
-        };
         let tricks: Vec<_> = self
             .trick_winners
             .iter()
@@ -505,7 +508,7 @@ impl Game {
     }
 
     fn finish_at_66(&mut self, player: Player) -> bool {
-        if self.eyes(player) < 66 {
+        if self.eyes(player) < self.rules().automatic_finish_eyes {
             return false;
         }
         match self.phase {
@@ -513,7 +516,7 @@ impl Game {
                 self.phase = Phase::Finished(Outcome {
                     winner: player,
                     reason: FinishReason::SuccessfulClosure,
-                    game_points: winning_points(closure.opponent_at_closing),
+                    game_points: self.rules().successful_closure_points(closure),
                     closure: Some(closure),
                 });
             }
@@ -522,7 +525,7 @@ impl Game {
                 self.phase = Phase::Finished(Outcome {
                     winner: player,
                     reason: FinishReason::Reached66,
-                    game_points: winning_points(self.score(player.other())),
+                    game_points: self.rules().winning_points(self.score(player.other())),
                     closure: None,
                 });
             }
@@ -553,13 +556,13 @@ impl Game {
         let Some(&(_, lead)) = self
             .played
             .first()
-            .filter(|_| matches!(self.phase, Phase::EmptyTalon | Phase::ClosedTalon(_)))
+            .filter(|_| self.game_variant.enforce_reply_obligations(self.phase))
         else {
             return (hand.clone(), None);
         };
         let priority = |card: Card| {
             if card.suit == lead.suit {
-                if beats(card, lead, self.trump_suit) {
+                if self.game_variant.beats(card, lead, self.trump_suit) {
                     Reply::Beat
                 } else {
                     Reply::Follow
@@ -617,7 +620,7 @@ impl Game {
         let &[(leader, first), (follower, second)] = self.played.as_slice() else {
             return Err(ResolveError::IncompleteTrick);
         };
-        let winner = if beats(second, first, self.trump_suit) {
+        let winner = if self.game_variant.beats(second, first, self.trump_suit) {
             follower
         } else {
             leader
@@ -632,11 +635,8 @@ impl Game {
             return Ok(winner);
         }
 
-        if self.phase == Phase::OpenTalon {
-            for (player, card) in [winner, winner.other()]
-                .into_iter()
-                .zip(self.talon.drain(..2))
-            {
+        if let Some(order) = self.game_variant.draw_order(winner, self.phase) {
+            for (player, card) in order.into_iter().zip(self.talon.drain(..order.len())) {
                 self.hands[player as usize].push(card);
             }
             if self.talon.is_empty() {
@@ -649,7 +649,7 @@ impl Game {
                 self.phase = Phase::Finished(Outcome {
                     winner,
                     reason: FinishReason::LastTrick,
-                    game_points: 1,
+                    game_points: self.game_variant.last_trick_points(),
                     closure: None,
                 });
             }
@@ -671,7 +671,7 @@ impl Game {
             played: &self.played,
             own_trick_card_count: 2 * self.tricks[player as usize].len(),
             opponent_trick_card_count: 2 * self.tricks[player.other() as usize].len(),
-            opponent_open_trick: if self.variant == Variant::Soft {
+            opponent_open_trick: if self.rules().open_first_opponent_trick {
                 self.tricks[player.other() as usize].first().copied()
             } else {
                 None
@@ -680,34 +680,10 @@ impl Game {
     }
 }
 
-fn failed_closure_points(closure: TalonClosure) -> u8 {
-    if closure.opponent_at_closing.tricks == 0 {
-        3
-    } else {
-        2
-    }
-}
-
-fn winning_points(opponent: Score) -> u8 {
-    match opponent {
-        Score { eyes: 33.., .. } => 1,
-        Score { tricks: 0, .. } => 3,
-        _ => 2,
-    }
-}
-
-fn beats(challenger: Card, lead: Card, trump: Suit) -> bool {
-    if challenger.suit == lead.suit {
-        // For the five Schnapsen ranks the eye values have the same ordering.
-        challenger.points() > lead.points()
-    } else {
-        challenger.suit == trump
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::core::cards::full_deck;
     use std::collections::HashSet;
 
     #[test]
@@ -1402,12 +1378,15 @@ mod tests {
         let deck = full_deck();
         for (index, &lead) in deck[..5].iter().enumerate() {
             for (other, &challenger) in deck[..5].iter().enumerate() {
-                assert_eq!(beats(challenger, lead, Suit::Bells), other < index);
+                assert_eq!(
+                    GameVariant::AustrianSchnapsen.beats(challenger, lead, Suit::Bells),
+                    other < index
+                );
             }
         }
-        assert!(beats(deck[9], deck[0], Suit::Bells));
-        assert!(!beats(deck[0], deck[9], Suit::Bells));
-        assert!(!beats(deck[10], deck[4], Suit::Bells));
+        assert!(GameVariant::AustrianSchnapsen.beats(deck[9], deck[0], Suit::Bells));
+        assert!(!GameVariant::AustrianSchnapsen.beats(deck[0], deck[9], Suit::Bells));
+        assert!(!GameVariant::AustrianSchnapsen.beats(deck[10], deck[4], Suit::Bells));
     }
 
     #[test]
@@ -1636,17 +1615,27 @@ mod tests {
                 assert_eq!(game, before);
             }
         }
-        assert_eq!(winning_points(Score { eyes: 0, tricks: 1 }), 2);
-        assert_eq!(winning_points(Score { eyes: 0, tricks: 0 }), 3);
         assert_eq!(
-            winning_points(Score {
+            Variant::Soft
+                .rules()
+                .winning_points(Score { eyes: 0, tricks: 1 }),
+            2
+        );
+        assert_eq!(
+            Variant::Soft
+                .rules()
+                .winning_points(Score { eyes: 0, tricks: 0 }),
+            3
+        );
+        assert_eq!(
+            Variant::Soft.rules().winning_points(Score {
                 eyes: 32,
                 tricks: 1
             }),
             2
         );
         assert_eq!(
-            winning_points(Score {
+            Variant::Soft.rules().winning_points(Score {
                 eyes: 33,
                 tricks: 1
             }),

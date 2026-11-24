@@ -23,6 +23,7 @@
 - Der Trumpftausch ersetzt den Trumpf-Unter in der Hand durch die offene Trumpfkarte. Der Unter bleibt als letzte Karte des Talons liegen. Tausch und Zudrehen teilen dieselbe Hausregelprüfung. Sie verlangen einen abgeschlossenen ersten Stich, aktuelles Ausspielrecht vor Stichbeginn und mindestens vier Karten im offenen Talon einschließlich der Trumpfkarte. Die Engine prüft beim Tausch zusätzlich den Besitz des Trumpf-Unters.
 - Zudrehen sperrt den Stapel und speichert den wirksamen Augenstand und die Stichzahl des Gegners für die Wertung. Ab dann gelten dieselben Bedienpflichten wie bei einem regulär leeren Talon. Die gesperrten Karten bleiben erhalten.
 - `src/ai.rs` wählt deterministisch die erste zulässige Ansage oder die erste legale Karte. Die Auswahl erhält keine verdeckten Karten des anderen Spielers.
+- `src/core/rules.rs` definiert die unterstützte Spielvariante, die beiden Regelprofile und die feste Partiekonfiguration.
 - `src/core/match_play.rs` verwaltet die aktuelle Hand, Restpunkte, Handanzahl, Vorhand und Bummerl. Jede abgeschlossene Hand wird einmal angerechnet. Null Restpunkte beenden die Partie.
 - `src/ui/table.rs` hält die Partie sowie Auswahl und Fokus. Die Layout-Sicht erhält nur eigene und öffentliche Kartenwerte sowie Anzahlen für verdeckte Karten. Ein Handwechsel setzt die handbezogenen Bedienelemente zurück.
 - `src/ui/layout.rs` platziert Hände, beide Stichstapel, Talon mit Trumpfkarte und bis zu zwei ausgespielte Karten. Die GTK-unabhängige Berechnung hebt ausgewählte Karten um 12 Prozent ihrer Höhe an. Trefferprüfung und Zeichnung verwenden dieselben Positionen und die Kartenkontur. Bei wenig Breite überlappt die Hand stärker.
@@ -33,7 +34,7 @@
 - `src/ui/review.rs` zeigt die erlaubten Stichpaare in einem abgedunkelten GTK-Overlay mit anpassbarer Spaltenzahl und vertikalem Scrollen. Die Kartenzeichnung stammt vom Kartentisch. Klick oder Tippen außerhalb, Escape und „Schließen“ beenden die Übersicht mit Fokusrückgabe.
 - `src/ui/paint.rs` zeichnet Kartenfronten, einheitliche Rückseiten, Rahmen und Schatten mit Cairo. Ausgewählte Karten erhalten einen goldenen Rand, der sichtbare Tastaturfokus eine gestrichelte Innenlinie.
 - Die abschaltbare **Spielhilfe** markiert die legalen Karten. Über den Stichstapeln stehen die wirksamen eigenen Augen als Zahl und optional die gegnerischen Augen über eine separate Lernhilfe. Links stehen die Restpunkte und Bummerl beider Seiten sowie die Zahl abgeschlossener Hände. Kontextaktionen liegen in der Tischmitte. `src/ui/result.rs` zeigt den Handabschluss mit Augen und Spielpunkten. Beim Partieende kommen Bummerl und Reststand hinzu. Ausschließlich **Nächste Hand** oder **Neue Partie** schließen den Ergebnisdialog und setzen das Spiel fort.
-- Das Menü **Partie** konfiguriert Regelprofil und Schneiderwertung für die nächste Partie. Die erste Partie startet weich mit doppelter Schneiderwertung. Bummerl lassen sich über eine getrennte Aktion mit Bestätigung zurücksetzen.
+- Das Menü **Partie** zeigt österreichisches Zweierschnapsen und konfiguriert Regelprofil und Schneiderwertung für die nächste Partie. Die erste Partie startet weich mit doppelter Schneiderwertung. Bummerl lassen sich über eine getrennte Aktion mit Bestätigung zurücksetzen.
 - `src/lib.rs` exportiert `core::cards` mit Kartenidentität, Augenwert und vollständigem 20er-Kartensatz. Das Modul verwendet nur die Rust-Standardbibliothek.
 - `Cargo.toml` und `Cargo.lock` definieren die Anwendung und ihre Abhängigkeiten. GTK4 wird über libadwaita eingebunden. Die App-ID `io.github.schnapsen.Schnapsen` ist vorläufig.
 - `io.github.schnapsen.Schnapsen.json` ist die Build-Konfiguration für GNOME Builder und Flatpak. `meson.build` startet Cargo und installiert Programm, Desktop-Datei, AppStream-Metadaten und Icon.
@@ -172,6 +173,13 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-24 – Auftrag 21
+
+- `core::rules` trennt die Identität und Grundregeln des österreichischen Zweierschnapsens von den zentralen Profilen Weich und Scharf. Die bisherigen Hausregeln einschließlich der Wienerisch-Wertung bleiben maßgeblich.
+- `MatchConfig` friert Spielvariante, Regelprofil und Schneiderwertung für jede Partie ein. Im Menü **Partie** wird das einzige unterstützte Spiel angezeigt. Regelprofil und Schneiderwertung können für die nächste Partie vorgemerkt werden. Die Lernhilfen bleiben separate lokale Einstellungen.
+- Drei Regressionstests prüfen das Standardspiel, die bestehenden Hausregeln beider Profile und die Konfiguration über Hand- und Partiewechsel. Ein isolierter GTK-Test unter Wayland bestätigte, dass „Nächste Hand“ Weich und die doppelte Schneiderwertung beibehält, während „Neue Partie“ die vorgemerkte Auswahl Scharf und einfache Schneiderwertung übernimmt. Formatierung, Cargo-Check, alle 62 Tests einschließlich der Simulation über 768 Hände, Clippy mit `-D warnings`, Flatpak-Release-Build einschließlich Tests und Wayland-Fensterstart waren im GNOME SDK 51 erfolgreich.
+- Die künftigen Schnittstellen für Kartenthemen, unabhängige Kartenrücken, Audio, Animationen, Computerstrategie und persönliche Einstellungen sind in [SPEC.md](SPEC.md) beschrieben. Die Engine und Tischansicht sind weiterhin auf zwei Spieler ausgelegt. Die manuelle Ausmeldung bleibt eine mögliche spätere Profilerweiterung.
 
 ### 2026-11-24 – Auftrag 20d
 

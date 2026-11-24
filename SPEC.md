@@ -75,6 +75,21 @@ Dies ist eine **logische** Struktur, keine Verpflichtung zu einer bestimmten Anz
 - Kartengrafiken sind über ein austauschbares Theme-/Renderer-Konzept angebunden.
 - Zufällige Kartenverteilung soll für Tests über einen steuerbaren Zufallszahlengenerator reproduzierbar sein.
 
+### Spielvariante und Partiekonfiguration
+
+`core::rules` unterscheidet die Spielvariante (`GameVariant`) vom Regelprofil (`RuleProfile`). Aktuell ist österreichisches Zweierschnapsen in den Profilen Weich und Scharf verfügbar. Die Variante liefert Kartenbestand, Kartenwerte, Rangfolge, Teilnehmerzahl, Handgröße, Austeilen, Nachziehreihenfolge, Stichregeln sowie die Werte für den letzten Stich und den Partiestart. Die Profile bestimmen die profilabhängige Handwertung einschließlich der Wienerisch-Wertung. Die vorhandene Engine bleibt auf zwei Spieler spezialisiert. Die Aufnahme einer Variante mit anderer Spielerzahl erfordert einen eigenen Spielzustand und eine passende Tischansicht.
+
+Die Profile bündeln die bestehenden Hausregeln für Ansagen und deren Wirksamkeit, Talonaktionen, Handabschluss, Zudrehwertung, Sticheinsicht und erlaubte Spielhilfen. Die manuelle Ausmeldung ist eine mögliche spätere Alternative zum automatischen Abschluss. Sie ist derzeit nicht auswählbar.
+
+`MatchConfig` bindet Spielvariante, Regelprofil und Schneiderwertung an eine Partie. Jede weitere Hand derselben Partie übernimmt diese Konfiguration. Das Menü **Partie** zeigt das unterstützte Spiel und seine Profile. Die dort gewählte Konfiguration greift erst mit **Neue Partie**. Lernhilfen sind davon unabhängige lokale Einstellungen innerhalb der vom aktiven Profil erlaubten Grenzen.
+
+### Schnittstellen für Darstellung und Strategie
+
+- Die Kartenzeichnung erhält Kartenidentität, Vorder- oder Rückseite und Darstellungszustand. Spätere Einstellungen für Kartenfronten und Kartenrücken können unabhängig ausgewertet werden. Die Auswahl eines Designs hat keinen Einfluss auf die Partiekonfiguration.
+- Audio und Animationen können auf geprüfte Aktionen und ihre sichtbaren Ergebnisse reagieren. Der fachliche Zustand bleibt in der Engine.
+- Die Computerstrategie wählt aus den von der Engine gelieferten legalen Karten und Ansagen sowie erlaubten Tauschoptionen. Eine spätere Schwierigkeit ist eine Strategieauswahl auf dieser Schnittstelle.
+- Persönliche Einstellungen gehören zur Anwendung und Darstellung. Spielvariante, Regelprofil und Schneiderwertung werden als eigene Konfiguration an die Partie übergeben.
+
 ## 4. Datenmodell und Spielmechanik
 
 ### Karten
