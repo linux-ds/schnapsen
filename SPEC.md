@@ -126,11 +126,11 @@ Die exakten Abläufe und Sonderfälle müssen anhand einer ausdrücklich gewähl
 
 | Regel | Weich | Scharf |
 |---|---|---|
-| Frühestes Zudrehen | Mit Ausspielrecht bereits vor dem ersten Stich | Mit Ausspielrecht erst nach einem eigenen gewonnenen Stich. Das ist eine bewusste Projektregel. |
-| Offener Talon für Trumpftausch und Zudrehen | Mindestens zwei verdeckte Karten über der offenen Trumpfkarte | Mindestens zwei verdeckte Karten über der offenen Trumpfkarte |
 | Einsicht auch nach Handende | Eigene gewonnene Stiche und genau der erste gewonnene Stich des Gegners | Abgelegte Stiche bleiben verdeckt |
 
-Für die weiche gegnerische Einsicht gelten bewusst weder ein Zeitfenster nach dem Stich noch eine Bindung an das Ausspielrecht. Die Oberfläche öffnet die Übersicht weiterhin erst in einem stabilen Spielzustand. Die Mindestzahl beim Talon folgt den [Turnierregeln der Landjugend Kirchdorf](https://www.bezirkkirchdorf.landjugend.at/uploads/tx_siwaeventinfo/Schnapsen.pdf).
+Für Trumpftausch und Zudrehen gilt in beiden Profilen dieselbe projektbezogene Hausregel. Der erste Stich der Hand muss vollständig aufgelöst sein. Der Talon muss offen sein und mindestens vier Karten einschließlich der offenen Trumpfkarte enthalten. Die Aktion ist nur mit aktuellem Ausspielrecht und vor Beginn des nächsten Stichs möglich. Ein eigener Stichgewinn ist keine zusätzliche Voraussetzung. Für den Tausch muss der Spieler weiterhin den Trumpf-Unter halten. Diese Hausregel kann von veröffentlichten Regelwerken abweichen.
+
+Für die weiche gegnerische Einsicht gelten bewusst weder ein Zeitfenster nach dem Stich noch eine Bindung an das Ausspielrecht. Die Oberfläche öffnet die Übersicht weiterhin erst in einem stabilen Spielzustand.
 
 Eine Ausmeldung kann nach einem eigenen gewonnenen Stich vor dem nächsten Ausspiel oder unmittelbar nach einer eigenen Ansage vor der Antwort erklärt werden. Eine zum falschen Zeitpunkt versuchte Aktion bleibt ohne Wirkung. Die Oberfläche verlangt eine ausdrückliche Bestätigung, unabhängig von der Spielhilfe. Nach einer eigenen Ansage kann der Mensch sich ausmelden oder das Spiel fortsetzen.
 

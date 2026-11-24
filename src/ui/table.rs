@@ -395,6 +395,16 @@ mod tests {
         }
     }
 
+    fn after_opening_trick(mut session: Match) -> Match {
+        let leader = session.forehand();
+        for player in [leader, leader.other()] {
+            let card = session.hand().legal_cards(player)[0];
+            session.play_card(player, card).unwrap();
+        }
+        assert_eq!(session.resolve_trick(), Ok(leader));
+        session
+    }
+
     #[test]
     fn restart_reopens_talon_after_a_finished_closed_hand() {
         let deal = || {
@@ -405,7 +415,7 @@ mod tests {
                 |upper| upper - 1,
             )
         };
-        let mut table = Table::new(deal());
+        let mut table = Table::new(after_opening_trick(deal()));
         table.close_talon().unwrap();
         while let Some(player) = table.session.hand().next_player() {
             let card = table.session.hand().legal_cards(player)[0];
@@ -423,7 +433,10 @@ mod tests {
         assert!(table.result().is_none());
         assert!(!table.view().talon_closed);
         assert!(table.view().open_trump.is_some());
-        assert!(table.check_close_talon().is_ok());
+        assert_eq!(
+            table.check_close_talon(),
+            Err(CloseError::FirstTrickNotCompleted)
+        );
     }
 
     #[test]
@@ -437,7 +450,7 @@ mod tests {
                 }
             })
         };
-        let mut table = Table::new(deal(Player::Local));
+        let mut table = Table::new(after_opening_trick(deal(Player::Local)));
         let under = table.session.hand().trump_under();
         let mut hand = table.view().hand.to_vec();
         let index = hand.iter().position(|&card| card == under).unwrap();
@@ -460,7 +473,7 @@ mod tests {
         assert!(table.play_selected());
         assert_eq!(table.view().played, &[(Player::Local, trump)]);
 
-        replace_for_test(&mut table, deal(Player::Opponent));
+        replace_for_test(&mut table, after_opening_trick(deal(Player::Opponent)));
         assert!(table.exchange().is_none());
         table.play_opponent();
         assert_eq!(table.exchange().unwrap().player, Player::Opponent);

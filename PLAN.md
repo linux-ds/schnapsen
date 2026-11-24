@@ -20,7 +20,7 @@
 - `src/app/mod.rs` verwaltet den Lebenszyklus der Anwendung und öffnet oder aktiviert das Fenster.
 - `src/ui/mod.rs` bindet den Kartentisch über eine `GtkDrawingArea` in das Fenster ein. Die Zeichenfläche hat eine Mindestgröße von 560 × 400 logischen Pixeln. Die Fensterhöhe umfasst zusätzlich die Titelleiste.
 - `src/core/game.rs` prüft Ausspielaktionen und löst vollständige Stiche auf. Eine Ansage prüft Ausspielrecht, Paar und Profil und spielt atomar eine Karte aus. Stichaugen und vorgemerkte oder wirksame Ansageaugen werden aus Stichpaaren und Ansageereignissen abgeleitet. Der Abschlussgrund und die Spielpunkte stehen in `Finished`.
-- Der Trumpftausch ersetzt den Trumpf-Unter in der Hand durch die offene Trumpfkarte. Der Unter bleibt als letzte Karte des Talons liegen. Die Engine prüft Profil, Ausspielrecht, Hand und Talon vor der Änderung.
+- Der Trumpftausch ersetzt den Trumpf-Unter in der Hand durch die offene Trumpfkarte. Der Unter bleibt als letzte Karte des Talons liegen. Tausch und Zudrehen teilen dieselbe Hausregelprüfung. Sie verlangen einen abgeschlossenen ersten Stich, aktuelles Ausspielrecht vor Stichbeginn und mindestens vier Karten im offenen Talon einschließlich der Trumpfkarte. Die Engine prüft beim Tausch zusätzlich den Besitz des Trumpf-Unters.
 - Zudrehen sperrt den Stapel und speichert den wirksamen Augenstand und die Stichzahl des Gegners für die Wertung. Ab dann gelten dieselben Bedienpflichten wie bei einem regulär leeren Talon. Die gesperrten Karten bleiben erhalten.
 - `src/ai.rs` wählt deterministisch die erste zulässige Ansage oder die erste legale Karte. Die Auswahl erhält keine verdeckten Karten des anderen Spielers.
 - `src/core/match_play.rs` verwaltet die aktuelle Hand, Restpunkte, Handanzahl, Vorhand und Bummerl. Jede abgeschlossene Hand wird einmal angerechnet. Null Restpunkte beenden die Partie.
@@ -154,7 +154,7 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 
 ## Bekannte Probleme / Risiken
 
-- Die Profile unterscheiden sich beim ersten erlaubten Tausch, beim ersten erlaubten Zudrehen, bei Ansagen und beim Stichzugriff. Die Sticheinsicht ist implementiert. Ihr Zeitfenster und ihre Rollenbindung weichen je nach Regelquelle ab.
+- Die Profile unterscheiden sich bei Ansagen und beim Stichzugriff. Für Talonaktionen gilt dieselbe Hausregel. Die Sticheinsicht ist implementiert. Ihr Zeitfenster und ihre Rollenbindung weichen je nach Regelquelle ab.
 - Der Computer wählt die erste legale Karte und meldet sich nach einem gewonnenen Stich automatisch aus, sobald die Engine die Ausmeldung erlaubt.
 - Der Computer nutzt die gemeinsame Regelprüfung und Wertung. Automatisches Zudrehen bleibt ohne konservative Entscheidungsregel deaktiviert.
 - Bummerl werden bis zum Schließen des Fensters gehalten.
@@ -172,6 +172,12 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-24 – Auftrag 16
+
+- Gemeinsame Hausregel für Trumpftausch und Zudrehen umgesetzt. Beide Profile verlangen einen vollständig aufgelösten ersten Stich, aktuelles Ausspielrecht vor Stichbeginn und mindestens vier Talonkarten einschließlich Trumpfkarte. Ein eigener Stich ist keine zusätzliche Voraussetzung.
+- Regressionen prüfen beide Profile, die Grenze bei drei und vier Karten, einen begonnenen oder noch nicht aufgelösten Stich, die Talonsperre sowie unveränderte Zustände nach Ablehnung. Bestehende Testaufbauten ziehen den ersten Stich vor.
+- Formatierung, Cargo-Check, alle 49 Tests einschließlich der Simulation über 768 Hände und Clippy waren im GNOME SDK 51 erfolgreich. Der Flatpak-Release-Build einschließlich Tests war erfolgreich. Maus- und Touchbedienung wurden für diesen Auftrag nicht manuell geprüft.
 
 ### 2026-11-23 – Auftrag 15
 

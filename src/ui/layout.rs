@@ -263,7 +263,18 @@ mod tests {
 
     #[test]
     fn closed_talon_has_one_sideways_back_and_keeps_all_cards_at_minimum_size() {
-        let mut table = table();
+        let mut session = Match::new(
+            Player::Local,
+            Variant::Soft,
+            SchneiderRule::Double,
+            |upper| upper - 1,
+        );
+        for player in [Player::Local, Player::Opponent] {
+            let card = session.hand().legal_cards(player)[0];
+            session.play_card(player, card).unwrap();
+        }
+        assert_eq!(session.resolve_trick(), Ok(Player::Local));
+        let mut table = Table::new(session);
         table.close_talon().unwrap();
         let placements = arrange(&table, MIN_WIDTH.into(), MIN_HEIGHT.into());
         assert_eq!(placements.len(), 20);

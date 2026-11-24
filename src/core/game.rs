@@ -14,8 +14,8 @@ pub enum ExchangeError {
     TrickStarted,
     CannotLead,
     MissingTrumpUnder,
-    NoTrickWon,
-    NotEnoughHiddenCards,
+    FirstTrickNotCompleted,
+    NotEnoughTalonCards,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -113,11 +113,11 @@ pub struct TalonClosure {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CloseError {
-    NoTrickWon,
+    FirstTrickNotCompleted,
     TalonNotOpen,
     TrickStarted,
     CannotLead,
-    NotEnoughHiddenCards,
+    NotEnoughTalonCards,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -278,15 +278,14 @@ impl Game {
     }
 
     pub fn trump_exchange(&self, player: Player) -> Result<Exchange, ExchangeError> {
-        if self.phase != Phase::OpenTalon {
-            return Err(ExchangeError::TalonNotOpen);
-        }
-        if !self.played.is_empty() {
-            return Err(ExchangeError::TrickStarted);
-        }
-        if self.leader != player {
-            return Err(ExchangeError::CannotLead);
-        }
+        self.check_talon_action(player)
+            .map_err(|error| match error {
+                CloseError::TalonNotOpen => ExchangeError::TalonNotOpen,
+                CloseError::TrickStarted => ExchangeError::TrickStarted,
+                CloseError::CannotLead => ExchangeError::CannotLead,
+                CloseError::FirstTrickNotCompleted => ExchangeError::FirstTrickNotCompleted,
+                CloseError::NotEnoughTalonCards => ExchangeError::NotEnoughTalonCards,
+            })?;
         let received = self
             .talon
             .last()
@@ -295,12 +294,6 @@ impl Game {
         let given = self.trump_under();
         if !self.hands[player as usize].contains(&given) {
             return Err(ExchangeError::MissingTrumpUnder);
-        }
-        if self.variant == Variant::Sharp && self.tricks[player as usize].is_empty() {
-            return Err(ExchangeError::NoTrickWon);
-        }
-        if !self.has_enough_hidden_talon_cards() {
-            return Err(ExchangeError::NotEnoughHiddenCards);
         }
         Ok(Exchange {
             player,
@@ -329,6 +322,10 @@ impl Game {
     }
 
     pub fn check_close_talon(&self, player: Player) -> Result<(), CloseError> {
+        self.check_talon_action(player)
+    }
+
+    fn check_talon_action(&self, player: Player) -> Result<(), CloseError> {
         if self.phase != Phase::OpenTalon {
             return Err(CloseError::TalonNotOpen);
         }
@@ -338,17 +335,13 @@ impl Game {
         if self.leader != player {
             return Err(CloseError::CannotLead);
         }
-        if self.variant == Variant::Sharp && self.tricks[player as usize].is_empty() {
-            return Err(CloseError::NoTrickWon);
+        if self.trick_index() == 0 {
+            return Err(CloseError::FirstTrickNotCompleted);
         }
-        if !self.has_enough_hidden_talon_cards() {
-            return Err(CloseError::NotEnoughHiddenCards);
+        if self.talon.len() < 4 {
+            return Err(CloseError::NotEnoughTalonCards);
         }
         Ok(())
-    }
-
-    fn has_enough_hidden_talon_cards(&self) -> bool {
-        self.talon.len() >= 3 // Two hidden cards and the open trump.
     }
 
     pub fn close_talon(&mut self, player: Player) -> Result<(), CloseError> {
@@ -844,64 +837,122 @@ mod tests {
         }
     }
 
+    fn complete_first_trick(game: &mut Game) {
+        let deck = full_deck();
+        game.play_card(Player::Local, deck[0]).unwrap();
+        game.play_card(Player::Opponent, deck[3]).unwrap();
+        assert_eq!(game.resolve_trick(), Ok(Player::Local));
+    }
+
     #[test]
-    fn closing_checks_turn_phase_and_profile_without_mutation() {
+    fn talon_actions_require_a_resolved_trick_an_open_talon_and_the_lead() {
         for variant in [Variant::Soft, Variant::Sharp] {
-            let mut game = Game::with_variant(Player::Local, variant, |upper| upper - 1);
+            let mut game = exchange_deal(variant);
             let before = game.clone();
+            assert_eq!(
+                game.close_talon(Player::Local),
+                Err(CloseError::FirstTrickNotCompleted)
+            );
+            assert_eq!(
+                game.exchange_trump(Player::Local),
+                Err(ExchangeError::FirstTrickNotCompleted)
+            );
             assert_eq!(
                 game.close_talon(Player::Opponent),
                 Err(CloseError::CannotLead)
             );
-            assert_eq!(game, before);
-            if variant == Variant::Sharp {
-                assert_eq!(game.close_talon(Player::Local), Err(CloseError::NoTrickWon));
-                assert_eq!(game, before);
-                let lead = game.legal_cards(Player::Local)[0];
-                game.play_card(Player::Local, lead).unwrap();
-                let reply = game.legal_cards(Player::Opponent)[0];
-                game.play_card(Player::Opponent, reply).unwrap();
-                assert_eq!(game.resolve_trick(), Ok(Player::Local));
-            }
-            let mut almost_empty = game.clone();
-            almost_empty.talon.drain(..almost_empty.talon.len() - 2);
-            let before = almost_empty.clone();
             assert_eq!(
-                almost_empty.close_talon(Player::Local),
-                Err(CloseError::NotEnoughHiddenCards)
+                game.exchange_trump(Player::Opponent),
+                Err(ExchangeError::CannotLead)
             );
-            assert_eq!(almost_empty, before);
-            game.close_talon(Player::Local).unwrap();
+            assert_eq!(game, before);
+
+            let deck = full_deck();
+            game.play_card(Player::Local, deck[0]).unwrap();
+            for complete in [false, true] {
+                if complete {
+                    game.play_card(Player::Opponent, deck[3]).unwrap();
+                }
+                let before = game.clone();
+                assert_eq!(
+                    game.close_talon(Player::Local),
+                    Err(CloseError::TrickStarted)
+                );
+                assert_eq!(
+                    game.exchange_trump(Player::Local),
+                    Err(ExchangeError::TrickStarted)
+                );
+                assert_eq!(game, before);
+            }
+            game.resolve_trick().unwrap();
+            assert!(game.trump_exchange(Player::Local).is_ok());
+            assert!(game.check_close_talon(Player::Local).is_ok());
+
+            for count in [3, 4] {
+                let mut boundary = game.clone();
+                boundary.talon.drain(..boundary.talon.len() - count);
+                let before = boundary.clone();
+                if count == 3 {
+                    assert_eq!(
+                        boundary.close_talon(Player::Local),
+                        Err(CloseError::NotEnoughTalonCards)
+                    );
+                    assert_eq!(
+                        boundary.exchange_trump(Player::Local),
+                        Err(ExchangeError::NotEnoughTalonCards)
+                    );
+                    assert_eq!(boundary, before);
+                } else {
+                    boundary.exchange_trump(Player::Local).unwrap();
+                    boundary.close_talon(Player::Local).unwrap();
+                    let before = boundary.clone();
+                    assert_eq!(
+                        boundary.close_talon(Player::Local),
+                        Err(CloseError::TalonNotOpen)
+                    );
+                    assert_eq!(
+                        boundary.exchange_trump(Player::Local),
+                        Err(ExchangeError::TalonNotOpen)
+                    );
+                    assert_eq!(boundary, before);
+                }
+            }
+            game.phase = Phase::EmptyTalon;
+            game.talon.clear();
             let before = game.clone();
             assert_eq!(
                 game.close_talon(Player::Local),
                 Err(CloseError::TalonNotOpen)
             );
+            assert_eq!(
+                game.exchange_trump(Player::Local),
+                Err(ExchangeError::TalonNotOpen)
+            );
             assert_eq!(game, before);
         }
-        let mut game = Game::new(Player::Local, |upper| upper - 1);
-        let card = game.legal_cards(Player::Local)[0];
-        game.play_card(Player::Local, card).unwrap();
-        let before = game.clone();
-        assert_eq!(
-            game.close_talon(Player::Local),
-            Err(CloseError::TrickStarted)
-        );
-        assert_eq!(game, before);
-        game.phase = Phase::EmptyTalon;
-        game.talon.clear();
-        let before = game.clone();
-        assert_eq!(
-            game.close_talon(Player::Local),
-            Err(CloseError::TalonNotOpen)
-        );
-        assert_eq!(game, before);
+    }
+
+    #[test]
+    fn talon_actions_do_not_require_a_personal_trick() {
+        // A staged lead isolates this check. In normal play the winner of
+        // the preceding trick automatically has the lead.
+        for variant in [Variant::Soft, Variant::Sharp] {
+            let mut game = exchange_deal(variant);
+            complete_first_trick(&mut game);
+            game.tricks.swap(0, 1);
+            game.trick_winners[0] = Player::Opponent;
+            assert!(game.tricks[0].is_empty());
+            game.exchange_trump(Player::Local).unwrap();
+            game.close_talon(Player::Local).unwrap();
+            assert_deck_partition(&game);
+        }
     }
 
     #[test]
     fn closed_talon_preserves_all_cards_enforces_following_and_allows_announcements() {
         let deck = full_deck();
         let mut game = Game::new(Player::Local, |upper| upper - 1);
+        complete_first_trick(&mut game);
         let before = game.clone();
         game.close_talon(Player::Local).unwrap();
         assert_eq!(game.hands, before.hands);
@@ -929,12 +980,13 @@ mod tests {
         let cases = [(0, 3, 3), (1, 2, 2), (2, 1, 2)];
         for (count, success_points, failure_points) in cases {
             let mut game = Game::new(Player::Local, |upper| upper - 1);
+            complete_first_trick(&mut game);
             game.tricks[1] = [[deck[6], deck[11]], [deck[16], deck[17]]][..count].to_vec();
             game.close_talon(Player::Local).unwrap();
             let snapshot = game.talon_closure().unwrap();
             let before = game.clone();
             assert_eq!(
-                game.declare(Player::Local),
+                game.declare(Player::Opponent),
                 Err(DeclareError::NotBetweenOwnTrickAndLead)
             );
             assert_eq!(game, before);
@@ -978,8 +1030,10 @@ mod tests {
     fn closed_talon_final_trick_requires_a_declaration_and_supports_forfeiting() {
         let deck = full_deck();
         let mut game = Game::new(Player::Local, |upper| upper - 1);
+        complete_first_trick(&mut game);
         game.close_talon(Player::Local).unwrap();
         game.hands = [vec![deck[0]], vec![deck[3]]];
+        game.tricks[0].clear(); // Set both score fixtures independently of the opening trick.
         let mut low_score = game.clone();
         game.tricks[0] = [[5, 10], [15, 1], [6, 11]]
             .map(|[a, b]| [deck[a], deck[b]])
@@ -1044,8 +1098,9 @@ mod tests {
     }
 
     #[test]
-    fn soft_can_exchange_before_first_trick_preserving_order_and_cards() {
+    fn exchange_after_first_trick_preserves_order_and_cards() {
         let mut game = exchange_deal(Variant::Soft);
+        complete_first_trick(&mut game);
         let before = game.clone();
         let exchange = game.exchange_trump(Player::Local).unwrap();
         assert_eq!(exchange.given, game.trump_under());
@@ -1060,7 +1115,7 @@ mod tests {
             .find(|card| **card == exchange.given)
             .unwrap() = exchange.received;
         assert_eq!(game.hands[0], expected);
-        assert_eq!(&game.talon[..9], &before.talon[..9]);
+        assert_eq!(&game.talon[..7], &before.talon[..7]);
         assert_eq!(game.trump_suit(), before.trump_suit());
         assert_eq!(game.next_player(), before.next_player());
         assert_eq!(game.eyes(Player::Local), before.eyes(Player::Local));
@@ -1070,45 +1125,6 @@ mod tests {
         assert_eq!(
             game.exchange_trump(Player::Local),
             Err(ExchangeError::MissingTrumpUnder)
-        );
-        assert_eq!(game, before);
-    }
-
-    #[test]
-    fn exchange_rejections_are_atomic_and_sharp_requires_a_win() {
-        let mut game = exchange_deal(Variant::Sharp);
-        let before = game.clone();
-        assert_eq!(
-            game.exchange_trump(Player::Local),
-            Err(ExchangeError::NoTrickWon)
-        );
-        assert_eq!(
-            game.exchange_trump(Player::Opponent),
-            Err(ExchangeError::CannotLead)
-        );
-        assert_eq!(game, before);
-        let deck = full_deck();
-        game.play_card(Player::Local, deck[0]).unwrap();
-        let before = game.clone();
-        assert_eq!(
-            game.exchange_trump(Player::Local),
-            Err(ExchangeError::TrickStarted)
-        );
-        assert_eq!(
-            game.exchange_trump(Player::Opponent),
-            Err(ExchangeError::TrickStarted)
-        );
-        assert_eq!(game, before);
-        game.play_card(Player::Opponent, deck[3]).unwrap();
-        assert_eq!(game.resolve_trick(), Ok(Player::Local));
-        assert!(game.exchange_trump(Player::Local).is_ok());
-        assert_deck_partition(&game);
-        game.phase = Phase::EmptyTalon;
-        game.talon.clear();
-        let before = game.clone();
-        assert_eq!(
-            game.exchange_trump(Player::Local),
-            Err(ExchangeError::TalonNotOpen)
         );
         assert_eq!(game, before);
     }
@@ -1124,7 +1140,7 @@ mod tests {
             let before = game.clone();
             assert_eq!(
                 game.exchange_trump(Player::Local),
-                Err(ExchangeError::NotEnoughHiddenCards)
+                Err(ExchangeError::NotEnoughTalonCards)
             );
             assert_eq!(game, before);
             let deck = full_deck();
@@ -1141,6 +1157,7 @@ mod tests {
     #[test]
     fn additional_exchange_depends_only_on_current_card_ownership() {
         let mut game = exchange_deal(Variant::Soft);
+        complete_first_trick(&mut game);
         let first = game.exchange_trump(Player::Local).unwrap();
         // Fixture for a second eligible position. Regular play cannot recover
         // the Unter from the bottom before the talon is exhausted.
@@ -1385,7 +1402,7 @@ mod tests {
                         let before = game.clone();
                         assert_eq!(
                             game.exchange_trump(leader),
-                            Err(ExchangeError::NotEnoughHiddenCards)
+                            Err(ExchangeError::NotEnoughTalonCards)
                         );
                         assert_eq!(game, before);
                         rejected_exchange_before_last_draw = true;
@@ -1768,6 +1785,7 @@ mod tests {
             (vec![[deck[5], deck[10]], [deck[15], deck[6]]], 2, 1),
         ] {
             let mut game = Game::new(Player::Local, |upper| upper - 1);
+            complete_first_trick(&mut game);
             game.tricks[1] = tricks_at_closing;
             game.close_talon(Player::Local).unwrap();
             let snapshot = game.talon_closure();

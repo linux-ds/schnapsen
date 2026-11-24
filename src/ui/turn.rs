@@ -348,10 +348,8 @@ fn exchange_message(error: ExchangeError) -> String {
         ExchangeError::TrickStarted => "Du kannst nur vor dem Ausspiel tauschen.",
         ExchangeError::CannotLead => "Du kannst nur mit Ausspielrecht tauschen.",
         ExchangeError::MissingTrumpUnder => "Wähle den Trumpf-Unter aus.",
-        ExchangeError::NoTrickWon => "Bei scharfem Schnapsen brauchst du zuerst einen Stich.",
-        ExchangeError::NotEnoughHiddenCards => {
-            "Für den Tausch liegen zu wenige verdeckte Karten im Talon."
-        }
+        ExchangeError::FirstTrickNotCompleted => "Erst nach dem ersten Stich möglich.",
+        ExchangeError::NotEnoughTalonCards => "Zu wenige Karten im Talon.",
     }
     .into()
 }
@@ -383,11 +381,9 @@ fn close_message(error: CloseError) -> &'static str {
     match error {
         CloseError::TalonNotOpen => "Der Talon muss offen sein.",
         CloseError::TrickStarted => "Du kannst nur vor dem Ausspiel zudrehen.",
-        CloseError::NoTrickWon => "Bei scharfem Schnapsen brauchst du zuerst einen Stich.",
+        CloseError::FirstTrickNotCompleted => "Erst nach dem ersten Stich möglich.",
         CloseError::CannotLead => "Du kannst nur mit Ausspielrecht zudrehen.",
-        CloseError::NotEnoughHiddenCards => {
-            "Zum Zudrehen liegen zu wenige verdeckte Karten im Talon."
-        }
+        CloseError::NotEnoughTalonCards => "Zu wenige Karten im Talon.",
     }
 }
 

@@ -342,7 +342,12 @@ mod tests {
                     (random >> 32) as usize % upper
                 },
             );
-            session.close_talon(Player::Local).unwrap();
+            for player in [Player::Local, Player::Opponent] {
+                let card = session.hand().legal_cards(player)[0];
+                session.play_card(player, card).unwrap();
+            }
+            let closer = session.resolve_trick().unwrap();
+            session.close_talon(closer).unwrap();
             while session.hand().result().is_none() {
                 if let Some(player) = [Player::Local, Player::Opponent]
                     .into_iter()
