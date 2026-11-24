@@ -8,6 +8,7 @@ use std::{cell::RefCell, rc::Rc};
 mod input;
 mod layout;
 mod paint;
+mod result;
 mod review;
 mod table;
 mod turn;
@@ -60,13 +61,6 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         SchneiderRule::default(),
         choose_index,
     ))));
-    let notice = gtk::Label::builder()
-        .wrap(true)
-        .css_classes(["dim-label"])
-        .margin_top(8)
-        .margin_bottom(8)
-        .visible(false)
-        .build();
     let overlay = adw::ToastOverlay::new();
     let table_overlay = gtk::Overlay::new();
     table_overlay.set_vexpand(true);
@@ -74,26 +68,18 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
     let actions = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     actions.set_halign(gtk::Align::Center);
     actions.set_valign(gtk::Align::Center);
-    notice.set_max_width_chars(42);
-    notice.add_css_class("osd");
-    actions.append(&notice);
     let play = gtk::Button::with_label("Ausspielen");
     let king = gtk::Button::new();
     let ober = gtk::Button::new();
     let announcement = gtk::Label::new(None);
-    let advance = gtk::Button::builder()
-        .visible(false)
-        .halign(gtk::Align::Center)
-        .build();
     announcement.add_css_class("title-3");
-    for button in [&play, &king, &ober, &advance] {
+    for button in [&play, &king, &ober] {
         button.set_visible(false);
         button.set_height_request(44);
         button.set_valign(gtk::Align::Center);
         actions.append(button);
     }
     play.add_css_class("suggested-action");
-    advance.add_css_class("suggested-action");
     announcement.set_visible(false);
     actions.append(&announcement);
     table_overlay.add_overlay(&actions);
@@ -103,10 +89,8 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         king: king.downgrade(),
         ober: ober.downgrade(),
         announcement: announcement.downgrade(),
-        advance: advance.downgrade(),
     };
-    let timers = turn::TurnTimers::new(&state, &table, &notice, &overlay, controls);
-    timers.refresh();
+    let timers = turn::TurnTimers::new(&state, &table, &overlay, controls);
     let touch = input::attach(&table, &state, &timers);
     for (button, play_ober) in [(&king, false), (&ober, true)] {
         let model = state.clone();
@@ -134,7 +118,6 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         }
         play_timers.refresh();
     });
-    let model = state.clone();
     let reset_timers = timers.clone();
     let reset_popover = popover.downgrade();
     reset_bummerls.connect_clicked(move |_| {
@@ -159,11 +142,8 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
             area.queue_draw();
         }
     });
-    let area = table.downgrade();
-    advance.connect_clicked(move |_| {
-        if timers.input_blocked() {
-            return;
-        }
+    let touch = touch.downgrade();
+    timers.set_advance(move |model| {
         let rules = if variant.selected() == 1 {
             Variant::Sharp
         } else {
@@ -174,26 +154,20 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         } else {
             SchneiderRule::Single
         };
-        let mut model = model.borrow_mut();
         let result = if model.session().result().is_some() {
             model.new_match(rules, rule, choose_index)
         } else {
             model.next_hand(choose_index)
         };
-        if result.is_err() {
-            return;
-        }
+        result?;
         title.set_subtitle(match model.session().variant() {
             Variant::Soft => "Weiches Schnapsen",
             Variant::Sharp => "Scharfes Schnapsen",
         });
-        drop(model);
-        timers.cancel();
-        touch.reset();
-        if let Some(area) = area.upgrade() {
-            area.grab_focus();
+        if let Some(touch) = touch.upgrade() {
+            touch.reset();
         }
-        timers.refresh();
+        Ok(())
     });
     table.set_draw_func(move |area, cr, width, height| {
         let state = state.borrow();
@@ -223,5 +197,6 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         .content(&overlay)
         .build();
     GtkWindowExt::set_focus(&window, Some(&table));
+    timers.refresh();
     window
 }

@@ -18,7 +18,7 @@
 - [RULE_AUDIT.md](RULE_AUDIT.md) vergleicht die implementierten Profile mit drei Regelquellen und dokumentiert Abweichungen und Stabilitätsprüfungen.
 
 - `src/app/mod.rs` verwaltet den Lebenszyklus der Anwendung und öffnet oder aktiviert das Fenster.
-- `src/ui/mod.rs` bindet den Kartentisch über eine `GtkDrawingArea` in das Fenster ein. Die Zeichenfläche hat eine Mindestgröße von 560 × 400 logischen Pixeln. Die Titelleiste liegt außerhalb. Der Partiestand steht in einer festen Spalte links auf der Zeichenfläche und nutzt den vorhandenen Abstand zum Talon. Die Zielgröße des Fensters ist 680 × 560. Kontextaktionen und Ergebnisse liegen in einer ungemessenen GTK-Overlay-Ebene.
+- `src/ui/mod.rs` bindet den Kartentisch über eine `GtkDrawingArea` in das Fenster ein. Die Zeichenfläche hat eine Mindestgröße von 560 × 400 logischen Pixeln. Die Titelleiste liegt außerhalb. Der Partiestand steht in einer festen Spalte links auf der Zeichenfläche und nutzt den vorhandenen Abstand zum Talon. Die Zielgröße des Fensters ist 680 × 560. Kontextaktionen liegen in einer ungemessenen GTK-Overlay-Ebene. Hand- und Partieergebnisse erscheinen in einem modalen libadwaita-Dialog über dem Tisch.
 - `src/core/game.rs` prüft Ausspielaktionen und löst vollständige Stiche auf. Eine Ansage prüft Ausspielrecht, Paar und Profil und spielt atomar eine Karte aus. Stichaugen und vorgemerkte oder wirksame Ansageaugen werden aus Stichpaaren und Ansageereignissen abgeleitet. Ab 66 wirksamen Augen beendet die Engine die Hand nach Stichauflösung oder Ansage automatisch. Der Abschlussgrund und die Spielpunkte stehen in `Finished`.
 - Der Trumpftausch ersetzt den Trumpf-Unter in der Hand durch die offene Trumpfkarte. Der Unter bleibt als letzte Karte des Talons liegen. Tausch und Zudrehen teilen dieselbe Hausregelprüfung. Sie verlangen einen abgeschlossenen ersten Stich, aktuelles Ausspielrecht vor Stichbeginn und mindestens vier Karten im offenen Talon einschließlich der Trumpfkarte. Die Engine prüft beim Tausch zusätzlich den Besitz des Trumpf-Unters.
 - Zudrehen sperrt den Stapel und speichert den wirksamen Augenstand und die Stichzahl des Gegners für die Wertung. Ab dann gelten dieselben Bedienpflichten wie bei einem regulär leeren Talon. Die gesperrten Karten bleiben erhalten.
@@ -30,9 +30,9 @@
 - Mit ausgewähltem Trumpf-Unter tauschen **T**, ein Klick oder ein Tippen auf die offene Trumpfkarte. Die neue Handkarte erhält den Fokus. Der Computer prüft den Tausch über dieselbe Engine vor seinem Ausspiel.
 - Klick oder Tippen auf den verdeckten Stapel und **Z** starten die Bestätigung zum Zudrehen. Die bisher offene Trumpfkarte erscheint danach verdeckt quer auf dem Stapel.
 - `src/ui/turn.rs` steuert Computerzug und Stichauflösung mit GLib-Timern. Der Computer beginnt auch als Vorhand. Beim Hand- oder Partiewechsel werden alte Timer entfernt.
-- `src/ui/review.rs` zeigt die erlaubten Stichpaare in einem eingebetteten, abgedunkelten Dialog mit anpassbarer Spaltenzahl und vertikalem Scrollen. Die Kartenzeichnung stammt vom Kartentisch.
+- `src/ui/review.rs` zeigt die erlaubten Stichpaare in einem eingebetteten, abgedunkelten Dialog mit anpassbarer Spaltenzahl und vertikalem Scrollen. Die Kartenzeichnung stammt vom Kartentisch. Klick oder Tippen außerhalb, Escape und „Schließen“ beenden die Übersicht mit Fokusrückgabe.
 - `src/ui/paint.rs` zeichnet Kartenfronten, einheitliche Rückseiten, Rahmen und Schatten mit Cairo. Ausgewählte Karten erhalten einen goldenen Rand, der sichtbare Tastaturfokus eine gestrichelte Innenlinie.
-- Die abschaltbare **Spielhilfe** markiert die legalen Karten. Über den Stichstapeln stehen die wirksamen eigenen Augen als Zahl und optional die gegnerischen Augen über eine separate Lernhilfe. Links stehen die Restpunkte und Bummerl beider Seiten sowie die Zahl abgeschlossener Hände. Kontextaktionen liegen in der Tischmitte. Die Ergebnisanzeige bietet **Nächste Hand** oder **Neue Partie** an.
+- Die abschaltbare **Spielhilfe** markiert die legalen Karten. Über den Stichstapeln stehen die wirksamen eigenen Augen als Zahl und optional die gegnerischen Augen über eine separate Lernhilfe. Links stehen die Restpunkte und Bummerl beider Seiten sowie die Zahl abgeschlossener Hände. Kontextaktionen liegen in der Tischmitte. `src/ui/result.rs` zeigt den Handabschluss mit Augen und Spielpunkten. Beim Partieende kommen Bummerl und Reststand hinzu. Ausschließlich **Nächste Hand** oder **Neue Partie** schließen den Ergebnisdialog und setzen das Spiel fort.
 - Das Menü **Partie** konfiguriert Regelprofil und Schneiderwertung für die nächste Partie. Die erste Partie startet weich mit doppelter Schneiderwertung. Bummerl lassen sich über eine getrennte Aktion mit Bestätigung zurücksetzen.
 - `src/lib.rs` exportiert `core::cards` mit Kartenidentität, Augenwert und vollständigem 20er-Kartensatz. Das Modul verwendet nur die Rust-Standardbibliothek.
 - `Cargo.toml` und `Cargo.lock` definieren die Anwendung und ihre Abhängigkeiten. GTK4 wird über libadwaita eingebunden. Die App-ID `io.github.schnapsen.Schnapsen` ist vorläufig.
@@ -172,6 +172,14 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-24 – Auftrag 20b
+
+- Die Stichübersicht fängt Klick und Tippen außerhalb des Dialoginhalts ab und schließt ohne Weitergabe an den Tisch. Scrollen, Escape, die Schließen-Schaltfläche und Fokusrückgabe bleiben erhalten.
+- Gemeinsamer modaler Ergebnisdialog für Hand und Partie. Er zeigt Gewinn oder Niederlage, Abschlussgrund, Augen und Spielpunkte. Schneider und Schwarz werden passend zur Wertung angezeigt. Beim Partieende kommen Bummerl und der abschließende Reststand hinzu. Nur der zentrale Weiter-Button setzt das Spiel fort.
+- Formatierung, Cargo-Check, alle 58 Tests und Clippy mit `-D warnings` waren im GNOME SDK 51 erfolgreich. Flatpak-Release-Build samt Tests und Wayland-Fensterstart waren erfolgreich. Der zusätzliche Regressionstest unterscheidet Schneider und Schwarz bei regulären Gewinnen und erfolgreichem Zudrehen von der Strafwertung bei gescheitertem Zudrehen.
+- Synthetische Broadway-Ereignisse prüften Außenklick und Außentipp, ausbleibende Tischereignisse, Fokus und offenbleibenden Dialog bei Inneninteraktionen. Unter Wayland wurden ein Scrollversatz von 80 logischen Pixeln und das Escape-Signal am GTK-Controller geprüft.
+- Der isolierte Wayland-Prüflauf prüfte Handgewinn, Handverlust, gelungenes und gescheitertes Zudrehen sowie Partieende. Bei Zeichenflächen von 560 × 400, 680 × 513 und 1080 × 673 logischen Pixeln blieben die Tischgröße und die Wertung beim geöffneten Dialog stabil. Die Übergänge über „Nächste Hand“ und „Neue Partie“ gelangen. Physischer Touch, Scrollrad und HiDPI bleiben manuell zu prüfen.
 
 ### 2026-11-24 – Auftrag 20a
 

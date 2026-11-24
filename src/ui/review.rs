@@ -1,5 +1,6 @@
 use adw::{gdk, glib, gtk, prelude::*};
 use schnapsen::core::game::{Player, ReviewedTrick};
+use std::{cell::Cell, rc::Rc};
 
 use super::paint;
 
@@ -90,6 +91,56 @@ pub(super) fn dialog(owner: Player, tricks: Vec<ReviewedTrick>) -> adw::Dialog {
     });
     dialog.add_controller(keys);
     dialog
+}
+
+pub(super) fn install_outside_dismiss(dialog: &adw::Dialog, window: &gtk::Window) {
+    let click = gtk::GestureClick::new();
+    click.set_button(gdk::BUTTON_PRIMARY);
+    click.set_propagation_phase(gtk::PropagationPhase::Capture);
+
+    let outside_press = Rc::new(Cell::new(false));
+    let dismissed = outside_press.clone();
+    let weak = dialog.downgrade();
+    click.connect_pressed(move |click, _, x, y| {
+        let outside = weak
+            .upgrade()
+            .is_some_and(|dialog| outside_dialog(&dialog, click, x, y));
+        dismissed.set(outside);
+        if outside {
+            // Consume the sequence before the table can see it.
+            click.set_state(gtk::EventSequenceState::Claimed);
+        }
+    });
+
+    let weak = dialog.downgrade();
+    click.connect_released(move |click, _, x, y| {
+        if outside_press.replace(false) {
+            if let Some(dialog) = weak.upgrade() {
+                if outside_dialog(&dialog, click, x, y) {
+                    dialog.close();
+                }
+            }
+        }
+    });
+
+    let weak_click = click.downgrade();
+    let weak_window = window.downgrade();
+    dialog.connect_closed(move |_| {
+        if let (Some(window), Some(click)) = (weak_window.upgrade(), weak_click.upgrade()) {
+            window.remove_controller(&click);
+        }
+    });
+    window.add_controller(click);
+}
+
+fn outside_dialog(dialog: &adw::Dialog, click: &gtk::GestureClick, x: f64, y: f64) -> bool {
+    let bounds = dialog
+        .child()
+        .zip(click.widget())
+        .and_then(|(child, window)| child.compute_bounds(&window));
+    bounds.is_some_and(|bounds| {
+        !bounds.contains_point(&gtk::graphene::Point::new(x as f32, y as f32))
+    })
 }
 
 fn card_name(card: schnapsen::core::cards::Card) -> String {

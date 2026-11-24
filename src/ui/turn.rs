@@ -8,32 +8,24 @@ use adw::{glib, gtk, prelude::*};
 use schnapsen::core::{
     cards::Suit,
     game::{
-        Announcement, CloseError, Exchange, ExchangeError, FinishReason, HandResult, PlayError,
-        Player, TrickReviewError,
+        Announcement, CloseError, Exchange, ExchangeError, PlayError, Player, TrickReviewError,
     },
+    match_play::DealError,
 };
 
-use super::{review, table::Table};
+use super::{result, review, table::Table};
+
+type AdvanceHand = Box<dyn Fn(&mut Table) -> Result<(), DealError>>;
 
 pub(super) struct TableControls {
     pub play: glib::WeakRef<gtk::Button>,
     pub king: glib::WeakRef<gtk::Button>,
     pub ober: glib::WeakRef<gtk::Button>,
     pub announcement: glib::WeakRef<gtk::Label>,
-    pub advance: glib::WeakRef<gtk::Button>,
 }
 
 impl TableControls {
     fn update(&self, table: &Table) {
-        let session = table.session();
-        if let Some(advance) = self.advance.upgrade() {
-            advance.set_label(if session.result().is_some() {
-                "Neue Partie"
-            } else {
-                "Nächste Hand"
-            });
-            advance.set_visible(table.result().is_some());
-        }
         if let Some(play) = self.play.upgrade() {
             play.set_visible(table.can_play_selected());
         }
@@ -74,7 +66,7 @@ impl TableControls {
 pub(super) struct TurnTimers {
     state: Rc<RefCell<Table>>,
     area: glib::WeakRef<gtk::DrawingArea>,
-    notice: glib::WeakRef<gtk::Label>,
+    advance: RefCell<Option<AdvanceHand>>,
     overlay: glib::WeakRef<adw::ToastOverlay>,
     feedback: RefCell<Option<adw::Toast>>,
     pending: RefCell<Option<glib::SourceId>>,
@@ -88,14 +80,13 @@ impl TurnTimers {
     pub fn new(
         state: &Rc<RefCell<Table>>,
         area: &gtk::DrawingArea,
-        notice: &gtk::Label,
         overlay: &adw::ToastOverlay,
         controls: TableControls,
     ) -> Rc<Self> {
         Rc::new(Self {
             state: state.clone(),
             area: area.downgrade(),
-            notice: notice.downgrade(),
+            advance: RefCell::new(None),
             overlay: overlay.downgrade(),
             feedback: RefCell::new(None),
             pending: RefCell::new(None),
@@ -104,6 +95,10 @@ impl TurnTimers {
             effects_timer: RefCell::new(None),
             modal_open: Cell::new(false),
         })
+    }
+
+    pub fn set_advance(&self, advance: impl Fn(&mut Table) -> Result<(), DealError> + 'static) {
+        self.advance.replace(Some(Box::new(advance)));
     }
 
     pub fn cancel(&self) {
@@ -203,7 +198,7 @@ impl TurnTimers {
                 apply(&timers);
             }
         });
-        self.present_modal(&dialog);
+        self.present_modal(&dialog, false);
     }
 
     pub fn input_blocked(&self) -> bool {
@@ -231,10 +226,10 @@ impl TurnTimers {
                 return;
             }
         };
-        self.present_modal(&review::dialog(owner, tricks));
+        self.present_modal(&review::dialog(owner, tricks), true);
     }
 
-    fn present_modal(self: &Rc<Self>, dialog: &impl IsA<adw::Dialog>) {
+    fn present_modal(self: &Rc<Self>, dialog: &impl IsA<adw::Dialog>, dismiss_outside: bool) {
         if self.input_blocked() {
             return;
         }
@@ -261,6 +256,9 @@ impl TurnTimers {
                 }
             }
         });
+        if dismiss_outside {
+            review::install_outside_dismiss(dialog.upcast_ref(), &window);
+        }
         self.modal_open.set(true);
         self.state.borrow_mut().cancel_mouse_click();
         if let Some(source) = self.pending.take() {
@@ -310,27 +308,32 @@ impl TurnTimers {
         area.set_tooltip_text(tooltip);
         self.controls.update(&table);
         self.update_effects((table.announcement(), table.exchange()));
-        let result = table.result();
-        if let Some(notice) = self.notice.upgrade() {
-            if let Some(result) = result {
-                let mut message = result_message(result);
-                if let Some(partie) = table.session().result() {
-                    let (winner, loser) = match partie.winner {
-                        Player::Local => ("Du gewinnst die Partie", "Der Computer erhält"),
-                        Player::Opponent => ("Der Computer gewinnt die Partie", "Du erhältst"),
-                    };
-                    let award = if partie.awarded_bummerls == 2 {
-                        "ein Schneiderbummerl (2 Bummerl)"
-                    } else {
-                        "ein Bummerl"
-                    };
-                    message.push_str(&format!("\n{winner}. {loser} {award}."));
+        if let Some(hand) = table.result() {
+            let (dialog, advance) = result::dialog(hand, session);
+            drop(table);
+            let weak = Rc::downgrade(self);
+            let dialog_ref = dialog.downgrade();
+            advance.connect_clicked(move |button| {
+                let (Some(timers), Some(dialog)) = (weak.upgrade(), dialog_ref.upgrade()) else {
+                    return;
+                };
+                button.set_sensitive(false);
+                let advanced = timers
+                    .advance
+                    .borrow()
+                    .as_ref()
+                    .is_some_and(|advance| advance(&mut timers.state.borrow_mut()).is_ok());
+                if advanced {
+                    timers.cancel();
+                    dialog.force_close();
+                } else {
+                    button.set_sensitive(true);
                 }
-                notice.set_label(&message);
-            }
-            notice.set_visible(result.is_some());
+            });
+            self.present_modal(&dialog, false);
+            return;
         }
-        if result.is_some() || self.pending.borrow().is_some() {
+        if self.pending.borrow().is_some() {
             return;
         }
 
@@ -365,28 +368,6 @@ fn exchange_message(error: ExchangeError) -> String {
         ExchangeError::NotEnoughTalonCards => "Zu wenige Karten im Talon.",
     }
     .into()
-}
-
-fn result_message(result: HandResult) -> String {
-    let winner = match result.outcome.winner {
-        Player::Local => "Du hast gewonnen",
-        Player::Opponent => "Der Computer hat gewonnen",
-    };
-    let reason = match result.outcome.reason {
-        FinishReason::Reached66 => "66 Augen erreicht",
-        FinishReason::LastTrick => "letzter Stich",
-        FinishReason::SuccessfulClosure => "Zudrehen gelungen",
-        FinishReason::FailedClosure => "Zudrehen fehlgeschlagen",
-    };
-    let points = match result.outcome.game_points {
-        1 => "1 Spielpunkt".into(),
-        total => format!("{total} Spielpunkte"),
-    };
-    format!(
-        "{winner} ({reason}, {points}).\nAugen: Du {} · Computer {}",
-        result.score(Player::Local).eyes,
-        result.score(Player::Opponent).eyes
-    )
 }
 
 fn close_message(error: CloseError) -> &'static str {
@@ -448,7 +429,7 @@ mod tests {
         let timers = TurnTimers {
             state: state.clone(),
             area: glib::WeakRef::new(),
-            notice: glib::WeakRef::new(),
+            advance: RefCell::new(None),
             overlay: glib::WeakRef::new(),
             feedback: RefCell::new(None),
             pending: RefCell::new(None),
@@ -457,7 +438,6 @@ mod tests {
                 king: glib::WeakRef::new(),
                 ober: glib::WeakRef::new(),
                 announcement: glib::WeakRef::new(),
-                advance: glib::WeakRef::new(),
             },
             shown_effects: Cell::new((None, None)),
             effects_timer: RefCell::new(None),
