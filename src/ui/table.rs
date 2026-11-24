@@ -3,8 +3,8 @@ use schnapsen::{
     core::{
         cards::Card,
         game::{
-            Announcement, CloseError, DeclareError, Exchange, ExchangeError, HandResult, Marriage,
-            PlayError, Player, Variant, View,
+            Announcement, CloseError, Exchange, ExchangeError, HandResult, Marriage, PlayError,
+            Player, Variant, View,
         },
         match_play::{DealError, Match, SchneiderRule},
     },
@@ -21,7 +21,6 @@ pub(super) struct Table {
     visible_announcement: Option<Announcement>,
     visible_exchange: Option<Exchange>,
     exchange_error: Option<ExchangeError>,
-    continue_after_announcement: bool,
 }
 
 impl Table {
@@ -38,7 +37,6 @@ impl Table {
             visible_announcement: None,
             visible_exchange: None,
             exchange_error: None,
-            continue_after_announcement: false,
         }
     }
 
@@ -73,7 +71,6 @@ impl Table {
         self.play_error = None;
         self.exchange_error = None;
         self.hide_card_effects();
-        self.continue_after_announcement = false;
     }
 
     pub fn set_show_legal(&mut self, enabled: bool) {
@@ -244,7 +241,6 @@ impl Table {
             return false;
         };
         self.visible_announcement = Some(event);
-        self.continue_after_announcement = false;
         self.after_local_play(card);
         true
     }
@@ -256,20 +252,6 @@ impl Table {
     pub fn hide_card_effects(&mut self) {
         self.visible_announcement = None;
         self.visible_exchange = None;
-    }
-
-    pub fn waiting_for_declaration(&self) -> bool {
-        !self.continue_after_announcement && self.session.hand().announcement_lead(Player::Local)
-    }
-
-    pub fn continue_play(&mut self) {
-        if !self.session.decline_final_declaration(Player::Local) {
-            self.continue_after_announcement = true;
-        }
-    }
-
-    pub fn awaiting_final_declaration(&self) -> bool {
-        self.session.hand().awaiting_final_declaration()
     }
 
     pub fn check_close_talon(&self) -> Result<(), CloseError> {
@@ -332,15 +314,6 @@ impl Table {
                 .announce_and_play(Player::Opponent, marriage.suit, marriage.king())
                 .expect("AI chose a legal marriage");
             self.visible_announcement = Some(event);
-            if self
-                .session
-                .hand()
-                .can_declare_after_announcement(Player::Opponent)
-            {
-                self.session
-                    .declare(Player::Opponent)
-                    .expect("the computer may declare");
-            }
         } else if let Some(card) =
             ai::choose_card(&self.session.hand().legal_cards(Player::Opponent))
         {
@@ -352,15 +325,9 @@ impl Table {
 
     pub fn resolve_trick(&mut self) {
         self.hide_card_effects();
-        let winner = self
-            .session
+        self.session
             .resolve_trick()
             .expect("a complete trick was scheduled");
-        if winner == Player::Opponent && self.session.hand().can_declare(winner) {
-            self.session
-                .declare(winner)
-                .expect("the computer may declare");
-        }
     }
 
     pub fn opponent_to_play(&self) -> bool {
@@ -369,21 +336,6 @@ impl Table {
 
     pub fn local_eyes(&self) -> u8 {
         self.session.hand().eyes(Player::Local)
-    }
-
-    pub fn may_declare(&self) -> bool {
-        let hand = self.session.hand();
-        hand.may_declare(Player::Local)
-            && !(self.continue_after_announcement && hand.announcement_lead(Player::Local))
-    }
-
-    #[cfg(test)]
-    pub fn can_declare(&self) -> bool {
-        self.session.hand().can_declare(Player::Local)
-    }
-
-    pub fn declare(&mut self) -> Result<(), DeclareError> {
-        self.session.declare(Player::Local)
     }
 
     pub fn result(&self) -> Option<HandResult> {
@@ -418,8 +370,6 @@ mod tests {
             while let Some(player) = table.session.hand().next_player() {
                 if player == Player::Opponent {
                     table.play_opponent();
-                } else if table.can_declare() {
-                    table.declare().unwrap();
                 } else {
                     let card = table.session.hand().legal_cards(player)[0];
                     assert!(table.swipe(card));
@@ -487,9 +437,6 @@ mod tests {
             if table.view().played.len() == 2 {
                 table.resolve_trick();
             }
-        }
-        if table.awaiting_final_declaration() {
-            table.continue_play();
         }
         assert!(table.result().is_some());
         assert!(table.view().talon_closed);
@@ -765,7 +712,7 @@ mod tests {
     }
 
     #[test]
-    fn computer_declares_after_a_trick_and_player_can_declare_before_leading() {
+    fn both_players_win_automatically_and_hand_reset_clears_the_result() {
         let mut winners = [false; 2];
         for seed in 0..32 {
             let deal = || {
@@ -780,10 +727,6 @@ mod tests {
             while let Some(player) = table.session.hand().next_player() {
                 if player == Player::Opponent {
                     table.play_opponent();
-                } else if table.can_declare() {
-                    assert!(table.view().played.is_empty());
-                    assert!(table.local_eyes() >= 66);
-                    table.declare().unwrap();
                 } else {
                     let card = table.session.hand().legal_cards(player)[0];
                     assert!(table.swipe(card));
@@ -793,7 +736,7 @@ mod tests {
                 }
             }
             let result = table.result().unwrap();
-            if result.outcome.reason == FinishReason::Declared66 {
+            if result.outcome.reason == FinishReason::Reached66 {
                 assert!(result.score(result.outcome.winner).eyes >= 66);
                 winners[result.outcome.winner as usize] = true;
             }
@@ -803,7 +746,6 @@ mod tests {
             assert_eq!(table.view().hand.len(), 5);
             assert_eq!(table.view().hidden_talon_count, 9);
             assert_eq!(table.local_eyes(), 0);
-            assert!(!table.can_declare());
         }
         assert_eq!(winners, [true, true]);
     }

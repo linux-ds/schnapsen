@@ -19,7 +19,7 @@
 
 - `src/app/mod.rs` verwaltet den Lebenszyklus der Anwendung und öffnet oder aktiviert das Fenster.
 - `src/ui/mod.rs` bindet den Kartentisch über eine `GtkDrawingArea` in das Fenster ein. Die Zeichenfläche hat eine Mindestgröße von 560 × 400 logischen Pixeln. Titelleiste und Partiestand liegen außerhalb. Die Zielgröße des Fensters ist 680 × 560. Kontextaktionen und Ergebnisse liegen in einer ungemessenen GTK-Overlay-Ebene.
-- `src/core/game.rs` prüft Ausspielaktionen und löst vollständige Stiche auf. Eine Ansage prüft Ausspielrecht, Paar und Profil und spielt atomar eine Karte aus. Stichaugen und vorgemerkte oder wirksame Ansageaugen werden aus Stichpaaren und Ansageereignissen abgeleitet. Der Abschlussgrund und die Spielpunkte stehen in `Finished`.
+- `src/core/game.rs` prüft Ausspielaktionen und löst vollständige Stiche auf. Eine Ansage prüft Ausspielrecht, Paar und Profil und spielt atomar eine Karte aus. Stichaugen und vorgemerkte oder wirksame Ansageaugen werden aus Stichpaaren und Ansageereignissen abgeleitet. Ab 66 wirksamen Augen beendet die Engine die Hand nach Stichauflösung oder Ansage automatisch. Der Abschlussgrund und die Spielpunkte stehen in `Finished`.
 - Der Trumpftausch ersetzt den Trumpf-Unter in der Hand durch die offene Trumpfkarte. Der Unter bleibt als letzte Karte des Talons liegen. Tausch und Zudrehen teilen dieselbe Hausregelprüfung. Sie verlangen einen abgeschlossenen ersten Stich, aktuelles Ausspielrecht vor Stichbeginn und mindestens vier Karten im offenen Talon einschließlich der Trumpfkarte. Die Engine prüft beim Tausch zusätzlich den Besitz des Trumpf-Unters.
 - Zudrehen sperrt den Stapel und speichert den wirksamen Augenstand und die Stichzahl des Gegners für die Wertung. Ab dann gelten dieselben Bedienpflichten wie bei einem regulär leeren Talon. Die gesperrten Karten bleiben erhalten.
 - `src/ai.rs` wählt deterministisch die erste zulässige Ansage oder die erste legale Karte. Die Auswahl erhält keine verdeckten Karten des anderen Spielers.
@@ -32,7 +32,7 @@
 - `src/ui/turn.rs` steuert Computerzug und Stichauflösung mit GLib-Timern. Der Computer beginnt auch als Vorhand. Beim Hand- oder Partiewechsel werden alte Timer entfernt.
 - `src/ui/review.rs` zeigt die erlaubten Stichpaare in einem eingebetteten, abgedunkelten Dialog mit anpassbarer Spaltenzahl und vertikalem Scrollen. Die Kartenzeichnung stammt vom Kartentisch.
 - `src/ui/paint.rs` zeichnet Kartenfronten, einheitliche Rückseiten, Rahmen und Schatten mit Cairo. Ausgewählte Karten erhalten einen goldenen Rand, der sichtbare Tastaturfokus eine gestrichelte Innenlinie.
-- Die abschaltbare **Spielhilfe** markiert die legalen Karten. Die Stichstapel zeigen die wirksamen eigenen Augen und optional die gegnerischen Augen über eine separate Lernhilfe. Kontextaktionen liegen in der Tischmitte. Die Ergebnisanzeige bietet **Nächste Hand** oder **Neue Partie** an.
+- Die abschaltbare **Spielhilfe** markiert die legalen Karten. Über den Stichstapeln stehen die wirksamen eigenen Augen als Zahl und optional die gegnerischen Augen über eine separate Lernhilfe. Kontextaktionen liegen in der Tischmitte. Die Ergebnisanzeige bietet **Nächste Hand** oder **Neue Partie** an.
 - Das Menü **Partie** konfiguriert Regelprofil und Schneiderwertung für die nächste Partie. Die erste Partie startet weich mit doppelter Schneiderwertung. Bummerl lassen sich über eine getrennte Aktion mit Bestätigung zurücksetzen.
 - `src/lib.rs` exportiert `core::cards` mit Kartenidentität, Augenwert und vollständigem 20er-Kartensatz. Das Modul verwendet nur die Rust-Standardbibliothek.
 - `Cargo.toml` und `Cargo.lock` definieren die Anwendung und ihre Abhängigkeiten. GTK4 wird über libadwaita eingebunden. Die App-ID `io.github.schnapsen.Schnapsen` ist vorläufig.
@@ -69,11 +69,11 @@
 - [x] Zudrehen einschließlich Wienerisch-Wertung implementieren.
 - [x] Übergang zu leerem Talon abbilden.
 - [x] Farb- und Stichzwang nach Talonende implementieren.
-- [x] Hand durch gültige Ausmeldung oder den letzten Stich abschließen.
+- [x] Hand automatisch bei 66 wirksamen Augen oder nach dem letzten Stich abschließen.
 - [x] Augen gewonnener Stiche erfassen.
 - [x] Spielpunkte einer regulären Hand berechnen.
 - [x] Mehrhand-Partien mit Restpunkten und kumulierten Bummerln werten.
-- [x] Strafwertung bei falscher Ausmeldung ergänzen.
+- [x] Historische Ausmeldevariante samt Strafwertung dokumentieren.
 - [ ] Sonderfälle und Regelprofile umfassend testen.
 
 **Ergebnis:** Vollständige Partie über die Core-API simulierbar.
@@ -81,7 +81,7 @@
 ### M3 – Einfacher Computergegner
 - [x] Legale Karten in beiden Spielabschnitten aus dem Regelzustand ableiten und deterministisch die erste wählen.
 - [x] Die Kartenfolge in automatisierten Testpartien bis zum zehnten Stich prüfen.
-- [x] Computer bei mindestens 66 Augen dieselbe Ausmeldeaktion nutzen lassen.
+- [x] Dieselbe automatische 66-Augen-Wertung für Computer und Mensch verwenden.
 - [ ] Einfaches heuristisches Verhalten implementieren.
 - [ ] Informationsgrenzen und reproduzierbare KI-Tests absichern.
 - [x] Automatische Testpartien gegen den Computer durchführen.
@@ -121,7 +121,7 @@
 
 ## In Arbeit
 
-Die Tischdarstellung und die Stich-Hausregel sind in [SPEC.md](SPEC.md) dokumentiert. Physischer Touch, HiDPI, Klick und Tippen auf beide Stichstapel sowie Scrollen bleiben zur manuellen Abnahme offen.
+Die Tischdarstellung und die Hausregeln für Stichdarstellung und automatischen Abschluss sind in [SPEC.md](SPEC.md) dokumentiert. Physischer Touch, HiDPI, Klick und Tippen auf beide Stichstapel sowie Scrollen bleiben zur manuellen Abnahme offen.
 
 ## Nächster Schritt
 
@@ -155,7 +155,7 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 ## Bekannte Probleme / Risiken
 
 - Die Profile unterscheiden sich bei Ansagen und beim Stichzugriff. Für Talonaktionen gilt dieselbe Hausregel. Die Sticheinsicht ist implementiert. Ihr Zeitfenster und ihre Rollenbindung weichen je nach Regelquelle ab.
-- Der Computer wählt die erste legale Karte und meldet sich nach einem gewonnenen Stich automatisch aus, sobald die Engine die Ausmeldung erlaubt.
+- Der Computer wählt die erste legale Karte. Die Engine beendet seine Hand bei 66 wirksamen Augen automatisch wie beim Menschen.
 - Der Computer nutzt die gemeinsame Regelprüfung und Wertung. Automatisches Zudrehen bleibt ohne konservative Entscheidungsregel deaktiviert.
 - Bummerl werden bis zum Schließen des Fensters gehalten.
 - Der SDK-Build ist der vorgesehene Entwicklungsweg auf GNOME OS. Außerhalb des SDKs fehlen der Codex-Umgebung die GTK4- und libadwaita-Entwicklungsbibliotheken.
@@ -172,6 +172,14 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-24 – Auftrag 18
+
+- Die Engine beendet die Hand ab 66 wirksamen Augen nach vollständiger Stichauflösung oder sofort nach einer wirksamen Ansage. Vorgemerkte Ansagen zählen erst nach dem ersten eigenen Stich. Die Prüfung geht dem Nachziehen und der Letztstichwertung voraus. Die Wienerisch-Wertung bleibt erhalten und die Partie rechnet jede Hand genau einmal ab.
+- Ausmeldebedienung und Ausmelde-Wartezustände entfernt. Die frühere Strafwertung ist im Regel-Audit und im vorigen Git-Stand dokumentiert.
+- Beide Augenanzeigen stehen als Zahl über der maximalen Stapelhöhe. Die separate Lernhilfe für gegnerische Augen bleibt standardmäßig aus. Partierestpunkte und Bummerl stehen weiterhin getrennt.
+- Formatierung, Cargo-Check, alle 54 Tests und Clippy mit `-D warnings` im GNOME SDK 51 erfolgreich. Der Flatpak-Release-Build einschließlich Meson-Testlauf war erfolgreich. Abgedeckt sind unter anderem die Simulation über 768 Hände, genau und mehr als 66 Augen, beide Seiten, 20er und 40er, Talonsperre, Mehrhandwertung, Stapelabstand und numerisches Format.
+- Ein isolierter GTK-Test unter Wayland spielte mit der tatsächlichen GTK-Zeitsteuerung eine vollständige Hand. Der Mensch gewann automatisch bei 66 Augen zwei Spielpunkte. „Nächste Hand“ behielt den Partiestand. Physischer Touch und HiDPI bleiben manuell zu prüfen.
 
 ### 2026-11-24 – Auftrag 17
 

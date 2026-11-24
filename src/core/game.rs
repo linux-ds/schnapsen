@@ -62,7 +62,6 @@ pub struct Announcement {
     pub player: Player,
     pub marriage: Marriage,
     pub played: Card,
-    trick_index: usize,
 }
 
 impl Announcement {
@@ -122,8 +121,7 @@ pub enum CloseError {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum FinishReason {
-    Declared66,
-    FalseDeclaration,
+    Reached66,
     LastTrick,
     SuccessfulClosure,
     FailedClosure,
@@ -167,12 +165,6 @@ impl HandResult {
     pub fn score(self, player: Player) -> Score {
         self.scores[player as usize]
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum DeclareError {
-    HandFinished,
-    NotBetweenOwnTrickAndLead,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -362,24 +354,6 @@ impl Game {
         }
     }
 
-    pub fn awaiting_final_declaration(&self) -> bool {
-        matches!(self.phase, Phase::ClosedTalon(_))
-            && self.played.is_empty()
-            && self.hands.iter().all(Vec::is_empty)
-    }
-
-    pub fn decline_final_declaration(&mut self, player: Player) -> bool {
-        if self.awaiting_final_declaration() && self.leader == player {
-            let closure = self
-                .talon_closure()
-                .expect("final declaration requires a closure");
-            self.finish_failed_closure(closure);
-            true
-        } else {
-            false
-        }
-    }
-
     fn finish_failed_closure(&mut self, closure: TalonClosure) {
         self.phase = Phase::Finished(Outcome {
             winner: closure.closer.other(),
@@ -479,25 +453,14 @@ impl Game {
             player,
             marriage,
             played: card,
-            trick_index: self.trick_index(),
         };
         self.announcements.push(event);
+        self.finish_at_66(player);
         Ok(event)
     }
 
     fn trick_index(&self) -> usize {
         self.tricks.iter().map(Vec::len).sum()
-    }
-
-    pub fn can_declare_after_announcement(&self, player: Player) -> bool {
-        self.announcement_lead(player) && self.can_declare(player)
-    }
-
-    pub fn announcement_lead(&self, player: Player) -> bool {
-        matches!(self.played.as_slice(), [(leader, _)] if *leader == player)
-            && self.announcements.last().is_some_and(|event| {
-                event.player == player && event.trick_index == self.trick_index()
-            })
     }
 
     pub fn result(&self) -> Option<HandResult> {
@@ -541,49 +504,16 @@ impl Game {
         }
     }
 
-    fn check_declaration(&self, player: Player) -> Result<(), DeclareError> {
-        if matches!(self.phase, Phase::Finished(_)) {
-            return Err(DeclareError::HandFinished);
-        }
-        let after_own_trick = self.played.is_empty() && !self.tricks[player as usize].is_empty();
-        if self.leader != player || !(after_own_trick || self.announcement_lead(player)) {
-            return Err(DeclareError::NotBetweenOwnTrickAndLead);
-        }
-        Ok(())
-    }
-
-    pub fn may_declare(&self, player: Player) -> bool {
-        self.check_declaration(player).is_ok()
-    }
-
-    pub fn can_declare(&self, player: Player) -> bool {
-        self.may_declare(player) && self.eyes(player) >= 66
-    }
-
-    pub fn declare(&mut self, player: Player) -> Result<(), DeclareError> {
-        self.check_declaration(player)?;
+    fn finish_at_66(&mut self, player: Player) -> bool {
         if self.eyes(player) < 66 {
-            let winner = player.other();
-            let closure = self.talon_closure();
-            let game_points = match closure {
-                Some(closure) if player == closure.closer => failed_closure_points(closure),
-                Some(closure) => declaration_points(closure.opponent_at_closing),
-                None => declaration_points(self.score(winner)),
-            };
-            self.phase = Phase::Finished(Outcome {
-                winner,
-                reason: FinishReason::FalseDeclaration,
-                game_points,
-                closure,
-            });
-            return Ok(());
+            return false;
         }
         match self.phase {
             Phase::ClosedTalon(closure) if player == closure.closer => {
                 self.phase = Phase::Finished(Outcome {
                     winner: player,
                     reason: FinishReason::SuccessfulClosure,
-                    game_points: declaration_points(closure.opponent_at_closing),
+                    game_points: winning_points(closure.opponent_at_closing),
                     closure: Some(closure),
                 });
             }
@@ -591,17 +521,17 @@ impl Game {
             _ => {
                 self.phase = Phase::Finished(Outcome {
                     winner: player,
-                    reason: FinishReason::Declared66,
-                    game_points: declaration_points(self.score(player.other())),
+                    reason: FinishReason::Reached66,
+                    game_points: winning_points(self.score(player.other())),
                     closure: None,
                 });
             }
         }
-        Ok(())
+        true
     }
 
     pub fn next_player(&self) -> Option<Player> {
-        if matches!(self.phase, Phase::Finished(_)) || self.awaiting_final_declaration() {
+        if matches!(self.phase, Phase::Finished(_)) {
             return None;
         }
         match self.played.len() {
@@ -663,7 +593,7 @@ impl Game {
 
     /// Records one play. A complete trick stays visible until it is resolved.
     pub fn play_card(&mut self, player: Player, card: Card) -> Result<(), PlayError> {
-        if matches!(self.phase, Phase::Finished(_)) || self.awaiting_final_declaration() {
+        if matches!(self.phase, Phase::Finished(_)) {
             return Err(PlayError::UnsupportedPhase(self.phase));
         }
         let expected = self.next_player().ok_or(PlayError::TrickPending)?;
@@ -698,6 +628,10 @@ impl Game {
         self.played.clear();
         self.leader = winner;
 
+        if self.finish_at_66(winner) || self.finish_at_66(winner.other()) {
+            return Ok(winner);
+        }
+
         if self.phase == Phase::OpenTalon {
             for (player, card) in [winner, winner.other()]
                 .into_iter()
@@ -710,9 +644,7 @@ impl Game {
             }
         } else if self.hands.iter().all(Vec::is_empty) {
             if let Phase::ClosedTalon(closure) = self.phase {
-                if winner != closure.closer || !self.can_declare(winner) {
-                    self.finish_failed_closure(closure);
-                }
+                self.finish_failed_closure(closure);
             } else {
                 self.phase = Phase::Finished(Outcome {
                     winner,
@@ -756,7 +688,7 @@ fn failed_closure_points(closure: TalonClosure) -> u8 {
     }
 }
 
-fn declaration_points(opponent: Score) -> u8 {
+fn winning_points(opponent: Score) -> u8 {
     match opponent {
         Score { eyes: 33.., .. } => 1,
         Score { tricks: 0, .. } => 3,
@@ -791,6 +723,9 @@ mod tests {
             }
             let mut played_tricks = Vec::new();
             for number in 1..=10 {
+                if game.result().is_some() {
+                    break;
+                }
                 let mut pair = [full_deck()[0]; 2];
                 for card in &mut pair {
                     let player = game.next_player().unwrap();
@@ -981,7 +916,7 @@ mod tests {
     }
 
     #[test]
-    fn closure_uses_the_frozen_score_for_wins_and_opponent_declarations() {
+    fn closure_uses_the_frozen_score_for_either_players_win() {
         let deck = full_deck();
         let cases = [(0, 3, 3), (1, 2, 2), (2, 1, 2)];
         for (count, success_points, failure_points) in cases {
@@ -990,18 +925,12 @@ mod tests {
             game.tricks[1] = [[deck[6], deck[11]], [deck[16], deck[17]]][..count].to_vec();
             game.close_talon(Player::Local).unwrap();
             let snapshot = game.talon_closure().unwrap();
-            let before = game.clone();
-            assert_eq!(
-                game.declare(Player::Opponent),
-                Err(DeclareError::NotBetweenOwnTrickAndLead)
-            );
-            assert_eq!(game, before);
             game.tricks[0] = [[0, 5], [10, 15], [1, 2], [7, 12]]
                 .map(|[a, b]| [deck[a], deck[b]])
                 .to_vec();
             game.tricks[1].push([deck[9], deck[14]]);
             let mut failed = game.clone();
-            game.declare(Player::Local).unwrap();
+            assert!(game.finish_at_66(Player::Local));
             let outcome = game.result().unwrap().outcome;
             assert_eq!(
                 (outcome.winner, outcome.reason, outcome.game_points),
@@ -1018,7 +947,7 @@ mod tests {
             );
             failed.leader = Player::Opponent;
             failed.tricks[1] = std::mem::take(&mut failed.tricks[0]);
-            failed.declare(Player::Opponent).unwrap();
+            assert!(failed.finish_at_66(Player::Opponent));
             let outcome = failed.result().unwrap().outcome;
             assert_eq!(
                 (outcome.winner, outcome.reason, outcome.game_points),
@@ -1033,7 +962,7 @@ mod tests {
     }
 
     #[test]
-    fn closed_talon_final_trick_requires_a_declaration_and_supports_forfeiting() {
+    fn closed_talon_final_trick_scores_66_before_failure() {
         let deck = full_deck();
         let mut game = Game::new(Player::Local, |upper| upper - 1);
         complete_first_trick(&mut game);
@@ -1047,10 +976,7 @@ mod tests {
         for hand in [&mut game, &mut low_score] {
             hand.play_card(Player::Local, deck[0]).unwrap();
             hand.play_card(Player::Opponent, deck[3]).unwrap();
-            let pending = hand.clone();
-            assert!(!hand.awaiting_final_declaration());
-            assert!(!hand.decline_final_declaration(Player::Local));
-            assert_eq!(*hand, pending);
+            assert!(hand.result().is_none());
             assert_eq!(hand.resolve_trick(), Ok(Player::Local));
             assert!(hand.legal_cards(Player::Local).is_empty());
         }
@@ -1065,10 +991,6 @@ mod tests {
         );
         let before = low_score.clone();
         assert_eq!(
-            low_score.declare(Player::Local),
-            Err(DeclareError::HandFinished)
-        );
-        assert_eq!(
             low_score.close_talon(Player::Local),
             Err(CloseError::TalonNotOpen)
         );
@@ -1077,15 +999,6 @@ mod tests {
             Err(PlayError::UnsupportedPhase(before.phase()))
         );
         assert_eq!(low_score, before);
-        assert!(game.awaiting_final_declaration());
-        assert!(game.result().is_none());
-        let mut declined = game.clone();
-        assert!(declined.decline_final_declaration(Player::Local));
-        assert_eq!(
-            declined.result().unwrap().outcome.reason,
-            FinishReason::FailedClosure
-        );
-        game.declare(Player::Local).unwrap();
         assert_eq!(
             game.result().unwrap().outcome.reason,
             FinishReason::SuccessfulClosure
@@ -1269,39 +1182,33 @@ mod tests {
     }
 
     #[test]
-    fn nontrump_marriage_with_empty_talon_can_enable_immediate_declaration() {
+    fn active_marriages_finish_without_an_opponent_reply() {
         let deck = full_deck();
-        let mut game = Game::new(Player::Local, |upper| upper - 1);
-        game.phase = Phase::EmptyTalon;
-        game.talon.clear();
-        game.tricks[0] = [[0, 5], [10, 15], [1, 4]]
-            .map(|[a, b]| [deck[a], deck[b]])
-            .to_vec();
-        game.hands[0] = vec![deck[2], deck[3]];
-        assert_eq!(game.eyes(Player::Local), 56);
-        assert!(!game.can_declare(Player::Local));
-        let event = game
-            .announce_and_play(Player::Local, Suit::Hearts, deck[3])
-            .unwrap();
-        assert_eq!(event.marriage.eyes, 20);
-        assert_eq!(game.eyes(Player::Local), 76);
-        assert!(game.can_declare_after_announcement(Player::Local));
-        let mut continuing = game.clone();
-        let reply = continuing.legal_cards(Player::Opponent)[0];
-        continuing.play_card(Player::Opponent, reply).unwrap();
-        assert_eq!(
-            continuing.declare(Player::Local),
-            Err(DeclareError::NotBetweenOwnTrickAndLead)
-        );
-        game.declare(Player::Local).unwrap();
-        assert_eq!(
-            game.result().unwrap().outcome.reason,
-            FinishReason::Declared66
-        );
-        assert_eq!(
-            game.announce_and_play(Player::Local, Suit::Hearts, deck[2]),
-            Err(MarriageError::CannotLead)
-        );
+        for (suit, king, ober, eyes) in [(Suit::Hearts, 2, 3, 20), (Suit::Bells, 7, 8, 40)] {
+            let mut game = Game::new(Player::Local, |upper| upper - 1);
+            game.phase = Phase::EmptyTalon;
+            game.talon.clear();
+            game.tricks[0] = [[0, 5], [10, 15], [1, 4]]
+                .map(|[a, b]| [deck[a], deck[b]])
+                .to_vec();
+            game.hands[0] = vec![deck[king], deck[ober]];
+            assert_eq!(game.eyes(Player::Local), 56);
+            let event = game
+                .announce_and_play(Player::Local, suit, deck[ober])
+                .unwrap();
+            assert_eq!(event.marriage.eyes, eyes);
+            assert_eq!(game.eyes(Player::Local), 56 + eyes);
+            assert_eq!(game.played, [(Player::Local, deck[ober])]);
+            assert_eq!(
+                game.result().unwrap().outcome.reason,
+                FinishReason::Reached66
+            );
+            assert_eq!(game.next_player(), None);
+            assert_eq!(
+                game.announce_and_play(Player::Local, suit, deck[king]),
+                Err(MarriageError::CannotLead)
+            );
+        }
     }
 
     #[test]
@@ -1358,9 +1265,9 @@ mod tests {
     fn deterministic_hands_preserve_all_cards_across_every_finish_reason() {
         let mut finishes = [false; 4];
         let mut rejected_exchange_before_last_draw = false;
-        let mut declared_after_marriage = false;
+        let mut finished_after_marriage = false;
         let mut announced_after_closing = false;
-        let mut opponent_declared_after_closing = false;
+        let mut opponent_reached_66_after_closing = false;
 
         for variant in [Variant::Soft, Variant::Sharp] {
             for seed in 0_u64..384 {
@@ -1391,17 +1298,6 @@ mod tests {
                     {
                         game.close_talon(leader).unwrap();
                     }
-                    if seed % 4 != 0 && game.can_declare(leader) {
-                        opponent_declared_after_closing |= game
-                            .talon_closure()
-                            .is_some_and(|closure| closure.closer != leader);
-                        game.declare(leader).unwrap();
-                        break;
-                    }
-                    if game.awaiting_final_declaration() {
-                        assert!(game.decline_final_declaration(leader));
-                        break;
-                    }
                     if game.talon.len() == 2
                         && game.hands[leader as usize].contains(&game.trump_under())
                     {
@@ -1419,12 +1315,8 @@ mod tests {
                         game.announce_and_play(leader, marriage.suit, marriage.king())
                             .unwrap();
                         announced_after_closing |= game.talon_closure().is_some();
-                        if seed % 4 != 0 && game.can_declare_after_announcement(leader) {
-                            opponent_declared_after_closing |= game
-                                .talon_closure()
-                                .is_some_and(|closure| closure.closer != leader);
-                            game.declare(leader).unwrap();
-                            declared_after_marriage = true;
+                        if game.result().is_some() {
+                            finished_after_marriage = true;
                             break;
                         }
                     } else {
@@ -1438,8 +1330,7 @@ mod tests {
                     game.play_card(reply, card).unwrap();
                     assert_deck_partition(&game);
                     let pending = game.clone();
-                    assert!(game.declare(leader).is_err());
-                    assert!(game.declare(reply).is_err());
+                    assert!(game.result().is_none());
                     assert!(game.play_card(reply, card).is_err());
                     assert_eq!(game, pending);
                     let winner = game.resolve_trick().unwrap();
@@ -1451,17 +1342,18 @@ mod tests {
                     .result()
                     .expect("the hand must finish within ten tricks");
                 finishes[match result.outcome.reason {
-                    FinishReason::Declared66 => 0,
+                    FinishReason::Reached66 => 0,
                     FinishReason::LastTrick => 1,
                     FinishReason::SuccessfulClosure => 2,
                     FinishReason::FailedClosure => 3,
-                    FinishReason::FalseDeclaration => {
-                        panic!("the simulation never declares below 66")
-                    }
                 }] = true;
                 assert!((1..=3).contains(&result.outcome.game_points));
+                opponent_reached_66_after_closing |=
+                    result.outcome.closure.is_some_and(|closure| {
+                        closure.closer != result.outcome.winner
+                            && result.score(result.outcome.winner).eyes >= 66
+                    });
                 let finished = game.clone();
-                assert!(game.declare(forehand).is_err());
                 assert!(game.resolve_trick().is_err());
                 assert!(game.close_talon(forehand).is_err());
                 assert!(game.exchange_trump(forehand).is_err());
@@ -1471,9 +1363,9 @@ mod tests {
         }
         assert_eq!(finishes, [true; 4]);
         assert!(rejected_exchange_before_last_draw);
-        assert!(declared_after_marriage);
+        assert!(finished_after_marriage);
         assert!(announced_after_closing);
-        assert!(opponent_declared_after_closing);
+        assert!(opponent_reached_66_after_closing);
     }
 
     #[test]
@@ -1644,7 +1536,7 @@ mod tests {
     }
 
     #[test]
-    fn ten_tricks_exhaust_all_cards_and_the_computer_obeys_forced_replies() {
+    fn the_computer_obeys_forced_replies_until_automatic_finish() {
         use crate::ai::choose_card;
         let mut forced_reply_seen = false;
         for seed in 0..16 {
@@ -1668,16 +1560,24 @@ mod tests {
                     game.play_card(player, card).unwrap();
                 }
                 let winner = game.resolve_trick().unwrap();
-                assert_eq!(game.next_player(), (trick < 9).then_some(winner));
+                assert_deck_partition(&game);
+                if game.result().is_some() {
+                    assert_eq!(game.next_player(), None);
+                    break;
+                }
+                assert_eq!(game.next_player(), Some(winner));
                 assert_eq!(game.talon.len(), 10_usize.saturating_sub(2 * (trick + 1)));
                 assert_eq!(game.hands.each_ref().map(Vec::len), [5.min(9 - trick); 2]);
-                assert_deck_partition(&game);
             }
             let result = game.result().unwrap();
-            assert_eq!(result.outcome.reason, FinishReason::LastTrick);
             assert_eq!(result.outcome.winner, game.leader());
-            assert_eq!(result.outcome.game_points, 1);
-            assert_eq!(game.eyes(Player::Local) + game.eyes(Player::Opponent), 120);
+            if result.outcome.reason == FinishReason::LastTrick {
+                assert_eq!(result.outcome.game_points, 1);
+                assert_eq!(game.eyes(Player::Local) + game.eyes(Player::Opponent), 120);
+            } else {
+                assert_eq!(result.outcome.reason, FinishReason::Reached66);
+                assert!(result.score(result.outcome.winner).eyes >= 66);
+            }
             let before = game.clone();
             for player in [Player::Local, Player::Opponent] {
                 assert!(game.legal_cards(player).is_empty());
@@ -1685,7 +1585,6 @@ mod tests {
                     game.play_card(player, full_deck()[0]),
                     Err(PlayError::UnsupportedPhase(game.phase()))
                 );
-                assert_eq!(game.declare(player), Err(DeclareError::HandFinished));
             }
             assert_eq!(game, before);
         }
@@ -1693,174 +1592,65 @@ mod tests {
     }
 
     #[test]
-    fn declaration_awards_points_from_both_scores_and_can_only_happen_once() {
+    fn resolved_trick_reaches_66_or_more_for_either_player_and_scores_once() {
         let deck = full_deck();
-        for (opponent_pairs, points) in [
-            (vec![], 3),
-            (vec![[6, 11]], 2),
-            (vec![[6, 11], [16, 17]], 1),
-        ] {
-            let mut game = Game::new(Player::Local, |upper| upper - 1);
-            game.tricks[0] = [[0, 5], [10, 15], [1, 2], [7, 12]]
-                .map(|[a, b]| [deck[a], deck[b]])
-                .to_vec();
-            game.tricks[1] = opponent_pairs
-                .iter()
-                .map(|&[a, b]| [deck[a], deck[b]])
-                .collect();
-            assert_eq!(game.eyes(Player::Local), 66);
-            assert!(game.can_declare(Player::Local));
-            assert_eq!(game.declare(Player::Local), Ok(()));
-            let result = game.result().unwrap();
-            assert_eq!(
-                result.outcome,
-                Outcome {
-                    winner: Player::Local,
-                    reason: FinishReason::Declared66,
-                    game_points: points,
-                    closure: None,
-                }
-            );
-            assert_eq!(result.loser, Player::Opponent);
-            assert_eq!(
-                result.score(Player::Local),
-                Score {
-                    eyes: 66,
-                    tricks: 4
-                }
-            );
-            assert_eq!(result.score(Player::Opponent).tricks, opponent_pairs.len());
-            let before = game.clone();
-            assert_eq!(game.declare(Player::Local), Err(DeclareError::HandFinished));
-            assert_eq!(
-                game.play_card(Player::Local, deck[4]),
-                Err(PlayError::UnsupportedPhase(game.phase()))
-            );
-            assert_eq!(game, before);
+        for (winner, reply, total) in [(Player::Local, 12, 66), (Player::Opponent, 16, 72)] {
+            for (opponent_pairs, points) in [
+                (vec![], 3),
+                (vec![[6, 11]], 2),
+                (vec![[6, 11], [16, 17]], 1),
+            ] {
+                let mut game = Game::new(winner, |upper| upper - 1);
+                game.tricks[winner as usize] = [[0, 5], [10, 15], [1, 2]]
+                    .map(|[a, b]| [deck[a], deck[b]])
+                    .to_vec();
+                game.tricks[winner.other() as usize] = opponent_pairs
+                    .iter()
+                    .map(|&[a, b]| [deck[a], deck[b]])
+                    .collect();
+                game.hands[winner as usize] = vec![deck[7]];
+                game.hands[winner.other() as usize] = vec![deck[reply]];
+                let talon_count = game.talon.len();
+                game.play_card(winner, deck[7]).unwrap();
+                game.play_card(winner.other(), deck[reply]).unwrap();
+                assert!(game.result().is_none());
+                game.resolve_trick().unwrap();
+                let result = game.result().unwrap();
+                assert_eq!(
+                    result.outcome,
+                    Outcome {
+                        winner,
+                        reason: FinishReason::Reached66,
+                        game_points: points,
+                        closure: None
+                    }
+                );
+                assert_eq!(result.score(winner).eyes, total);
+                assert_eq!(game.talon.len(), talon_count);
+                let before = game.clone();
+                assert_eq!(game.resolve_trick(), Err(ResolveError::IncompleteTrick));
+                assert_eq!(
+                    game.play_card(winner, deck[4]),
+                    Err(PlayError::UnsupportedPhase(game.phase()))
+                );
+                assert_eq!(game, before);
+            }
         }
-        assert_eq!(declaration_points(Score { eyes: 0, tricks: 1 }), 2);
-        assert_eq!(declaration_points(Score { eyes: 0, tricks: 0 }), 3);
+        assert_eq!(winning_points(Score { eyes: 0, tricks: 1 }), 2);
+        assert_eq!(winning_points(Score { eyes: 0, tricks: 0 }), 3);
         assert_eq!(
-            declaration_points(Score {
+            winning_points(Score {
                 eyes: 32,
                 tricks: 1
             }),
             2
         );
         assert_eq!(
-            declaration_points(Score {
+            winning_points(Score {
                 eyes: 33,
                 tricks: 1
             }),
             1
         );
-    }
-
-    #[test]
-    fn false_declaration_after_marriage_scores_the_opponents_current_standing() {
-        let deck = full_deck();
-        for (opponent_tricks, points) in [
-            (vec![], 3),
-            (vec![[deck[5], deck[10]]], 2),
-            (vec![[deck[5], deck[10]], [deck[15], deck[6]]], 1),
-        ] {
-            let mut game = Game::new(Player::Local, |upper| upper - 1);
-            game.tricks[1] = opponent_tricks;
-            let pair = game.legal_marriages(Player::Local)[0];
-            game.announce_and_play(Player::Local, pair.suit, pair.king())
-                .unwrap();
-            assert!(game.may_declare(Player::Local));
-            assert!(!game.can_declare(Player::Local));
-            assert_eq!(game.eyes(Player::Local), 0);
-            game.declare(Player::Local).unwrap();
-            let outcome = game.result().unwrap().outcome;
-            assert_eq!(outcome.winner, Player::Opponent);
-            assert_eq!(outcome.reason, FinishReason::FalseDeclaration);
-            assert_eq!(outcome.game_points, points);
-            let before = game.clone();
-            assert_eq!(game.declare(Player::Local), Err(DeclareError::HandFinished));
-            assert_eq!(game, before);
-        }
-    }
-
-    #[test]
-    fn false_declaration_with_closed_talon_uses_the_frozen_standing() {
-        let deck = full_deck();
-        for (tricks_at_closing, closer_loss, closer_win) in [
-            (vec![], 3, 3),
-            (vec![[deck[5], deck[10]], [deck[15], deck[6]]], 2, 1),
-        ] {
-            let mut game = Game::new(Player::Local, |upper| upper - 1);
-            complete_first_trick(&mut game);
-            game.tricks[1] = tricks_at_closing;
-            game.close_talon(Player::Local).unwrap();
-            let snapshot = game.talon_closure();
-            game.tricks[0].push([deck[0], deck[3]]);
-            game.tricks[1].push([deck[9], deck[14]]);
-            for (declarer, points) in [(Player::Local, closer_loss), (Player::Opponent, closer_win)]
-            {
-                let mut game = game.clone();
-                game.leader = declarer;
-                assert!(!game.can_declare(declarer));
-                game.declare(declarer).unwrap();
-                let outcome = game.result().unwrap().outcome;
-                assert_eq!(
-                    outcome,
-                    Outcome {
-                        winner: declarer.other(),
-                        reason: FinishReason::FalseDeclaration,
-                        game_points: points,
-                        closure: snapshot,
-                    }
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn declaration_requires_enough_eyes_and_must_precede_the_next_lead() {
-        let mut game = Game::new(Player::Local, |upper| upper - 1);
-        let before = game.clone();
-        assert_eq!(
-            game.declare(Player::Local),
-            Err(DeclareError::NotBetweenOwnTrickAndLead)
-        );
-        assert_eq!(game, before);
-        let deck = full_deck();
-        game.tricks[0] = [[0, 5], [10, 1], [6, 2], [7, 12]]
-            .map(|[a, b]| [deck[a], deck[b]])
-            .to_vec();
-        assert_eq!(game.eyes(Player::Local), 65);
-        assert!(!game.can_declare(Player::Local));
-        let mut falsely_declared = game.clone();
-        falsely_declared.declare(Player::Local).unwrap();
-        assert_eq!(
-            falsely_declared.result().unwrap().outcome.reason,
-            FinishReason::FalseDeclaration
-        );
-        game.tricks[0] = [[0, 5], [10, 15], [1, 6], [11, 16]]
-            .map(|[a, b]| [deck[a], deck[b]])
-            .to_vec();
-        game.tricks[1] = [[2, 7], [3, 8]].map(|[a, b]| [deck[a], deck[b]]).to_vec();
-        game.phase = Phase::EmptyTalon;
-        game.talon.clear();
-        game.hands = [vec![deck[4], deck[9]], vec![deck[13], deck[14]]];
-        assert_eq!(game.eyes(Player::Local), 84);
-        assert!(game.can_declare(Player::Local));
-        assert_eq!(game.clone().declare(Player::Local), Ok(()));
-        let before = game.clone();
-        assert_eq!(
-            game.declare(Player::Opponent),
-            Err(DeclareError::NotBetweenOwnTrickAndLead)
-        );
-        assert_eq!(game, before);
-        game.play_card(Player::Local, deck[4]).unwrap();
-        let before = game.clone();
-        assert_eq!(
-            game.declare(Player::Local),
-            Err(DeclareError::NotBetweenOwnTrickAndLead)
-        );
-        assert_eq!(game, before);
-        assert!(game.result().is_none());
     }
 }

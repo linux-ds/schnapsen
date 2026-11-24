@@ -52,13 +52,17 @@ pub(super) fn eyes(
         .zip([Some(local), opponent])
     {
         if let Some(value) = value {
-            let label = format!("{value} Augen");
+            let label = eye_label(value);
             let text_width = cr.text_extents(&label)?.x_advance();
             cr.move_to((x - text_width / 2.0).min(width - text_width - 4.0), y);
             cr.show_text(&label)?;
         }
     }
     cr.restore()
+}
+
+fn eye_label(value: u8) -> String {
+    value.to_string()
 }
 
 fn rounded_rect(cr: &Context, x: f64, y: f64, width: f64, height: f64, radius: f64) {
@@ -222,4 +226,16 @@ fn back(cr: &Context) -> Result<(), Error> {
     cr.line_to(0.32, 0.70);
     cr.close_path();
     cr.stroke()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::eye_label;
+
+    #[test]
+    fn eye_labels_display_only_digits() {
+        assert_eq!(eye_label(0), "0");
+        assert_eq!(eye_label(46), "46");
+        assert_eq!(eye_label(120), "120");
+    }
 }

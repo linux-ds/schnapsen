@@ -1,8 +1,8 @@
 use super::{
     cards::{Card, Suit},
     game::{
-        Announcement, CloseError, DeclareError, Exchange, ExchangeError, Game, MarriageError,
-        Outcome, PlayError, Player, ResolveError, Variant,
+        Announcement, CloseError, Exchange, ExchangeError, Game, MarriageError, Outcome, PlayError,
+        Player, ResolveError, Variant,
     },
 };
 
@@ -126,7 +126,9 @@ impl Match {
         suit: Suit,
         card: Card,
     ) -> Result<Announcement, MarriageError> {
-        self.hand.announce_and_play(player, suit, card)
+        let announcement = self.hand.announce_and_play(player, suit, card)?;
+        self.account_finished_hand();
+        Ok(announcement)
     }
 
     pub fn exchange_trump(&mut self, player: Player) -> Result<Exchange, ExchangeError> {
@@ -141,20 +143,6 @@ impl Match {
         let winner = self.hand.resolve_trick()?;
         self.account_finished_hand();
         Ok(winner)
-    }
-
-    pub fn declare(&mut self, player: Player) -> Result<(), DeclareError> {
-        self.hand.declare(player)?;
-        self.account_finished_hand();
-        Ok(())
-    }
-
-    pub fn decline_final_declaration(&mut self, player: Player) -> bool {
-        let declined = self.hand.decline_final_declaration(player);
-        if declined {
-            self.account_finished_hand();
-        }
-        declined
     }
 
     fn account_finished_hand(&mut self) {
@@ -207,7 +195,7 @@ mod tests {
         Outcome {
             winner,
             game_points,
-            reason: FinishReason::Declared66,
+            reason: FinishReason::Reached66,
             closure: None,
         }
     }
@@ -304,28 +292,70 @@ mod tests {
     }
 
     #[test]
-    fn false_declaration_counts_once_and_allows_the_next_hand() {
+    fn automatic_finish_counts_once_across_multiple_hands() {
         let mut session = session(SchneiderRule::Double);
-        let lead = session.hand().legal_cards(Player::Local)[0];
-        session.play_card(Player::Local, lead).unwrap();
-        let reply = session.hand().legal_cards(Player::Opponent)[0];
-        session.play_card(Player::Opponent, reply).unwrap();
-        assert_eq!(session.resolve_trick(), Ok(Player::Local));
-        session.declare(Player::Local).unwrap();
-        assert_eq!(
-            session.hand().result().unwrap().outcome.reason,
-            FinishReason::FalseDeclaration
-        );
-        assert_eq!(session.remaining, [7, 4]);
-        assert_eq!(
-            session.declare(Player::Local),
-            Err(DeclareError::HandFinished)
-        );
-        assert_eq!(session.completed_hands(), 1);
-        session.next_hand(ordered).unwrap();
-        assert!(session.hand().result().is_none());
-        assert_eq!(session.forehand(), Player::Opponent);
-        assert_eq!(session.remaining, [7, 4]);
+        let mut expected = [7_u8; 2];
+        for completed in 1..=2 {
+            while session.hand().result().is_none() {
+                let player = session.hand().next_player().unwrap();
+                let card = session.hand().legal_cards(player)[0];
+                session.play_card(player, card).unwrap();
+                if session.hand().view(player).played.len() == 2 {
+                    session.resolve_trick().unwrap();
+                }
+            }
+            let outcome = session.hand().result().unwrap().outcome;
+            expected[outcome.winner as usize] -= outcome.game_points;
+            assert_eq!(session.remaining, expected);
+            assert!(session.resolve_trick().is_err());
+            assert_eq!(session.completed_hands(), completed);
+            let next_forehand = session.forehand().other();
+            session.next_hand(ordered).unwrap();
+            assert!(session.hand().result().is_none());
+            assert_eq!(session.forehand(), next_forehand);
+            assert_eq!(session.remaining, expected);
+        }
+    }
+
+    #[test]
+    fn automatic_marriage_finish_is_accounted_before_an_opponent_reply() {
+        for seed in 0_u64..128 {
+            let mut random = seed;
+            let mut session = Match::new(
+                Player::Local,
+                Variant::Soft,
+                SchneiderRule::Double,
+                |upper| {
+                    random = random.wrapping_mul(6364136223846793005).wrapping_add(1);
+                    (random >> 32) as usize % upper
+                },
+            );
+            while let Some(player) = session.hand().next_player() {
+                if let Some(marriage) = session.hand().legal_marriages(player).first().copied() {
+                    session
+                        .announce_and_play(player, marriage.suit, marriage.king())
+                        .unwrap();
+                    if let Some(result) = session.hand().result() {
+                        let outcome = result.outcome;
+                        assert_eq!(outcome.reason, FinishReason::Reached66);
+                        assert_eq!(outcome.winner, player);
+                        assert_eq!(session.hand().view(player).played.len(), 1);
+                        assert_eq!(session.remaining(player), 7 - outcome.game_points);
+                        assert_eq!(session.remaining(player.other()), 7);
+                        assert!(session.resolve_trick().is_err());
+                        assert_eq!(session.completed_hands(), 1);
+                        return;
+                    }
+                } else {
+                    let card = session.hand().legal_cards(player)[0];
+                    session.play_card(player, card).unwrap();
+                }
+                if session.hand().view(player).played.len() == 2 {
+                    session.resolve_trick().unwrap();
+                }
+            }
+        }
+        panic!("test deals must include an automatic marriage finish");
     }
 
     #[test]
@@ -349,13 +379,6 @@ mod tests {
             let closer = session.resolve_trick().unwrap();
             session.close_talon(closer).unwrap();
             while session.hand().result().is_none() {
-                if let Some(player) = [Player::Local, Player::Opponent]
-                    .into_iter()
-                    .find(|&player| session.hand().can_declare(player))
-                {
-                    session.declare(player).unwrap();
-                    break;
-                }
                 let player = session.hand().next_player().unwrap();
                 let card = session.hand().legal_cards(player)[0];
                 session.play_card(player, card).unwrap();
@@ -372,7 +395,7 @@ mod tests {
             assert_eq!(session.remaining(outcome.winner), 7 - outcome.game_points);
             assert_eq!(session.remaining(outcome.winner.other()), 7);
             assert_eq!(session.completed_hands(), 1);
-            assert!(session.declare(outcome.winner).is_err());
+            assert!(session.resolve_trick().is_err());
             assert_eq!(session.completed_hands(), 1);
             if outcomes == [true, true] {
                 break;

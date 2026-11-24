@@ -115,7 +115,7 @@ Die exakten Abläufe und Sonderfälle müssen anhand einer ausdrücklich gewähl
 
 - Karten- und Stichzwang vor/nach dem Ende beziehungsweise Zudrehen des Talons.
 - Bedingungen für Ansagen und Trumpftausch.
-- Zeitpunkt der Augenwertung und der 66-Augen-Meldung.
+- Zeitpunkt der Augenwertung und des automatischen Abschlusses bei 66 Augen.
 - Spielpunkte und Sonderwertung bei zugedrehtem Talon.
 - Letzter Stich, Talonende und sonstige Rundenausgänge.
 - Unterschiede von *weich* und *scharf*, insbesondere das Einsehen alter Stiche.
@@ -132,11 +132,13 @@ Für Trumpftausch und Zudrehen gilt in beiden Profilen dieselbe projektbezogene 
 
 Für die weiche gegnerische Einsicht gelten bewusst weder ein Zeitfenster nach dem Stich noch eine Bindung an das Ausspielrecht. Die Oberfläche öffnet die Übersicht weiterhin erst in einem stabilen Spielzustand.
 
-Eine Ausmeldung kann nach einem eigenen gewonnenen Stich vor dem nächsten Ausspiel oder unmittelbar nach einer eigenen Ansage vor der Antwort erklärt werden. Eine zum falschen Zeitpunkt versuchte Aktion bleibt ohne Wirkung. Die Oberfläche verlangt eine ausdrückliche Bestätigung, unabhängig von der Spielhilfe. Nach einer eigenen Ansage kann der Mensch sich ausmelden oder das Spiel fortsetzen.
+Die Hand endet nach der vollständigen Auflösung eines Stichs oder unmittelbar nach einer wirksamen Ansage automatisch, sobald eine Seite mindestens 66 wirksame Augen hat. Die Ansagekarte wird regelkonform ausgespielt. Erreicht die Ansage 66 Augen, folgt keine gegnerische Antwort. Vorgemerkte Ansagen im weichen Profil zählen erst ab dem ersten eigenen gewonnenen Stich. Bei erreichtem Ziel endet die Hand vor dem Nachziehen oder einem weiteren Zug. Das ist eine bewusst gewählte Hausregel für Mensch und Computer.
 
-Eine bestätigte Ausmeldung unter 66 Augen beendet die Hand sofort zugunsten des Gegners. Ohne Talonsperre erhält er die Punkte, die der Ausmeldende bei gültiger Ausmeldung anhand des aktuellen gegnerischen Stands erhalten hätte. Das sind drei Punkte ohne gegnerischen Stich, zwei bei mindestens einem Stich und weniger als 33 Augen, sonst einer.
+Die gewöhnliche Wertung bringt drei Spielpunkte ohne gegnerischen Stich, zwei bei mindestens einem Stich und weniger als 33 gegnerischen Augen, sonst einen. Erreicht bei offenem oder leerem Talon niemand 66 Augen, gewinnt der letzte Stich einen Spielpunkt.
 
-Bei Talonsperre hat Wienerisch-Wertung Vorrang. Meldet sich der Zudreher falsch aus, erhält der Gegner nach dem beim Zudrehen eingefrorenen Stand drei Punkte ohne damaligen Stich, sonst zwei. Meldet sich der Gegner falsch aus, gewinnt der Zudreher mit der Wienerisch-Staffel von drei, zwei oder einem Punkt anhand desselben eingefrorenen Stands. Die Zuordnung dieses zweiten Sonderfalls ist eine Projektfestlegung, welche den Vorrang der Talonwertung mit dem Verlust des falsch Ausmeldenden verbindet.
+Bei Talonsperre hat Wienerisch-Wertung Vorrang. Der Zudreher gewinnt bei 66 wirksamen Augen nach der Staffel von drei, zwei oder einem Spielpunkt anhand des eingefrorenen gegnerischen Stands. Erreicht der Gegner zuerst 66 oder bleiben dem Zudreher die nötigen Augen bis zum Ende verwehrt, gewinnt der Gegner drei Spielpunkte, falls er beim Zudrehen stichlos war, sonst zwei.
+
+Die frühere manuelle Ausmeldung samt Strafwertung ist historisch im Regel-Audit dokumentiert. Sie gehört nicht zum automatischen Hausregelprofil.
 
 ## 5. Spielfeld und Interaktion
 
@@ -176,7 +178,7 @@ Die Zielgröße des Fensters beträgt ungefähr 680 × 560 logische Pixel. Die B
 - Die Übersicht kann Karten nach Stichfolge darstellen; eine zusätzliche Sortierung nach Farbe ist optional.
 - Ob und welche eigenen oder gegnerischen Stiche eingesehen werden dürfen, hängt vom gewählten Regelprofil ab.
 - Im weichen Profil liegen die beiden Karten des ersten vom Computer gewonnenen Stichs dauerhaft offen neben seinem Stapel. Der Stapel enthält nur die übrigen gewonnenen Karten. Im scharfen Profil bleiben alle Karten des Stapels verdeckt. Das ist eine projektbezogene Hausregel. Die bisherige Stichübersicht bleibt verfügbar.
-- Am eigenen Stapel stehen wirksame Augen einschließlich gutgeschriebener Ansagen. Die unabhängige Lernhilfe „Gegnerische Augen anzeigen“ ist standardmäßig aus. Restpunkte und Bummerl stehen separat.
+- Über dem eigenen Stapel stehen die wirksamen Augen einschließlich gutgeschriebener Ansagen als Zahl. Über dem gegnerischen Stapel kann dieselbe kompakte Anzeige eingeblendet werden. Beide Zahlen bleiben oberhalb der maximalen Stapelhöhe. Die unabhängige Lernhilfe „Gegnerische Augen anzeigen“ ist standardmäßig aus. Restpunkte und Bummerl stehen separat.
 - Spielhilfen, die mehr Informationen als die klassische Regel erlauben, müssen ausdrücklich als solche gekennzeichnet und optional sein.
 - Das Overlay ist auch mit Tastatur und Touch vollständig bedienbar.
 

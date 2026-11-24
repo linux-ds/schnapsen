@@ -17,10 +17,8 @@ use super::{review, table::Table};
 
 pub(super) struct TableControls {
     pub play: glib::WeakRef<gtk::Button>,
-    pub declare: glib::WeakRef<gtk::Button>,
     pub king: glib::WeakRef<gtk::Button>,
     pub ober: glib::WeakRef<gtk::Button>,
-    pub proceed: glib::WeakRef<gtk::Button>,
     pub announcement: glib::WeakRef<gtk::Label>,
     pub score: glib::WeakRef<gtk::Label>,
     pub advance: glib::WeakRef<gtk::Button>,
@@ -50,9 +48,6 @@ impl TableControls {
         if let Some(play) = self.play.upgrade() {
             play.set_visible(table.can_play_selected());
         }
-        if let Some(declare) = self.declare.upgrade() {
-            declare.set_visible(table.may_declare());
-        }
         let marriage = table.selected_marriage();
         if let Some(king) = self.king.upgrade() {
             if let Some(marriage) = marriage {
@@ -71,15 +66,6 @@ impl TableControls {
                 ober.set_label(&format!("{} ansagen · Ober", marriage.eyes));
             }
             ober.set_visible(option.is_some());
-        }
-        if let Some(proceed) = self.proceed.upgrade() {
-            proceed.set_label(if table.awaiting_final_declaration() {
-                "Ohne Ausmeldung beenden"
-            } else {
-                "Weiterspielen"
-            });
-            proceed
-                .set_visible(table.waiting_for_declaration() || table.awaiting_final_declaration());
         }
         if let Some(label) = self.announcement.upgrade() {
             let event = table.announcement().filter(|_| table.result().is_none());
@@ -190,7 +176,7 @@ impl TurnTimers {
         }
         self.confirm(
             "Talon zudrehen?",
-            "Ihr zieht keine Karten mehr nach. Ab jetzt gilt Farb-, Stich- und Trumpfzwang. Du musst dich mit mindestens 66 Augen ausmelden, sonst gewinnt der Computer.",
+            "Ihr zieht keine Karten mehr nach. Ab jetzt gilt Farb-, Stich- und Trumpfzwang. Du musst mindestens 66 wirksame Augen erreichen, sonst gewinnt der Computer.",
             "Zudrehen",
             |timers| {
                 let result = timers.state.borrow_mut().close_talon();
@@ -198,21 +184,6 @@ impl TurnTimers {
                 timers.show_feedback(message);
             },
         );
-    }
-
-    pub fn request_declaration(self: &Rc<Self>) {
-        if !self.input_blocked() && self.state.borrow().may_declare() {
-            self.confirm(
-                "Ausmelden?",
-                "Damit endet die Hand. Bei weniger als 66 Augen gewinnt der Gegner.",
-                "Ausmelden",
-                |timers| {
-                    if timers.state.borrow_mut().declare().is_ok() {
-                        timers.cancel();
-                    }
-                },
-            );
-        }
     }
 
     pub fn request_reset_bummerls(self: &Rc<Self>) {
@@ -360,7 +331,7 @@ impl TurnTimers {
             }
             notice.set_visible(result.is_some());
         }
-        if result.is_some() || table.waiting_for_declaration() || self.pending.borrow().is_some() {
+        if result.is_some() || self.pending.borrow().is_some() {
             return;
         }
 
@@ -403,8 +374,7 @@ fn result_message(result: HandResult) -> String {
         Player::Opponent => "Der Computer hat gewonnen",
     };
     let reason = match result.outcome.reason {
-        FinishReason::Declared66 => "Ausmeldung",
-        FinishReason::FalseDeclaration => "falsche Ausmeldung",
+        FinishReason::Reached66 => "66 Augen erreicht",
         FinishReason::LastTrick => "letzter Stich",
         FinishReason::SuccessfulClosure => "Zudrehen gelungen",
         FinishReason::FailedClosure => "Zudrehen fehlgeschlagen",
@@ -485,10 +455,8 @@ mod tests {
             pending: RefCell::new(None),
             controls: TableControls {
                 play: glib::WeakRef::new(),
-                declare: glib::WeakRef::new(),
                 king: glib::WeakRef::new(),
                 ober: glib::WeakRef::new(),
-                proceed: glib::WeakRef::new(),
                 announcement: glib::WeakRef::new(),
                 score: glib::WeakRef::new(),
                 advance: glib::WeakRef::new(),

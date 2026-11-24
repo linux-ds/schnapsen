@@ -7,6 +7,8 @@ pub(super) const MIN_WIDTH: i32 = 560;
 pub(super) const MIN_HEIGHT: i32 = 400;
 pub(super) const ASPECT: f64 = 1.4;
 pub(super) const CORNER_RADIUS: f64 = 0.085;
+const STACK_SPREAD: f64 = 0.19;
+const EYE_BASELINE_GAP: f64 = 5.0;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Rect {
@@ -91,7 +93,7 @@ pub(super) fn hand_at(placements: &[Placement], x: f64, y: f64) -> Option<(Card,
 fn stack_positions(base: Rect, count: usize) -> impl Iterator<Item = Rect> {
     // Start at the bottom card and limit the entire stack's footprint.
     let steps = count.saturating_sub(1).max(1) as f64;
-    let step = 0.048_f64.min(0.19 / steps) * base.width;
+    let step = 0.048_f64.min(STACK_SPREAD / steps) * base.width;
     (0..count).map(move |index| {
         let offset = index as f64 * step;
         Rect::new(base.x + offset, base.y - offset, base.width)
@@ -135,7 +137,11 @@ impl TableGeometry {
             top,
             own_y,
             hand_step,
-            opponent_stack: Rect::new(stack_x, top + stack_size * 0.19, stack_size),
+            opponent_stack: Rect::new(
+                stack_x,
+                top.max(20.0) + stack_size * STACK_SPREAD,
+                stack_size,
+            ),
             own_stack: Rect::new(
                 stack_x,
                 height - size * 0.25 - stack_size * ASPECT,
@@ -153,13 +159,12 @@ pub(super) fn eye_positions(width: f64, height: f64) -> [(f64, f64); 2] {
     let geometry = TableGeometry::new(width, height);
     let opponent = geometry.opponent_stack;
     let own = geometry.own_stack;
-    [
-        (own.x + own.width / 2.0, own.y - 10.0),
+    [own, opponent].map(|stack| {
         (
-            opponent.x + opponent.width / 2.0,
-            opponent.y + opponent.height() + 20.0,
-        ),
-    ]
+            stack.x + stack.width / 2.0,
+            stack.y - STACK_SPREAD * stack.width - EYE_BASELINE_GAP,
+        )
+    })
 }
 
 pub(super) fn arrange(table: &Table, width: f64, height: f64) -> Vec<Placement> {
@@ -486,6 +491,27 @@ mod tests {
                         rect.height()
                     };
                 assert!(bottom < center - 22.0 || rect.y > center + 22.0);
+            }
+        }
+    }
+
+    #[test]
+    fn eye_labels_stay_above_the_full_stack_at_all_window_sizes() {
+        for (width, height) in [
+            (f64::from(MIN_WIDTH), f64::from(MIN_HEIGHT)),
+            (680.0, 485.0),
+            (920.0, 605.0),
+            (1440.0, 400.0),
+        ] {
+            let geometry = TableGeometry::new(width, height);
+            let stacks = [geometry.own_stack, geometry.opponent_stack];
+            for ((center, baseline), stack) in eye_positions(width, height).into_iter().zip(stacks)
+            {
+                assert!(center > 14.0 && center < width - 14.0);
+                assert!(baseline >= 14.0);
+                for card in stack_positions(stack, 20) {
+                    assert!(baseline + 4.0 < card.y);
+                }
             }
         }
     }

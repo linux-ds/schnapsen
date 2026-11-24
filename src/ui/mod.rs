@@ -84,17 +84,15 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
     notice.add_css_class("osd");
     actions.append(&notice);
     let play = gtk::Button::with_label("Ausspielen");
-    let declare = gtk::Button::with_label("Ausmelden");
     let king = gtk::Button::new();
     let ober = gtk::Button::new();
-    let proceed = gtk::Button::with_label("Weiterspielen");
     let announcement = gtk::Label::new(None);
     let advance = gtk::Button::builder()
         .visible(false)
         .halign(gtk::Align::Center)
         .build();
     announcement.add_css_class("title-3");
-    for button in [&play, &king, &ober, &proceed, &declare, &advance] {
+    for button in [&play, &king, &ober, &advance] {
         button.set_visible(false);
         button.set_height_request(44);
         button.set_valign(gtk::Align::Center);
@@ -108,10 +106,8 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
     table_overlay.set_measure_overlay(&actions, false);
     let controls = turn::TableControls {
         play: play.downgrade(),
-        declare: declare.downgrade(),
         king: king.downgrade(),
         ober: ober.downgrade(),
-        proceed: proceed.downgrade(),
         announcement: announcement.downgrade(),
         score: score.downgrade(),
         advance: advance.downgrade(),
@@ -145,21 +141,6 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         }
         play_timers.refresh();
     });
-    let proceed_model = state.clone();
-    let proceed_turns = timers.clone();
-    let proceed_area = table.downgrade();
-    proceed.connect_clicked(move |_| {
-        if proceed_turns.input_blocked() {
-            return;
-        }
-        proceed_model.borrow_mut().continue_play();
-        if let Some(area) = proceed_area.upgrade() {
-            area.grab_focus();
-        }
-        proceed_turns.refresh();
-    });
-    let declaration_timers = timers.clone();
-    declare.connect_clicked(move |_| declaration_timers.request_declaration());
     let model = state.clone();
     let reset_timers = timers.clone();
     let reset_popover = popover.downgrade();
