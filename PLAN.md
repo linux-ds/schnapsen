@@ -30,7 +30,7 @@
 - Mit ausgewähltem Trumpf-Unter tauschen **T**, ein Klick oder ein Tippen auf die offene Trumpfkarte. Die neue Handkarte erhält den Fokus. Der Computer prüft den Tausch über dieselbe Engine vor seinem Ausspiel.
 - Klick oder Tippen auf den verdeckten Stapel und **Z** starten die Bestätigung zum Zudrehen. Die bisher offene Trumpfkarte erscheint danach verdeckt quer auf dem Stapel.
 - `src/ui/turn.rs` steuert Computerzug und Stichauflösung mit GLib-Timern. Der Computer beginnt auch als Vorhand. Beim Hand- oder Partiewechsel werden alte Timer entfernt.
-- `src/ui/review.rs` zeigt die erlaubten Stichpaare in einem eingebetteten, abgedunkelten Dialog mit anpassbarer Spaltenzahl und vertikalem Scrollen. Die Kartenzeichnung stammt vom Kartentisch. Klick oder Tippen außerhalb, Escape und „Schließen“ beenden die Übersicht mit Fokusrückgabe.
+- `src/ui/review.rs` zeigt die erlaubten Stichpaare in einem abgedunkelten GTK-Overlay mit anpassbarer Spaltenzahl und vertikalem Scrollen. Die Kartenzeichnung stammt vom Kartentisch. Klick oder Tippen außerhalb, Escape und „Schließen“ beenden die Übersicht mit Fokusrückgabe.
 - `src/ui/paint.rs` zeichnet Kartenfronten, einheitliche Rückseiten, Rahmen und Schatten mit Cairo. Ausgewählte Karten erhalten einen goldenen Rand, der sichtbare Tastaturfokus eine gestrichelte Innenlinie.
 - Die abschaltbare **Spielhilfe** markiert die legalen Karten. Über den Stichstapeln stehen die wirksamen eigenen Augen als Zahl und optional die gegnerischen Augen über eine separate Lernhilfe. Links stehen die Restpunkte und Bummerl beider Seiten sowie die Zahl abgeschlossener Hände. Kontextaktionen liegen in der Tischmitte. `src/ui/result.rs` zeigt den Handabschluss mit Augen und Spielpunkten. Beim Partieende kommen Bummerl und Reststand hinzu. Ausschließlich **Nächste Hand** oder **Neue Partie** schließen den Ergebnisdialog und setzen das Spiel fort.
 - Das Menü **Partie** konfiguriert Regelprofil und Schneiderwertung für die nächste Partie. Die erste Partie startet weich mit doppelter Schneiderwertung. Bummerl lassen sich über eine getrennte Aktion mit Bestätigung zurücksetzen.
@@ -172,6 +172,13 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-24 – Auftrag 20c
+
+- Der Wayland-Hit-Test der alten Stichübersicht zeigte außerhalb des Inhalts die libadwaita-Abdunklung als `GtkWindowHandle`. Die Anwendung hatte dort kein eigenes Eingabeziel. Sie wartete auf die Klicksequenz am Fenster im Capture-Pfad eines nativen Fenstergriffs, der eigene Gesten verarbeitet. Die alten synthetischen Prüfungen konnten diesen Unterschied zur realen Bedienung nicht ausschließen. [libadwaita-Floating-Sheet](https://github.com/GNOME/libadwaita/blob/main/src/adw-floating-sheet.c), [GTK-Fenstergriff](https://github.com/GNOME/gtk/blob/main/gtk/gtkwindowhandle.c)
+- Die Stichübersicht liegt nun über einer vollflächigen GTK-Zeichenfläche, die ihre eigenen Außengesten empfängt. Der Inhalt liegt als getrennte Vordergrundebene darüber. Der Tisch bleibt bis zum Schließen unbedienbar. Auswahl und Fokus bleiben erhalten. Ergebnisdialog und Bestätigungen verwenden weiterhin den bisherigen libadwaita-Dialogpfad.
+- Der Wayland-Hit-Test der neuen Fassung bestätigte an drei Stellen den eigenen Hintergrund als Ziel. Über die vollständige GDK-Broadway-Ereigniskette wurden Mausbewegung, Druck und Loslassen links, rechts und unterhalb der Übersicht, ein Außentipp, Innenklick und Innenwischgeste, Escape sowie die Schließen-Schaltfläche geprüft. Auswahl und Fokus blieben erhalten, Tischkarten wurden nicht ausgelöst. Eine manuelle Prüfung mit physischer Maus und Touch auf dem betroffenen System steht aus.
+- Formatierung, Cargo-Check, alle 58 Tests, Clippy mit `-D warnings`, Flatpak-Release-Build einschließlich Tests und Wayland-Fensterstart waren im GNOME SDK 51 erfolgreich.
 
 ### 2026-11-24 – Auftrag 20b
 

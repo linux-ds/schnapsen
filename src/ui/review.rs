@@ -1,20 +1,37 @@
 use adw::{gdk, glib, gtk, prelude::*};
 use schnapsen::core::game::{Player, ReviewedTrick};
-use std::{cell::Cell, rc::Rc};
 
 use super::paint;
 
-pub(super) fn dialog(owner: Player, tricks: Vec<ReviewedTrick>) -> adw::Dialog {
+pub(super) fn layer(
+    owner: Player,
+    tricks: Vec<ReviewedTrick>,
+    dismiss: impl Fn() + Clone + 'static,
+) -> (gtk::Overlay, gtk::Button) {
     let title = match owner {
         Player::Local => "Deine Stiche",
         Player::Opponent => "Erster Stich des Computers",
     };
-    let dialog = adw::Dialog::builder()
-        .title(title)
-        .presentation_mode(adw::DialogPresentationMode::Floating)
-        .content_width(720)
-        .content_height(420)
-        .build();
+    let layer = gtk::Overlay::new();
+    layer.set_halign(gtk::Align::Fill);
+    layer.set_valign(gtk::Align::Fill);
+    let scrim = gtk::DrawingArea::new();
+    scrim.set_can_target(true);
+    scrim.set_draw_func(|_, cr, _, _| {
+        cr.set_source_rgba(0.0, 0.0, 0.0, 0.43);
+        let _ = cr.paint();
+    });
+    layer.set_child(Some(&scrim));
+    let click = gtk::GestureClick::new();
+    click.set_button(gdk::BUTTON_PRIMARY);
+    let close_outside = dismiss.clone();
+    click.connect_released(move |click, count, _, _| {
+        if count == 1 {
+            click.set_state(gtk::EventSequenceState::Claimed);
+            close_outside();
+        }
+    });
+    scrim.add_controller(click);
     let flow = gtk::FlowBox::builder()
         .selection_mode(gtk::SelectionMode::None)
         .min_children_per_line(1)
@@ -56,91 +73,49 @@ pub(super) fn dialog(owner: Player, tricks: Vec<ReviewedTrick>) -> adw::Dialog {
     }
     let scroll = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Never)
+        .min_content_width(460)
+        .max_content_width(690)
+        .propagate_natural_width(true)
+        .min_content_height(275)
+        .max_content_height(360)
+        .propagate_natural_height(true)
         .vexpand(true)
         .child(&flow)
         .build();
     let close = gtk::Button::with_label("Schließen");
     close.add_css_class("suggested-action");
     let header = adw::HeaderBar::builder()
+        .show_start_title_buttons(false)
         .show_end_title_buttons(false)
+        .title_widget(&adw::WindowTitle::new(title, ""))
         .build();
     header.pack_end(&close);
     let content = adw::ToolbarView::new();
     content.add_top_bar(&header);
     content.set_content(Some(&scroll));
-    dialog.set_child(Some(&content));
-    dialog.set_focus(Some(&close));
-    let weak = dialog.downgrade();
-    close.connect_clicked(move |_| {
-        if let Some(dialog) = weak.upgrade() {
-            dialog.close();
-        }
-    });
+    content.add_css_class("card");
+    content.set_halign(gtk::Align::Center);
+    content.set_valign(gtk::Align::Center);
+    content.set_overflow(gtk::Overflow::Hidden);
+    content.set_margin_start(12);
+    content.set_margin_end(12);
+    content.set_margin_top(12);
+    content.set_margin_bottom(12);
+    layer.add_overlay(&content);
+    let close_button = dismiss.clone();
+    close.connect_clicked(move |_| close_button());
     let keys = gtk::EventControllerKey::new();
     keys.set_propagation_phase(gtk::PropagationPhase::Capture);
-    let weak = dialog.downgrade();
     keys.connect_key_pressed(move |_, key, _, _| {
         if key == gdk::Key::Escape {
-            if let Some(dialog) = weak.upgrade() {
-                dialog.close();
-            }
+            dismiss();
             glib::Propagation::Stop
         } else {
             glib::Propagation::Proceed
         }
     });
-    dialog.add_controller(keys);
-    dialog
-}
-
-pub(super) fn install_outside_dismiss(dialog: &adw::Dialog, window: &gtk::Window) {
-    let click = gtk::GestureClick::new();
-    click.set_button(gdk::BUTTON_PRIMARY);
-    click.set_propagation_phase(gtk::PropagationPhase::Capture);
-
-    let outside_press = Rc::new(Cell::new(false));
-    let dismissed = outside_press.clone();
-    let weak = dialog.downgrade();
-    click.connect_pressed(move |click, _, x, y| {
-        let outside = weak
-            .upgrade()
-            .is_some_and(|dialog| outside_dialog(&dialog, click, x, y));
-        dismissed.set(outside);
-        if outside {
-            // Consume the sequence before the table can see it.
-            click.set_state(gtk::EventSequenceState::Claimed);
-        }
-    });
-
-    let weak = dialog.downgrade();
-    click.connect_released(move |click, _, x, y| {
-        if outside_press.replace(false) {
-            if let Some(dialog) = weak.upgrade() {
-                if outside_dialog(&dialog, click, x, y) {
-                    dialog.close();
-                }
-            }
-        }
-    });
-
-    let weak_click = click.downgrade();
-    let weak_window = window.downgrade();
-    dialog.connect_closed(move |_| {
-        if let (Some(window), Some(click)) = (weak_window.upgrade(), weak_click.upgrade()) {
-            window.remove_controller(&click);
-        }
-    });
-    window.add_controller(click);
-}
-
-fn outside_dialog(dialog: &adw::Dialog, click: &gtk::GestureClick, x: f64, y: f64) -> bool {
-    let bounds = dialog
-        .child()
-        .zip(click.widget())
-        .and_then(|(child, window)| child.compute_bounds(&window));
-    bounds.is_some_and(|bounds| {
-        !bounds.contains_point(&gtk::graphene::Point::new(x as f32, y as f32))
-    })
+    layer.add_controller(keys);
+    (layer, close)
 }
 
 fn card_name(card: schnapsen::core::cards::Card) -> String {

@@ -68,6 +68,7 @@ pub(super) struct TurnTimers {
     area: glib::WeakRef<gtk::DrawingArea>,
     advance: RefCell<Option<AdvanceHand>>,
     overlay: glib::WeakRef<adw::ToastOverlay>,
+    review_host: glib::WeakRef<gtk::Overlay>,
     feedback: RefCell<Option<adw::Toast>>,
     pending: RefCell<Option<glib::SourceId>>,
     controls: TableControls,
@@ -81,6 +82,7 @@ impl TurnTimers {
         state: &Rc<RefCell<Table>>,
         area: &gtk::DrawingArea,
         overlay: &adw::ToastOverlay,
+        review_host: &gtk::Overlay,
         controls: TableControls,
     ) -> Rc<Self> {
         Rc::new(Self {
@@ -88,6 +90,7 @@ impl TurnTimers {
             area: area.downgrade(),
             advance: RefCell::new(None),
             overlay: overlay.downgrade(),
+            review_host: review_host.downgrade(),
             feedback: RefCell::new(None),
             pending: RefCell::new(None),
             controls,
@@ -198,7 +201,7 @@ impl TurnTimers {
                 apply(&timers);
             }
         });
-        self.present_modal(&dialog, false);
+        self.present_modal(&dialog);
     }
 
     pub fn input_blocked(&self) -> bool {
@@ -226,10 +229,56 @@ impl TurnTimers {
                 return;
             }
         };
-        self.present_modal(&review::dialog(owner, tricks), true);
+        let Some(host) = self.review_host.upgrade() else {
+            return;
+        };
+        let Some(window) = host.root().and_downcast::<gtk::Window>() else {
+            return;
+        };
+        let Some(background) = host.child() else {
+            return;
+        };
+        let previous_focus = GtkWindowExt::focus(&window).map(|widget| widget.downgrade());
+        self.modal_open.set(true);
+        self.state.borrow_mut().cancel_mouse_click();
+        self.dismiss_feedback();
+
+        let weak = Rc::downgrade(self);
+        let layer_ref = Rc::new(glib::WeakRef::<gtk::Overlay>::new());
+        let close_layer = layer_ref.clone();
+        let (layer, close) = review::layer(owner, tricks, move || {
+            if let (Some(timers), Some(layer)) = (weak.upgrade(), close_layer.upgrade()) {
+                let Some(host) = timers.review_host.upgrade() else {
+                    return;
+                };
+                host.remove_overlay(&layer);
+                if let Some(background) = host.child() {
+                    background.set_sensitive(true);
+                }
+                timers.restore_focus(previous_focus.as_ref());
+            }
+        });
+        layer_ref.set(Some(&layer));
+        background.set_sensitive(false);
+        host.add_overlay(&layer);
+        host.set_measure_overlay(&layer, false);
+        close.grab_focus();
     }
 
-    fn present_modal(self: &Rc<Self>, dialog: &impl IsA<adw::Dialog>, dismiss_outside: bool) {
+    fn restore_focus(self: &Rc<Self>, previous_focus: Option<&glib::WeakRef<gtk::Widget>>) {
+        self.modal_open.set(false);
+        self.refresh();
+        let restored = previous_focus
+            .and_then(glib::WeakRef::upgrade)
+            .is_some_and(|widget| widget.grab_focus());
+        if !restored {
+            if let Some(area) = self.area.upgrade() {
+                area.grab_focus();
+            }
+        }
+    }
+
+    fn present_modal(self: &Rc<Self>, dialog: &impl IsA<adw::Dialog>) {
         if self.input_blocked() {
             return;
         }
@@ -243,22 +292,9 @@ impl TurnTimers {
         let weak = Rc::downgrade(self);
         dialog.connect_closed(move |_| {
             if let Some(timers) = weak.upgrade() {
-                timers.modal_open.set(false);
-                timers.refresh();
-                let restored = previous_focus
-                    .as_ref()
-                    .and_then(glib::WeakRef::upgrade)
-                    .is_some_and(|widget| widget.grab_focus());
-                if !restored {
-                    if let Some(area) = timers.area.upgrade() {
-                        area.grab_focus();
-                    }
-                }
+                timers.restore_focus(previous_focus.as_ref());
             }
         });
-        if dismiss_outside {
-            review::install_outside_dismiss(dialog.upcast_ref(), &window);
-        }
         self.modal_open.set(true);
         self.state.borrow_mut().cancel_mouse_click();
         if let Some(source) = self.pending.take() {
@@ -330,7 +366,7 @@ impl TurnTimers {
                     button.set_sensitive(true);
                 }
             });
-            self.present_modal(&dialog, false);
+            self.present_modal(&dialog);
             return;
         }
         if self.pending.borrow().is_some() {
@@ -431,6 +467,7 @@ mod tests {
             area: glib::WeakRef::new(),
             advance: RefCell::new(None),
             overlay: glib::WeakRef::new(),
+            review_host: glib::WeakRef::new(),
             feedback: RefCell::new(None),
             pending: RefCell::new(None),
             controls: TableControls {

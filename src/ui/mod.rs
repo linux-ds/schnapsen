@@ -62,6 +62,8 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         choose_index,
     ))));
     let overlay = adw::ToastOverlay::new();
+    let modal_layer = gtk::Overlay::new();
+    modal_layer.set_child(Some(&overlay));
     let table_overlay = gtk::Overlay::new();
     table_overlay.set_vexpand(true);
     table_overlay.set_child(Some(&table));
@@ -90,7 +92,7 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         ober: ober.downgrade(),
         announcement: announcement.downgrade(),
     };
-    let timers = turn::TurnTimers::new(&state, &table, &overlay, controls);
+    let timers = turn::TurnTimers::new(&state, &table, &overlay, &modal_layer, controls);
     let touch = input::attach(&table, &state, &timers);
     for (button, play_ober) in [(&king, false), (&ober, true)] {
         let model = state.clone();
@@ -194,7 +196,7 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         .title("Schnapsen")
         .default_width(680)
         .default_height(560)
-        .content(&overlay)
+        .content(&modal_layer)
         .build();
     GtkWindowExt::set_focus(&window, Some(&table));
     timers.refresh();
