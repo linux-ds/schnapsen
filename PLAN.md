@@ -173,6 +173,14 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 
 ## Änderungsprotokoll
 
+### 2026-11-24 – Auftrag 19
+
+- Die Deckelung auf 138 logische Pixel Kartenbreite entfernt. Die Breite der eigenen Handkarten ergibt sich aus `min(Zeichenbreite / 6,45, Zeichenhöhe / 4,55)`. Relative Größen, Abstände, Stapelversätze, Auswahlhub, Symbole und Augenanzeigen wachsen mit. Der Platz für native GTK-Aktionen bleibt reserviert.
+- Automatisierte Layoutprüfung bei 560 × 400, 680 × 560, 1280 × 720, 1920 × 1080, 2560 × 1440 und 3840 × 2160 logischen Pixeln. Zusätzliche Formate waren 2560 × 400, 560 × 900 und 200 × 130. Geprüft wurden fortgesetztes Wachstum, proportionale 3-fach-Skalierung, Spielbereiche bei offenem und gesperrtem Talon, freie Aktionszone, Stapelabstand und Kartentreffer nach Größenänderung.
+- Cairo-Testflächen mit 100, 150 und 200 Prozent Geräteskalierung bestätigten dieselbe logische Kartenposition. Die Anwendung übernimmt die GTK-/Compositor-Skalierung ohne zusätzlichen Faktor. Physischer 4K-Monitor und GNOME-Skalierung auf realen Ausgaben bleiben manuell zu prüfen.
+- Formatierung, Cargo-Check, alle 57 Tests und Clippy mit `-D warnings` waren im GNOME SDK 51 erfolgreich. Flatpak-Release-Build und Wayland-Fensterstart waren erfolgreich. Ein isolierter GTK-Test mit synthetischen Broadway-Ereignissen bestätigte Doppelklick, Tippen und Wischen sowie eine erhaltene Auswahl nach Zuteilung einer 3840 × 2160 großen Zeichenfläche.
+
+
 ### 2026-11-24 – Auftrag 18
 
 - Die Engine beendet die Hand ab 66 wirksamen Augen nach vollständiger Stichauflösung oder sofort nach einer wirksamen Ansage. Vorgemerkte Ansagen zählen erst nach dem ersten eigenen Stich. Die Prüfung geht dem Nachziehen und der Letztstichwertung voraus. Die Wienerisch-Wertung bleibt erhalten und die Partie rechnet jede Hand genau einmal ab.

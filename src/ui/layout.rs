@@ -8,7 +8,8 @@ pub(super) const MIN_HEIGHT: i32 = 400;
 pub(super) const ASPECT: f64 = 1.4;
 pub(super) const CORNER_RADIUS: f64 = 0.085;
 const STACK_SPREAD: f64 = 0.19;
-const EYE_BASELINE_GAP: f64 = 5.0;
+const EYE_BASELINE_GAP: f64 = 0.058;
+const EYE_FONT_SIZE: f64 = 0.162;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Rect {
@@ -124,7 +125,7 @@ struct TableGeometry {
 
 impl TableGeometry {
     fn new(width: f64, height: f64) -> Self {
-        let size = (width / 6.45).min(height / 4.55).min(138.0);
+        let size = (width / 6.45).min(height / 4.55);
         let center = width / 2.0;
         let top = size * 0.18;
         let own_y = height - size * (ASPECT + 0.25);
@@ -137,11 +138,7 @@ impl TableGeometry {
             top,
             own_y,
             hand_step,
-            opponent_stack: Rect::new(
-                stack_x,
-                top.max(20.0) + stack_size * STACK_SPREAD,
-                stack_size,
-            ),
+            opponent_stack: Rect::new(stack_x, size * 0.23 + stack_size * STACK_SPREAD, stack_size),
             own_stack: Rect::new(
                 stack_x,
                 height - size * 0.25 - stack_size * ASPECT,
@@ -151,20 +148,21 @@ impl TableGeometry {
     }
 
     fn action_top(self, height: f64) -> f64 {
-        height / 2.0 - 28.0_f64.min(height * 0.07)
+        // Leave space for the native 44 px action row, including on a
+        // narrow drawing area whose cards are limited by its width.
+        height / 2.0 - (self.size * 0.32).max(28.0_f64.min(height * 0.07))
     }
 }
 
-pub(super) fn eye_positions(width: f64, height: f64) -> [(f64, f64); 2] {
+pub(super) fn eye_layout(width: f64, height: f64) -> ([(f64, f64); 2], f64) {
     let geometry = TableGeometry::new(width, height);
-    let opponent = geometry.opponent_stack;
-    let own = geometry.own_stack;
-    [own, opponent].map(|stack| {
+    let positions = [geometry.own_stack, geometry.opponent_stack].map(|stack| {
         (
             stack.x + stack.width / 2.0,
-            stack.y - STACK_SPREAD * stack.width - EYE_BASELINE_GAP,
+            stack.y - STACK_SPREAD * stack.width - EYE_BASELINE_GAP * geometry.size,
         )
-    })
+    });
+    (positions, EYE_FONT_SIZE * geometry.size)
 }
 
 pub(super) fn arrange(table: &Table, width: f64, height: f64) -> Vec<Placement> {
@@ -317,6 +315,17 @@ mod tests {
         game::{Player, Variant},
         match_play::{Match, SchneiderRule},
     };
+
+    const VIEWPORTS: [(f64, f64); 8] = [
+        (560.0, 400.0),
+        (680.0, 560.0),
+        (1280.0, 720.0),
+        (1920.0, 1080.0),
+        (2560.0, 1440.0),
+        (3840.0, 2160.0),
+        (2560.0, 400.0),
+        (560.0, 900.0),
+    ];
 
     fn table() -> Table {
         Table::new(Match::new(
@@ -474,12 +483,7 @@ mod tests {
         }
         let mut table = Table::new(session);
         table.toggle(table.view().hand[0]);
-        for (width, height) in [
-            (MIN_WIDTH.into(), MIN_HEIGHT.into()),
-            (680.0, 560.0),
-            (920.0, 650.0),
-            (1440.0, 400.0),
-        ] {
+        for (width, height) in VIEWPORTS {
             let cards = arrange(&table, width, height);
             let center = height / 2.0;
             for entry in cards {
@@ -497,20 +501,15 @@ mod tests {
 
     #[test]
     fn eye_labels_stay_above_the_full_stack_at_all_window_sizes() {
-        for (width, height) in [
-            (f64::from(MIN_WIDTH), f64::from(MIN_HEIGHT)),
-            (680.0, 485.0),
-            (920.0, 605.0),
-            (1440.0, 400.0),
-        ] {
+        for (width, height) in VIEWPORTS {
             let geometry = TableGeometry::new(width, height);
             let stacks = [geometry.own_stack, geometry.opponent_stack];
-            for ((center, baseline), stack) in eye_positions(width, height).into_iter().zip(stacks)
-            {
-                assert!(center > 14.0 && center < width - 14.0);
-                assert!(baseline >= 14.0);
+            let (positions, font_size) = eye_layout(width, height);
+            for ((center, baseline), stack) in positions.into_iter().zip(stacks) {
+                assert!(center > font_size && center < width - font_size);
+                assert!(baseline >= font_size);
                 for card in stack_positions(stack, 20) {
-                    assert!(baseline + 4.0 < card.y);
+                    assert!(baseline + 0.28 * font_size < card.y);
                 }
             }
         }
@@ -539,14 +538,7 @@ mod tests {
         let mut table = table();
         table.toggle(table.view().hand[1]);
         table.toggle(table.view().hand[2]);
-        for (width, height) in [
-            (560.0, 400.0),
-            (920.0, 600.0),
-            (560.0, 900.0),
-            (1440.0, 400.0),
-            (1920.0, 1080.0),
-            (200.0, 130.0),
-        ] {
+        for (width, height) in VIEWPORTS.into_iter().chain([(200.0, 130.0)]) {
             let cards = arrange(&table, width, height);
             let zones = [0..5, 5..15, 15..20];
             for card in &cards {
@@ -577,6 +569,84 @@ mod tests {
     }
 
     #[test]
+    fn cards_keep_growing_and_scale_proportionally_to_the_logical_viewport() {
+        let table = table();
+        let mut previous = 0.0;
+        for (width, height) in VIEWPORTS[..6].iter().copied() {
+            let cards = arrange(&table, width, height);
+            let size = cards.iter().find(|card| card.in_hand).unwrap().rect.width;
+            assert!(size > previous, "hand did not grow at {width}×{height}");
+            assert!((cards[0].rect.width / size - 0.48).abs() < 1e-9);
+            let trump = cards.iter().find(|card| card.open_trump).unwrap();
+            assert!((trump.rect.width / size - 0.70).abs() < 1e-9);
+            previous = size;
+        }
+        let reference = arrange(&table, 1280.0, 720.0);
+        let large = arrange(&table, 3840.0, 2160.0);
+        for (small, large) in reference.iter().zip(&large) {
+            assert!((3.0 * small.rect.width - large.rect.width).abs() < 1e-9);
+            assert!((3.0 * small.rect.x - large.rect.x).abs() < 1e-9);
+            assert!((3.0 * small.rect.y - large.rect.y).abs() < 1e-9);
+        }
+        let (small_positions, small_font) = eye_layout(1280.0, 720.0);
+        let (large_positions, large_font) = eye_layout(3840.0, 2160.0);
+        assert!((3.0 * small_font - large_font).abs() < 1e-9);
+        for ((x, y), (large_x, large_y)) in small_positions.into_iter().zip(large_positions) {
+            assert!((3.0 * x - large_x).abs() < 1e-9);
+            assert!((3.0 * y - large_y).abs() < 1e-9);
+        }
+    }
+
+    #[test]
+    fn full_hands_stay_inside_the_viewport_in_open_and_closed_states() {
+        for closed in [false, true] {
+            let mut session = Match::new(
+                Player::Opponent,
+                Variant::Soft,
+                SchneiderRule::Double,
+                |upper| upper - 1,
+            );
+            while let Some(player) = session.hand().next_player() {
+                if closed && session.hand().check_close_talon(player).is_ok() {
+                    session.close_talon(player).unwrap();
+                }
+                let card = session.hand().legal_cards(player)[0];
+                session.play_card(player, card).unwrap();
+                let mut table = Table::new(session);
+                for card in table
+                    .view()
+                    .hand
+                    .iter()
+                    .take(2)
+                    .copied()
+                    .collect::<Vec<_>>()
+                {
+                    table.toggle(card);
+                }
+                for (width, height) in VIEWPORTS {
+                    let placements = arrange(&table, width, height);
+                    assert_eq!(placements.len(), 20);
+                    for card in placements {
+                        let rect = card.rect;
+                        let (w, h) = if card.sideways {
+                            (rect.height(), rect.width)
+                        } else {
+                            (rect.width, rect.height())
+                        };
+                        assert!(rect.x >= 0.0 && rect.x + w <= width);
+                        assert!(rect.y >= 0.0 && rect.y + h <= height);
+                    }
+                }
+                session = table.into_session();
+                if session.hand().view(player).played.len() == 2 {
+                    session.resolve_trick().unwrap();
+                }
+            }
+            assert_eq!(session.hand().talon_closure().is_some(), closed);
+        }
+    }
+
+    #[test]
     fn hit_testing_uses_the_top_visible_card_and_tracks_selection_on_resize() {
         let mut table = table();
         let first = table.view().hand[0];
@@ -590,7 +660,7 @@ mod tests {
         assert!(hand_at(&placements, left.x, left.y).is_none());
         table.toggle(first);
         table.toggle(second);
-        for (width, height) in [(560.0, 400.0), (920.0, 600.0)] {
+        for (width, height) in VIEWPORTS {
             let placements = arrange(&table, width, height);
             for card in [first, second] {
                 let item = placements

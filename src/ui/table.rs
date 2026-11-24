@@ -40,6 +40,11 @@ impl Table {
         }
     }
 
+    #[cfg(test)]
+    pub fn into_session(self) -> Match {
+        self.session
+    }
+
     pub fn session(&self) -> &Match {
         &self.session
     }

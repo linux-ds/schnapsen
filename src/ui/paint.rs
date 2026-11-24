@@ -2,7 +2,7 @@ use adw::gtk::cairo::{Context, Error, FontSlant, FontWeight};
 use schnapsen::core::cards::{Card, Rank, Suit};
 use std::f64::consts::TAU;
 
-use super::layout::{eye_positions, Face, Placement, ASPECT, CORNER_RADIUS};
+use super::layout::{eye_layout, Face, Placement, ASPECT, CORNER_RADIUS};
 
 pub(super) fn table(
     cr: &Context,
@@ -45,16 +45,14 @@ pub(super) fn eyes(
 ) -> Result<(), Error> {
     cr.save()?;
     cr.select_font_face("Sans", FontSlant::Normal, FontWeight::Bold);
-    cr.set_font_size(14.0);
+    let (positions, font_size) = eye_layout(width, height);
+    cr.set_font_size(font_size);
     cr.set_source_rgb(0.93, 0.95, 0.87);
-    for ((x, y), value) in eye_positions(width, height)
-        .into_iter()
-        .zip([Some(local), opponent])
-    {
+    for ((x, y), value) in positions.into_iter().zip([Some(local), opponent]) {
         if let Some(value) = value {
             let label = eye_label(value);
             let text_width = cr.text_extents(&label)?.x_advance();
-            cr.move_to((x - text_width / 2.0).min(width - text_width - 4.0), y);
+            cr.move_to(x - text_width / 2.0, y);
             cr.show_text(&label)?;
         }
     }
@@ -230,7 +228,47 @@ fn back(cr: &Context) -> Result<(), Error> {
 
 #[cfg(test)]
 mod tests {
-    use super::eye_label;
+    use super::*;
+    use crate::ui::layout::Rect;
+    use adw::gtk::cairo::{Format, ImageSurface};
+
+    #[test]
+    fn cairo_device_scale_keeps_card_geometry_in_logical_pixels() {
+        let card = Placement {
+            face: Face::Back,
+            rect: Rect::new(40.0, 30.0, 80.0),
+            in_hand: false,
+            open_trump: false,
+            talon_stack: false,
+            trick_owner: None,
+            sideways: false,
+            selected: false,
+            highlighted: false,
+        };
+        for scale in [1.0, 1.5, 2.0] {
+            let mut surface = ImageSurface::create(
+                Format::ARgb32,
+                (160.0 * scale) as i32,
+                (160.0 * scale) as i32,
+            )
+            .unwrap();
+            surface.set_device_scale(scale, scale);
+            let cr = Context::new(&surface).unwrap();
+            table(&cr, std::slice::from_ref(&card), None).unwrap();
+            drop(cr);
+            let stride = surface.stride() as usize;
+            let data = surface.data().unwrap();
+            let pixel = |x: f64, y: f64| {
+                let start = (y * scale) as usize * stride + (x * scale) as usize * 4;
+                u32::from_ne_bytes(data[start..start + 4].try_into().unwrap())
+            };
+            let background = pixel(20.0, 80.0);
+            assert_eq!(pixel(34.0, 80.0), background);
+            assert_ne!(pixel(46.0, 80.0), background);
+            assert_ne!(pixel(114.0, 80.0), background);
+            assert_eq!(pixel(126.0, 80.0), background);
+        }
+    }
 
     #[test]
     fn eye_labels_display_only_digits() {
