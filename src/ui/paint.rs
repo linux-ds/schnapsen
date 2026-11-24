@@ -120,16 +120,6 @@ pub(super) fn trump(cr: &Context, width: f64, height: f64, suit: Suit) -> Result
     let (r, g, b) = suit_color(suit);
     cr.set_source_rgb(r, g, b);
     symbol(cr, suit, x, y, radius * 1.35)?;
-    let (r, g, b) = TABLE_TEXT;
-    cr.set_source_rgb(r, g, b);
-    cr.select_font_face("Sans", FontSlant::Normal, FontWeight::Bold);
-    cr.set_font_size(radius * 0.56);
-    let metrics = cr.text_extents("Trumpf")?;
-    cr.move_to(
-        x - metrics.x_bearing() - metrics.width() / 2.0,
-        y + radius * 1.76,
-    );
-    cr.show_text("Trumpf")?;
     cr.restore()
 }
 

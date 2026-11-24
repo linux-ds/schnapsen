@@ -175,8 +175,7 @@ pub(super) struct StatusLayout {
 pub(super) fn trump_indicator(width: f64, height: f64) -> (f64, f64, f64) {
     let unit = TableGeometry::new(width, height).size;
     let radius = unit * 0.18;
-    // Center the combined symbol and caption, which extends below the badge.
-    (width - unit * 0.54, height * 0.5 - radius * 0.42, radius)
+    (width - unit * 0.54, height * 0.5, radius)
 }
 
 pub(super) fn status_layout(width: f64, height: f64) -> StatusLayout {
@@ -658,7 +657,7 @@ mod tests {
                     let (trump_x, trump_y, radius) = trump_indicator(width, height);
                     assert!(trump_x - radius > width / 2.0 + 180.0);
                     assert!(trump_x + radius < width);
-                    assert!(trump_y - radius > 0.0 && trump_y + 2.0 * radius < height);
+                    assert!(trump_y - radius > 0.0 && trump_y + radius < height);
                     let placements = arrange(&table, width, height);
                     assert_eq!(placements.len(), 20);
                     for card in placements {
@@ -671,9 +670,7 @@ mod tests {
                         assert!(rect.x > status.x + status.width / 2.0);
                         assert!(rect.x + w <= width);
                         if rect.x + w >= trump_x - radius {
-                            assert!(
-                                rect.y + h < trump_y - radius || rect.y > trump_y + 2.0 * radius
-                            );
+                            assert!(rect.y + h < trump_y - radius || rect.y > trump_y + radius);
                         }
                         assert!(rect.y >= 0.0 && rect.y + h <= height);
                     }
