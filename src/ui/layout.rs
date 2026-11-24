@@ -174,7 +174,9 @@ pub(super) struct StatusLayout {
 
 pub(super) fn trump_indicator(width: f64, height: f64) -> (f64, f64, f64) {
     let unit = TableGeometry::new(width, height).size;
-    (width - unit * 0.54, height * 0.5, unit * 0.25)
+    let radius = unit * 0.18;
+    // Center the combined symbol and caption, which extends below the badge.
+    (width - unit * 0.54, height * 0.5 - radius * 0.42, radius)
 }
 
 pub(super) fn status_layout(width: f64, height: f64) -> StatusLayout {

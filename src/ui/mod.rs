@@ -81,7 +81,9 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         button.set_valign(gtk::Align::Center);
         actions.append(button);
     }
-    play.add_css_class("suggested-action");
+    for button in [&play, &king, &ober] {
+        button.add_css_class("suggested-action");
+    }
     announcement.set_visible(false);
     actions.append(&announcement);
     table_overlay.add_overlay(&actions);
