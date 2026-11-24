@@ -326,12 +326,13 @@ impl TurnTimers {
         let table = self.state.borrow();
         let session = table.session();
         let status = format!(
-            "Oben: {} Restpunkte, {} Bummerl. {} gespielte Hände. Unten: {} Restpunkte, {} Bummerl.",
+            "Oben: {} Restpunkte, {} Bummerl. {} gespielte Hände. Unten: {} Restpunkte, {} Bummerl. Trumpf: {}.",
             session.remaining(Player::Opponent),
             session.bummerls(Player::Opponent),
             session.completed_hands(),
             session.remaining(Player::Local),
             session.bummerls(Player::Local),
+            suit_name(session.hand().trump_suit()),
         );
         area.update_property(&[gtk::accessible::Property::Description(&status)]);
         let tooltip = if table.exchange_available() {

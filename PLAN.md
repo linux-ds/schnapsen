@@ -173,6 +173,12 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 
 ## Änderungsprotokoll
 
+### 2026-11-24 – Auftrag 20d
+
+- Rechts mittig steht eine feste Trumpfanzeige mit dem Farbsymbol und den Farben der Kartenzeichnung. Sie liest die Trumpffarbe direkt aus der Hand und ist unabhängig vom Talonstatus. Die Trumpffarbe ist auch in der zugänglichen Tischbeschreibung enthalten.
+- Layouttests prüfen den Abstand zu Karten und zur Aktionszone von 560 × 400 bis 3840 × 2160 logischen Pixeln einschließlich breiter und schmaler Formate. Ein Cairo-Regressionstest zeichnet alle vier Farbsymbole bei 560 × 400 und 1920 × 1080.
+- Formatierung, Cargo-Check, alle 59 Tests und Clippy mit `-D warnings` waren im GNOME SDK 51 erfolgreich.
+
 ### 2026-11-24 – Auftrag 20c
 
 - Der Wayland-Hit-Test der alten Stichübersicht zeigte außerhalb des Inhalts die libadwaita-Abdunklung als `GtkWindowHandle`. Die Anwendung hatte dort kein eigenes Eingabeziel. Sie wartete auf die Klicksequenz am Fenster im Capture-Pfad eines nativen Fenstergriffs, der eigene Gesten verarbeitet. Die alten synthetischen Prüfungen konnten diesen Unterschied zur realen Bedienung nicht ausschließen. [libadwaita-Floating-Sheet](https://github.com/GNOME/libadwaita/blob/main/src/adw-floating-sheet.c), [GTK-Fenstergriff](https://github.com/GNOME/gtk/blob/main/gtk/gtkwindowhandle.c)

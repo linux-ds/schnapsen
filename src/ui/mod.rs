@@ -183,7 +183,13 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
                 state.local_eyes(),
                 state.opponent_eyes(),
             )?;
-            paint::match_status(cr, width.into(), height.into(), state.session())
+            paint::match_status(cr, width.into(), height.into(), state.session())?;
+            paint::trump(
+                cr,
+                width.into(),
+                height.into(),
+                state.session().hand().trump_suit(),
+            )
         }) {
             eprintln!("Could not draw the card table: {error}");
         }

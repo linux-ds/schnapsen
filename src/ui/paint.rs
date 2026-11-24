@@ -6,7 +6,9 @@ use schnapsen::core::{
 };
 use std::f64::consts::TAU;
 
-use super::layout::{eye_layout, status_layout, Face, Placement, ASPECT, CORNER_RADIUS};
+use super::layout::{
+    eye_layout, status_layout, trump_indicator, Face, Placement, ASPECT, CORNER_RADIUS,
+};
 
 const TABLE_TEXT: (f64, f64, f64) = (0.93, 0.95, 0.87);
 
@@ -108,6 +110,29 @@ pub(super) fn match_status(
     cr.restore()
 }
 
+pub(super) fn trump(cr: &Context, width: f64, height: f64, suit: Suit) -> Result<(), Error> {
+    let (x, y, radius) = trump_indicator(width, height);
+    cr.save()?;
+    cr.new_sub_path();
+    cr.arc(x, y, radius, 0.0, TAU);
+    cr.set_source_rgb(0.98, 0.96, 0.90);
+    cr.fill()?;
+    let (r, g, b) = suit_color(suit);
+    cr.set_source_rgb(r, g, b);
+    symbol(cr, suit, x, y, radius * 1.35)?;
+    let (r, g, b) = TABLE_TEXT;
+    cr.set_source_rgb(r, g, b);
+    cr.select_font_face("Sans", FontSlant::Normal, FontWeight::Bold);
+    cr.set_font_size(radius * 0.56);
+    let metrics = cr.text_extents("Trumpf")?;
+    cr.move_to(
+        x - metrics.x_bearing() - metrics.width() / 2.0,
+        y + radius * 1.76,
+    );
+    cr.show_text("Trumpf")?;
+    cr.restore()
+}
+
 fn eye_label(value: u8) -> String {
     value.to_string()
 }
@@ -197,19 +222,23 @@ fn front(cr: &Context, card: Card) -> Result<(), Error> {
         Rank::Ober => "O",
         Rank::Unter => "U",
     };
-    let color = match card.suit {
-        Suit::Hearts => (0.67, 0.15, 0.21),
-        Suit::Bells => (0.56, 0.32, 0.04),
-        Suit::Leaves => (0.12, 0.37, 0.24),
-        Suit::Acorns => (0.29, 0.19, 0.14),
-    };
-    cr.set_source_rgb(color.0, color.1, color.2);
+    let (r, g, b) = suit_color(card.suit);
+    cr.set_source_rgb(r, g, b);
     cr.select_font_face("Sans", FontSlant::Normal, FontWeight::Bold);
     cr.set_font_size(0.255);
     cr.move_to(0.105, 0.315);
     cr.show_text(value)?;
     symbol(cr, card.suit, 0.19, 0.47, 0.19)?;
     symbol(cr, card.suit, 0.50, 0.81, 0.53)
+}
+
+fn suit_color(suit: Suit) -> (f64, f64, f64) {
+    match suit {
+        Suit::Hearts => (0.67, 0.15, 0.21),
+        Suit::Bells => (0.56, 0.32, 0.04),
+        Suit::Leaves => (0.12, 0.37, 0.24),
+        Suit::Acorns => (0.29, 0.19, 0.14),
+    }
 }
 
 fn symbol(cr: &Context, suit: Suit, x: f64, y: f64, size: f64) -> Result<(), Error> {
@@ -316,6 +345,33 @@ mod tests {
             assert_ne!(pixel(46.0, 80.0), background);
             assert_ne!(pixel(114.0, 80.0), background);
             assert_eq!(pixel(126.0, 80.0), background);
+        }
+    }
+
+    #[test]
+    fn trump_indicator_renders_all_four_suits_at_small_and_large_sizes() {
+        for (width, height) in [(560, 400), (1920, 1080)] {
+            for suit in [Suit::Hearts, Suit::Bells, Suit::Leaves, Suit::Acorns] {
+                let mut surface = ImageSurface::create(Format::ARgb32, width, height).unwrap();
+                let cr = Context::new(&surface).unwrap();
+                trump(&cr, width.into(), height.into(), suit).unwrap();
+                drop(cr);
+                let stride = surface.stride() as usize;
+                let data = surface.data().unwrap();
+                let (x, y, radius) = trump_indicator(width.into(), height.into());
+                let (r, g, b) = suit_color(suit);
+                let channels = [r, g, b].map(|channel| (channel * 255.0).round() as u32);
+                assert!(((y - radius) as usize..(y + radius) as usize).any(|row| {
+                    ((x - radius) as usize..(x + radius) as usize).any(|col| {
+                        let start = row * stride + col * 4;
+                        let pixel = u32::from_ne_bytes(data[start..start + 4].try_into().unwrap());
+                        pixel >> 24 == 255
+                            && [16, 8, 0].into_iter().zip(channels).all(|(shift, target)| {
+                                ((pixel >> shift) & 255).abs_diff(target) <= 1
+                            })
+                    })
+                }));
+            }
         }
     }
 

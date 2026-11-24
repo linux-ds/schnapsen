@@ -172,6 +172,11 @@ pub(super) struct StatusLayout {
     pub unit: f64,
 }
 
+pub(super) fn trump_indicator(width: f64, height: f64) -> (f64, f64, f64) {
+    let unit = TableGeometry::new(width, height).size;
+    (width - unit * 0.54, height * 0.5, unit * 0.25)
+}
+
 pub(super) fn status_layout(width: f64, height: f64) -> StatusLayout {
     let unit = TableGeometry::new(width, height).size;
     StatusLayout {
@@ -648,6 +653,10 @@ mod tests {
                     assert!(top + status.unit * 0.22 < middle - status.unit * 0.24);
                     assert!(middle < bottom - status.unit * 0.28);
                     assert!(bottom + status.unit * 0.22 < height);
+                    let (trump_x, trump_y, radius) = trump_indicator(width, height);
+                    assert!(trump_x - radius > width / 2.0 + 180.0);
+                    assert!(trump_x + radius < width);
+                    assert!(trump_y - radius > 0.0 && trump_y + 2.0 * radius < height);
                     let placements = arrange(&table, width, height);
                     assert_eq!(placements.len(), 20);
                     for card in placements {
@@ -659,6 +668,11 @@ mod tests {
                         };
                         assert!(rect.x > status.x + status.width / 2.0);
                         assert!(rect.x + w <= width);
+                        if rect.x + w >= trump_x - radius {
+                            assert!(
+                                rect.y + h < trump_y - radius || rect.y > trump_y + 2.0 * radius
+                            );
+                        }
                         assert!(rect.y >= 0.0 && rect.y + h <= height);
                     }
                 }
