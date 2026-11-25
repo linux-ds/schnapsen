@@ -174,6 +174,12 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 
 ## Änderungsprotokoll
 
+### 2026-11-25 – Auftrag 22a
+
+- `ui::window_state` stellt die normale Hauptfenstergröße und die Maximierung aus GSettings wieder her. Beim Schließen wird nur ein geänderter Zustand geschrieben. GTK liefert auch maximiert die letzte normale Größe. Für Vollbild gibt es derzeit keine Anwendungsfunktion.
+- Zwei neue Regressionstests prüfen ungültige Maße und kleinere Monitorflächen. Der bestehende GSettings-Prozesstest prüft beide Speicherbereiche gemeinsam. Unter Wayland wurde das echte Hauptfenster auf 820 × 620 logische Pixel vergrößert, normal und maximiert neu geöffnet und nach dem Aufheben der Maximierung wieder mit 820 × 620 angezeigt. Ungültige Werte führten beim Start zu 680 × 560.
+- Formatierung, Cargo-Check, alle 69 Tests, Clippy mit `-D warnings` und der Flatpak-Release-Build inklusive Tests waren im GNOME SDK 51 erfolgreich. Der Monitorwechsel ist automatisiert über Modellwerte geprüft.
+
 ### 2026-11-25 – Auftrag 22
 
 - `ui::design` registriert Doppeldeutsch und Französisch als Kartenfronten sowie die Rücken Original, Klassisch, Wienerisch, Alpin, Geometrisch, Ornament und Minimal. Kartentisch, Trumpfanzeige, Stichübersicht und Rückenvorschau verwenden denselben Cairo-Renderer. Kartenspezifische Hinweise verwenden die Namen des gewählten Themas.

@@ -4,6 +4,7 @@ const FRONT: &str = "card-front";
 const BACK: &str = "card-back";
 const LEGAL: &str = "highlight-legal-cards";
 const OPPONENT_EYES: &str = "show-opponent-eyes";
+const WINDOW_STATE: &str = "window-state";
 
 #[derive(Clone)]
 pub(crate) struct Preferences(gio::Settings);
@@ -60,9 +61,22 @@ impl Preferences {
         write(OPPONENT_EYES, self.0.set_boolean(OPPONENT_EYES, value));
     }
 
+    pub fn window_state(&self) -> (i32, i32, bool) {
+        self.0.get(WINDOW_STATE)
+    }
+
+    pub fn save_window_state(&self, state: (i32, i32, bool)) {
+        if self.window_state() != state {
+            write(WINDOW_STATE, self.0.set(WINDOW_STATE, state));
+            gio::Settings::sync();
+        }
+    }
+
     pub fn connect_changed(&self, changed: impl Fn(&Self) + 'static) -> glib::SignalHandlerId {
-        self.0.connect_changed(None, move |settings, _| {
-            changed(&Self(settings.clone()));
+        self.0.connect_changed(None, move |settings, key| {
+            if key != WINDOW_STATE {
+                changed(&Self(settings.clone()));
+            }
         })
     }
 }
@@ -86,6 +100,7 @@ mod tests {
                 let settings = Preferences::new();
                 assert_eq!(settings.front_id(), "double-german");
                 assert_eq!(settings.back_id(), "legacy");
+                assert_eq!(settings.window_state(), (680, 560, false));
                 assert!(!settings.show_legal());
                 assert!(!settings.show_opponent_eyes());
                 assert!(settings.0.boolean("audio-enabled"));
@@ -93,12 +108,13 @@ mod tests {
                 settings.set_back_id("alpine");
                 settings.set_show_legal(true);
                 settings.set_show_opponent_eyes(true);
-                gio::Settings::sync();
+                settings.save_window_state((900, 700, true));
             }
             Ok("read") => {
                 let settings = Preferences::new();
                 assert_eq!(settings.front_id(), "french");
                 assert_eq!(settings.back_id(), "alpine");
+                assert_eq!(settings.window_state(), (900, 700, true));
                 assert!(settings.show_legal());
                 assert!(settings.show_opponent_eyes());
             }

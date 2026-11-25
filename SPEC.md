@@ -173,7 +173,7 @@ Die frühere manuelle Ausmeldung samt Strafwertung ist historisch im Regel-Audit
 - **Unten:** Eigene Hand, größer und gut lesbar.
 - **Rechts unten:** Eigener gewonnener Stichstapel; gegnerischer Stapel in dessen Nähe auf der Gegenseite.
 
-Die Zielgröße des Fensters beträgt ungefähr 680 × 560 logische Pixel. Die Bereiche passen sich an Fenstergröße und Seitenverhältnis an. Eine geringe Fensterhöhe begrenzt die Kartengröße. Meldungen, kontextabhängige Aktionen und modale Bestätigungen liegen über der Zeichenfläche und ändern ihre Geometrie nicht. Kartengrößen sind **absichtlich nicht überall gleich**. Priorität hat die Lesbarkeit der eigenen Karten und des aktuellen Stichs.
+Die Standardgröße des Hauptfensters beträgt 680 × 560 logische Pixel. Beim Schließen speichert GSettings die letzte normale Größe und den Maximierungszustand. GTK stellt die normale Größe auch nach dem Aufheben der Maximierung bereit. Bei ungültigen Maßen greifen die Standardwerte. Beim Start begrenzt die größte verfügbare Monitorfläche die gespeicherten Maße, soweit es die Mindestgröße des Tisches zulässt. Die Fensterposition bestimmt der Compositor. Die Bereiche passen sich an Fenstergröße und Seitenverhältnis an. Eine geringe Fensterhöhe begrenzt die Kartengröße. Meldungen, kontextabhängige Aktionen und modale Bestätigungen liegen über der Zeichenfläche und ändern ihre Geometrie nicht. Kartengrößen sind **absichtlich nicht überall gleich**. Priorität hat die Lesbarkeit der eigenen Karten und des aktuellen Stichs.
 
 ### Physische Anmutung
 

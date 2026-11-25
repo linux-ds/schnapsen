@@ -17,6 +17,7 @@ mod result;
 mod review;
 mod table;
 mod turn;
+mod window_state;
 
 fn choose_index(upper: usize) -> usize {
     adw::glib::random_int_range(0, upper as i32) as usize
@@ -222,10 +223,9 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title("Schnapsen")
-        .default_width(680)
-        .default_height(560)
         .content(&modal_layer)
         .build();
+    window_state::bind(&window, preferences);
     let preferences_action = gio::SimpleAction::new("preferences", None);
     let parent = window.downgrade();
     let preferences = preferences.clone();
