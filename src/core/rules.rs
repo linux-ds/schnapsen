@@ -20,12 +20,6 @@ pub(super) struct Deal {
 impl GameVariant {
     pub const ALL: [Self; 1] = [Self::AustrianSchnapsen];
 
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::AustrianSchnapsen => "Österreichisches Zweierschnapsen",
-        }
-    }
-
     pub const fn profiles(self) -> &'static [RuleProfile] {
         match self {
             Self::AustrianSchnapsen => &[RuleProfile::Soft, RuleProfile::Sharp],
@@ -164,13 +158,6 @@ const SHARP: ProfileRules = ProfileRules {
 };
 
 impl RuleProfile {
-    pub const fn label(self) -> &'static str {
-        match self {
-            Self::Soft => "Weiches Schnapsen",
-            Self::Sharp => "Scharfes Schnapsen",
-        }
-    }
-
     pub(super) const fn rules(self) -> &'static ProfileRules {
         match self {
             Self::Soft => &SOFT,

@@ -4,33 +4,33 @@ use schnapsen::core::cards::{Card, Rank, Suit};
 use std::f64::consts::TAU;
 
 fn draw_front(cr: &Context, card: Card, theme: &FrontTheme) -> Result<(), Error> {
-    let value = theme.rank(card.rank).0;
+    let value = crate::i18n::gettext(theme.rank(card.rank).0);
     let (r, g, b) = theme.suit(card.suit).1;
     cr.set_source_rgb(r, g, b);
     cr.select_font_face("Sans", FontSlant::Normal, FontWeight::Bold);
     cr.set_font_size(0.255);
     cr.move_to(0.105, 0.315);
-    cr.show_text(value)?;
+    cr.show_text(&value)?;
     theme.draw_symbol(cr, card.suit, 0.19, 0.47, 0.19)?;
     theme.draw_symbol(cr, card.suit, 0.50, 0.81, 0.53)
 }
 
 fn rank_german(rank: Rank) -> (&'static str, &'static str) {
     match rank {
-        Rank::Ace => ("A", "Ass"),
-        Rank::Ten => ("10", "Zehn"),
-        Rank::King => ("K", "König"),
-        Rank::Ober => ("O", "Ober"),
-        Rank::Unter => ("U", "Unter"),
+        Rank::Ace => (msgid!("A"), msgid!("Ace")),
+        Rank::Ten => ("10", msgid!("Ten")),
+        Rank::King => (msgid!("K"), msgid!("King")),
+        Rank::Ober => (msgid!("O"), msgid!("Ober")),
+        Rank::Unter => (msgid!("U"), msgid!("Unter")),
     }
 }
 
 fn suit_german(suit: Suit) -> (&'static str, Color) {
     match suit {
-        Suit::Hearts => ("Herz", (0.67, 0.15, 0.21)),
-        Suit::Bells => ("Schellen", (0.56, 0.32, 0.04)),
-        Suit::Leaves => ("Grün", (0.12, 0.37, 0.24)),
-        Suit::Acorns => ("Eichel", (0.29, 0.19, 0.14)),
+        Suit::Hearts => (msgid!("Hearts"), (0.67, 0.15, 0.21)),
+        Suit::Bells => (msgid!("Bells"), (0.56, 0.32, 0.04)),
+        Suit::Leaves => (msgid!("Leaves"), (0.12, 0.37, 0.24)),
+        Suit::Acorns => (msgid!("Acorns"), (0.29, 0.19, 0.14)),
     }
 }
 
@@ -75,8 +75,10 @@ fn german_symbol(cr: &Context, suit: Suit) {
 
 fn rank_french(rank: Rank) -> (&'static str, &'static str) {
     match rank {
-        Rank::Ober => ("D", "Dame"),
-        Rank::Unter => ("B", "Bube"),
+        // Translators: corner index for a queen in the French deck.
+        Rank::Ober => (msgid!("Q"), msgid!("Queen")),
+        // Translators: corner index for a jack in the French deck.
+        Rank::Unter => (msgid!("J"), msgid!("Jack")),
         _ => rank_german(rank),
     }
 }
@@ -85,10 +87,10 @@ fn suit_french(suit: Suit) -> (&'static str, Color) {
     let red = (0.70, 0.11, 0.18);
     let black = (0.08, 0.09, 0.11);
     match suit {
-        Suit::Hearts => ("Herz", red),
-        Suit::Bells => ("Karo", red),
-        Suit::Leaves => ("Pik", black),
-        Suit::Acorns => ("Kreuz", black),
+        Suit::Hearts => (msgid!("Hearts"), red),
+        Suit::Bells => (msgid!("Diamonds"), red),
+        Suit::Leaves => (msgid!("Spades"), black),
+        Suit::Acorns => (msgid!("Clubs"), black),
     }
 }
 
@@ -131,7 +133,7 @@ fn french_symbol(cr: &Context, suit: Suit) {
 
 pub(super) const DOUBLE_GERMAN: FrontTheme = FrontTheme {
     id: "double-german",
-    label: "Doppeldeutsch",
+    label: msgid!("Double German"),
     rank: rank_german,
     suit: suit_german,
     symbol: german_symbol,
@@ -140,7 +142,7 @@ pub(super) const DOUBLE_GERMAN: FrontTheme = FrontTheme {
 
 pub(super) const FRENCH: FrontTheme = FrontTheme {
     id: "french",
-    label: "Französisch",
+    label: msgid!("French"),
     rank: rank_french,
     suit: suit_french,
     symbol: french_symbol,

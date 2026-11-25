@@ -97,13 +97,13 @@ pub(super) fn match_status(
     for (player, y) in [(Player::Opponent, top), (Player::Local, bottom)] {
         label(&session.remaining(player).to_string(), y, 0.28, 1.0)?;
         label(
-            &format!("B {}", session.bummerls(player)),
+            &tr!("B {count}", count = session.bummerls(player)),
             y + unit * 0.22,
             0.14,
             0.80,
         )?;
     }
-    label("Hände", middle - unit * 0.08, 0.12, 0.80)?;
+    label(&tr!("Hands"), middle - unit * 0.08, 0.12, 0.80)?;
     label(
         &session.completed_hands().to_string(),
         middle + unit * 0.14,

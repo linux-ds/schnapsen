@@ -4,6 +4,8 @@ use adw::gtk::cairo::{Context, Error};
 use schnapsen::core::cards::{Card, Rank, Suit};
 use std::f64::consts::TAU;
 
+use crate::i18n::gettext;
+
 mod backs;
 mod fronts;
 
@@ -11,7 +13,7 @@ type Color = (f64, f64, f64);
 
 pub(crate) struct FrontTheme {
     pub id: &'static str,
-    pub label: &'static str,
+    label: &'static str,
     rank: fn(Rank) -> (&'static str, &'static str),
     suit: fn(Suit) -> (&'static str, Color),
     symbol: fn(&Context, Suit),
@@ -19,19 +21,23 @@ pub(crate) struct FrontTheme {
 }
 
 impl FrontTheme {
-    pub fn suit_name(&self, suit: Suit) -> &'static str {
-        self.suit(suit).0
+    pub fn label(&self) -> String {
+        gettext(self.label)
     }
 
-    pub fn rank_name(&self, rank: Rank) -> &'static str {
-        self.rank(rank).1
+    pub fn suit_name(&self, suit: Suit) -> String {
+        gettext(self.suit(suit).0)
+    }
+
+    pub fn rank_name(&self, rank: Rank) -> String {
+        gettext(self.rank(rank).1)
     }
 
     pub fn card_name(&self, card: Card) -> String {
-        format!(
-            "{} {}",
-            self.suit_name(card.suit),
-            self.rank_name(card.rank)
+        tr!(
+            "{rank} of {suit}",
+            rank = self.rank_name(card.rank),
+            suit = self.suit_name(card.suit)
         )
     }
 
@@ -69,11 +75,15 @@ impl FrontTheme {
 
 pub(crate) struct CardBack {
     pub id: &'static str,
-    pub label: &'static str,
+    label: &'static str,
     render: fn(&Context) -> Result<(), Error>,
 }
 
 impl CardBack {
+    pub fn label(&self) -> String {
+        gettext(self.label)
+    }
+
     pub(super) fn draw(&self, cr: &Context) -> Result<(), Error> {
         cr.save()?;
         (self.render)(cr)?;
@@ -153,25 +163,26 @@ mod tests {
 
     #[test]
     fn themes_map_all_logical_cards_and_keep_stable_ids() {
-        let [german, french] = FRONTS else {
-            panic!("two built-in themes")
-        };
+        let german = CardDesign::from_ids("double-german", "legacy").front;
+        let french = CardDesign::from_ids("french", "legacy").front;
+        assert_eq!(german.id, "double-german");
+        assert_eq!(french.id, "french");
         let suits = [Suit::Hearts, Suit::Bells, Suit::Leaves, Suit::Acorns];
         let ranks = [Rank::Ace, Rank::Ten, Rank::King, Rank::Ober, Rank::Unter];
         assert_eq!(
-            suits.map(|suit| german.suit_name(suit)),
-            ["Herz", "Schellen", "Grün", "Eichel"]
+            suits.map(|suit| german.suit(suit).0),
+            ["Hearts", "Bells", "Leaves", "Acorns"]
         );
         assert_eq!(
-            suits.map(|suit| french.suit_name(suit)),
-            ["Herz", "Karo", "Pik", "Kreuz"]
+            suits.map(|suit| french.suit(suit).0),
+            ["Hearts", "Diamonds", "Spades", "Clubs"]
         );
         assert_eq!(
             ranks.map(|rank| german.rank(rank)),
             [
-                ("A", "Ass"),
-                ("10", "Zehn"),
-                ("K", "König"),
+                ("A", "Ace"),
+                ("10", "Ten"),
+                ("K", "King"),
                 ("O", "Ober"),
                 ("U", "Unter")
             ]
@@ -179,11 +190,11 @@ mod tests {
         assert_eq!(
             ranks.map(|rank| french.rank(rank)),
             [
-                ("A", "Ass"),
-                ("10", "Zehn"),
-                ("K", "König"),
-                ("D", "Dame"),
-                ("B", "Bube")
+                ("A", "Ace"),
+                ("10", "Ten"),
+                ("K", "King"),
+                ("Q", "Queen"),
+                ("J", "Jack")
             ]
         );
         for theme in FRONTS {
@@ -212,6 +223,23 @@ mod tests {
                 .len(),
             BACKS.len()
         );
+    }
+
+    #[test]
+    fn registered_back_ids_resolve_independently_of_display_names() {
+        for id in [
+            "legacy",
+            "classic",
+            "viennese",
+            "alpine",
+            "geometric",
+            "ornament",
+            "minimal",
+        ] {
+            let design = CardDesign::from_ids("french", id);
+            assert_eq!(design.back.id, id);
+            assert_eq!(design.front.id, "french");
+        }
     }
 
     #[test]

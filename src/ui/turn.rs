@@ -34,13 +34,13 @@ impl TableControls {
         if let Some(king) = self.king.upgrade() {
             if let Some(marriage) = marriage {
                 let label = if marriage.may_play_ober {
-                    format!(
-                        "{} ansagen · {}",
-                        marriage.eyes,
-                        theme.rank_name(Rank::King)
+                    tr!(
+                        "Declare {points} · {rank}",
+                        points = marriage.eyes,
+                        rank = theme.rank_name(Rank::King)
                     )
                 } else {
-                    format!("{} ansagen", marriage.eyes)
+                    tr!("Declare {points}", points = marriage.eyes)
                 };
                 king.set_label(&label);
             }
@@ -49,10 +49,10 @@ impl TableControls {
         if let Some(ober) = self.ober.upgrade() {
             let option = marriage.filter(|marriage| marriage.may_play_ober);
             if let Some(marriage) = option {
-                ober.set_label(&format!(
-                    "{} ansagen · {}",
-                    marriage.eyes,
-                    theme.rank_name(Rank::Ober)
+                ober.set_label(&tr!(
+                    "Declare {points} · {rank}",
+                    points = marriage.eyes,
+                    rank = theme.rank_name(Rank::Ober)
                 ));
             }
             ober.set_visible(option.is_some());
@@ -61,11 +61,15 @@ impl TableControls {
             let event = table.announcement().filter(|_| table.result().is_none());
             if let Some(event) = event {
                 let player = if event.player == Player::Local {
-                    "Du"
+                    tr!("You")
                 } else {
-                    "Computer"
+                    tr!("Computer")
                 };
-                label.set_label(&format!("{player} · {}", event.marriage.eyes));
+                label.set_label(&tr!(
+                    "{player} · {points}",
+                    player = player,
+                    points = event.marriage.eyes
+                ));
             }
             label.set_visible(event.is_some());
         }
@@ -167,26 +171,26 @@ impl TurnTimers {
             return;
         }
         if let Err(error) = self.state.borrow().check_close_talon() {
-            self.show_feedback(close_message(error));
+            self.show_feedback(&close_message(error));
             return;
         }
         self.confirm(
-            "Talon zudrehen?",
-            "Ihr zieht keine Karten mehr nach. Ab jetzt gilt Farb-, Stich- und Trumpfzwang. Du musst mindestens 66 wirksame Augen erreichen, sonst gewinnt der Computer.",
-            "Zudrehen",
+            &tr!("Close the stock?"),
+            &tr!("Neither player draws any more cards. From now on, you must follow suit and win the trick if possible, or play trump if you cannot follow suit. You must reach at least 66 card points, or the computer wins."),
+            &tr!("Close Stock"),
             |timers| {
                 let result = timers.state.borrow_mut().close_talon();
-                let message = result.err().map_or("Talon zugedreht", close_message);
-                timers.show_feedback(message);
+                let message = result.err().map_or_else(|| tr!("Stock closed"), close_message);
+                timers.show_feedback(&message);
             },
         );
     }
 
     pub fn request_reset_bummerls(self: &Rc<Self>) {
         self.confirm(
-            "Bummerl zurücksetzen?",
-            "Die Bummerl-Zähler beider Seiten werden auf null gesetzt. Der aktuelle Partiestand bleibt erhalten.",
-            "Zurücksetzen",
+            &tr!("Reset the Bummerl counters?"),
+            &tr!("Both Bummerl counters will be set to zero. The current match score stays the same."),
+            &tr!("Reset"),
             |timers| timers.state.borrow_mut().reset_bummerls(),
         );
     }
@@ -200,7 +204,7 @@ impl TurnTimers {
     ) {
         let dialog = adw::AlertDialog::new(Some(title), Some(body));
         dialog.set_presentation_mode(adw::DialogPresentationMode::Floating);
-        dialog.add_responses(&[("cancel", "Abbrechen"), ("confirm", action)]);
+        dialog.add_responses(&[("cancel", &tr!("Cancel")), ("confirm", action)]);
         dialog.set_close_response("cancel");
         dialog.set_default_response(Some("cancel"));
         dialog.set_response_appearance("confirm", adw::ResponseAppearance::Destructive);
@@ -222,18 +226,18 @@ impl TurnTimers {
             return;
         }
         if self.pending.borrow().is_some() {
-            self.show_feedback("Warte, bis der laufende Zug abgeschlossen ist.");
+            self.show_feedback(&tr!("Wait for the current turn to finish."));
             return;
         }
         let allowed = self.state.borrow().session().hand().review_tricks(owner);
         let tricks = match allowed {
             Ok(tricks) => tricks,
             Err(error) => {
-                self.show_feedback(match error {
+                self.show_feedback(&match error {
                     TrickReviewError::Forbidden => {
-                        "Bei scharfem Schnapsen bleiben die Stiche verdeckt."
+                        tr!("Tricks stay face down in Sharp Schnapsen.")
                     }
-                    TrickReviewError::Empty => "Dieser Stapel enthält noch keine Stiche.",
+                    TrickReviewError::Empty => tr!("This pile has no tricks yet."),
                 });
                 return;
             }
@@ -344,24 +348,24 @@ impl TurnTimers {
         }
         let table = self.state.borrow();
         let session = table.session();
-        let status = format!(
-            "Oben: {} Restpunkte, {} Bummerl. {} gespielte Hände. Unten: {} Restpunkte, {} Bummerl. Trumpf: {}.",
-            session.remaining(Player::Opponent),
-            session.bummerls(Player::Opponent),
-            session.completed_hands(),
-            session.remaining(Player::Local),
-            session.bummerls(Player::Local),
-            table.design().front.suit_name(session.hand().trump_suit()),
+        let status = tr!(
+            "Top: {opponent_points}, {opponent_bummerls}. {hands}. Bottom: {local_points}, {local_bummerls}. Trump: {suit}.",
+            opponent_points = remaining_points(session.remaining(Player::Opponent)),
+            opponent_bummerls = bummerls(session.bummerls(Player::Opponent)),
+            hands = trn!("{count} hand played", "{count} hands played", session.completed_hands()),
+            local_points = remaining_points(session.remaining(Player::Local)),
+            local_bummerls = bummerls(session.bummerls(Player::Local)),
+            suit = table.design().front.suit_name(session.hand().trump_suit()),
         );
         area.update_property(&[gtk::accessible::Property::Description(&status)]);
         let tooltip = if table.exchange_available() {
-            Some("Trumpf tauschen · T oder offene Karte antippen")
+            Some(tr!("Exchange trump · Press T or tap the face-up card"))
         } else if table.check_close_talon().is_ok() {
-            Some("Talon zudrehen · Z oder verdeckten Stapel antippen")
+            Some(tr!("Close the stock · Press Z or tap the face-down pile"))
         } else {
             None
         };
-        area.set_tooltip_text(tooltip);
+        area.set_tooltip_text(tooltip.as_deref());
         self.controls.update(&table);
         self.update_effects((table.announcement(), table.exchange()));
         if let Some(hand) = table.result() {
@@ -412,44 +416,59 @@ impl TurnTimers {
     }
 }
 
+fn remaining_points(count: u8) -> String {
+    trn!("{count} point remaining", "{count} points remaining", count)
+}
+
+fn bummerls(count: u32) -> String {
+    trn!("{count} Bummerl", "{count} Bummerls", count)
+}
+
 fn exchange_message(error: ExchangeError, theme: &FrontTheme) -> String {
     match error {
         ExchangeError::TalonNotOpen | ExchangeError::NoOpenTrump => {
-            "Zum Tauschen brauchst du eine offene Trumpfkarte."
+            tr!("You need a face-up trump card to exchange.")
         }
-        ExchangeError::TrickStarted => "Du kannst nur vor dem Ausspiel tauschen.",
-        ExchangeError::CannotLead => "Du kannst nur mit Ausspielrecht tauschen.",
+        ExchangeError::TrickStarted => tr!("Exchange the trump card before leading to the trick."),
+        ExchangeError::CannotLead => {
+            tr!("You can exchange the trump card only when it is your lead.")
+        }
         ExchangeError::MissingTrumpUnder => {
-            return format!("Wähle den Trumpf-{} aus.", theme.rank_name(Rank::Unter));
+            tr!(
+                "Select the trump {rank}.",
+                rank = theme.rank_name(Rank::Unter)
+            )
         }
-        ExchangeError::FirstTrickNotCompleted => "Erst nach dem ersten Stich möglich.",
-        ExchangeError::NotEnoughTalonCards => "Zu wenige Karten im Talon.",
+        ExchangeError::FirstTrickNotCompleted => tr!("Available after the first trick."),
+        ExchangeError::NotEnoughTalonCards => tr!("Too few cards in the stock."),
     }
-    .into()
 }
 
-fn close_message(error: CloseError) -> &'static str {
+fn close_message(error: CloseError) -> String {
     match error {
-        CloseError::TalonNotOpen => "Der Talon muss offen sein.",
-        CloseError::TrickStarted => "Du kannst nur vor dem Ausspiel zudrehen.",
-        CloseError::FirstTrickNotCompleted => "Erst nach dem ersten Stich möglich.",
-        CloseError::CannotLead => "Du kannst nur mit Ausspielrecht zudrehen.",
-        CloseError::NotEnoughTalonCards => "Zu wenige Karten im Talon.",
+        CloseError::TalonNotOpen => tr!("The stock must be open."),
+        CloseError::TrickStarted => tr!("Close the stock before leading to the trick."),
+        CloseError::FirstTrickNotCompleted => tr!("Available after the first trick."),
+        CloseError::CannotLead => tr!("You can close the stock only when it is your lead."),
+        CloseError::NotEnoughTalonCards => tr!("Too few cards in the stock."),
     }
 }
 
 fn play_message(error: PlayError, theme: &FrontTheme) -> String {
     match error {
-        PlayError::MustBeat(suit) => format!(
-            "Du musst mit einer höheren {}-Karte stechen.",
-            theme.suit_name(suit)
+        PlayError::MustBeat(suit) => tr!(
+            "You must play a higher card of the same suit ({suit}).",
+            suit = theme.suit_name(suit)
         ),
-        PlayError::MustFollow(suit) => format!("Du musst {} bedienen.", theme.suit_name(suit)),
-        PlayError::MustTrump => "Du musst Trumpf spielen.".into(),
-        PlayError::OutOfTurn { .. } => "Du bist noch nicht am Zug.".into(),
-        PlayError::TrickPending => "Der Stich wird noch aufgelöst.".into(),
-        PlayError::CardNotInHand => "Diese Karte ist nicht mehr auf deiner Hand.".into(),
-        PlayError::UnsupportedPhase(_) => "Die Hand ist bereits beendet.".into(),
+        PlayError::MustFollow(suit) => tr!(
+            "You must follow suit: {suit}.",
+            suit = theme.suit_name(suit)
+        ),
+        PlayError::MustTrump => tr!("You must play a trump card."),
+        PlayError::OutOfTurn { .. } => tr!("It is not your turn yet."),
+        PlayError::TrickPending => tr!("The current trick is still being resolved."),
+        PlayError::CardNotInHand => tr!("This card is no longer in your hand."),
+        PlayError::UnsupportedPhase(_) => tr!("The hand is already over."),
     }
 }
 
@@ -466,6 +485,29 @@ mod tests {
         game::Variant,
         match_play::{Match, SchneiderRule},
     };
+
+    #[test]
+    fn play_feedback_uses_the_suit_and_rank_of_the_active_theme() {
+        use crate::ui::design::CardDesign;
+        use schnapsen::core::cards::Suit;
+
+        let german = CardDesign::from_ids("double-german", "legacy").front;
+        let french = CardDesign::from_ids("french", "legacy").front;
+        let must_follow = PlayError::MustFollow(Suit::Leaves);
+
+        assert_eq!(
+            play_message(must_follow, german),
+            tr!("You must follow suit: {suit}.", suit = tr!("Leaves")),
+        );
+        assert_eq!(
+            play_message(must_follow, french),
+            tr!("You must follow suit: {suit}.", suit = tr!("Spades")),
+        );
+        assert_eq!(
+            exchange_message(ExchangeError::MissingTrumpUnder, french),
+            tr!("Select the trump {rank}.", rank = tr!("Jack")),
+        );
+    }
 
     #[test]
     fn cancelling_turn_timers_discards_queued_steps_and_card_effects() {

@@ -150,36 +150,36 @@ fn minimal(cr: &Context) -> Result<(), Error> {
 
 pub(super) const LEGACY: CardBack = CardBack {
     id: "legacy",
-    label: "Original",
+    label: msgid!("Original"),
     render: legacy,
 };
 pub(super) const CLASSIC: CardBack = CardBack {
     id: "classic",
-    label: "Klassisch",
+    label: msgid!("Classic"),
     render: classic,
 };
 pub(super) const VIENNESE: CardBack = CardBack {
     id: "viennese",
-    label: "Wienerisch",
+    label: msgid!("Viennese"),
     render: viennese,
 };
 pub(super) const ALPINE: CardBack = CardBack {
     id: "alpine",
-    label: "Alpin",
+    label: msgid!("Alpine"),
     render: alpine,
 };
 pub(super) const GEOMETRIC: CardBack = CardBack {
     id: "geometric",
-    label: "Geometrisch",
+    label: msgid!("Geometric"),
     render: geometric,
 };
 pub(super) const ORNAMENT: CardBack = CardBack {
     id: "ornament",
-    label: "Ornament",
+    label: msgid!("Ornamental"),
     render: ornament,
 };
 pub(super) const MINIMAL: CardBack = CardBack {
     id: "minimal",
-    label: "Minimal",
+    label: msgid!("Minimal"),
     render: minimal,
 };

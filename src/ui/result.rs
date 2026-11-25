@@ -7,13 +7,13 @@ use schnapsen::core::{
 pub(super) fn dialog(result: HandResult, session: &Match) -> (adw::Dialog, gtk::Button) {
     let partie = session.result();
     let title = match (result.outcome.winner, partie.is_some()) {
-        (Player::Local, false) => "Du hast gewonnen!",
-        (Player::Opponent, false) => "Du hast verloren.",
-        (Player::Local, true) => "Du hast die Partie gewonnen!",
-        (Player::Opponent, true) => "Du hast die Partie verloren.",
+        (Player::Local, false) => tr!("You won!"),
+        (Player::Opponent, false) => tr!("You lost."),
+        (Player::Local, true) => tr!("You won the match!"),
+        (Player::Opponent, true) => tr!("You lost the match."),
     };
     let dialog = adw::Dialog::builder()
-        .title(title)
+        .title(title.as_str())
         .can_close(false)
         .presentation_mode(adw::DialogPresentationMode::Floating)
         .content_width(410)
@@ -24,38 +24,49 @@ pub(super) fn dialog(result: HandResult, session: &Match) -> (adw::Dialog, gtk::
     frame.set_margin_start(24);
     frame.set_margin_end(24);
     let body = gtk::Box::new(gtk::Orientation::Vertical, 12);
-    body.append(&label(title, "title-1"));
-    body.append(&label(reason(result.outcome.reason), "dim-label"));
+    body.append(&label(&title, "title-1"));
+    body.append(&label(&reason(result.outcome.reason), "dim-label"));
 
     let eyes = gtk::Box::new(gtk::Orientation::Horizontal, 30);
     eyes.set_halign(gtk::Align::Center);
-    eyes.append(&statistic("Deine Augen", result.score(Player::Local).eyes));
     eyes.append(&statistic(
-        "Gegnerische Augen",
+        &tr!("Your card points"),
+        result.score(Player::Local).eyes,
+    ));
+    eyes.append(&statistic(
+        &tr!("Opponent’s card points"),
         result.score(Player::Opponent).eyes,
     ));
     body.append(&eyes);
 
-    let points = match result.outcome.game_points {
-        1 => "1 Spielpunkt".into(),
-        count => format!("{count} Spielpunkte"),
-    };
+    let points = trn!(
+        "{count} game point",
+        "{count} game points",
+        result.outcome.game_points
+    );
     body.append(&label(&points, "title-2"));
     if let Some(grade) = grade(result.outcome) {
-        body.append(&label(grade, "dim-label"));
+        body.append(&label(&grade, "dim-label"));
     }
     if let Some(partie) = partie {
         let award = if partie.awarded_bummerls == 2 {
-            "Schneiderbummerl · 2 Bummerl"
+            tr!(
+                "Schneider · {count} Bummerls",
+                count = partie.awarded_bummerls
+            )
         } else {
-            "1 Bummerl"
+            trn!(
+                "{count} Bummerl",
+                "{count} Bummerls",
+                partie.awarded_bummerls
+            )
         };
-        body.append(&label(award, "title-3"));
+        body.append(&label(&award, "title-3"));
         body.append(&label(
-            &format!(
-                "Restpunkte · Du {} : {} Computer",
-                session.remaining(Player::Local),
-                session.remaining(Player::Opponent),
+            &tr!(
+                "Points remaining · You {local} : {opponent} Computer",
+                local = session.remaining(Player::Local),
+                opponent = session.remaining(Player::Opponent)
             ),
             "dim-label",
         ));
@@ -67,11 +78,12 @@ pub(super) fn dialog(result: HandResult, session: &Match) -> (adw::Dialog, gtk::
         .child(&body)
         .build();
     frame.append(&scroll);
-    let advance = gtk::Button::with_label(if partie.is_some() {
-        "Neue Partie"
+    let advance_label = if partie.is_some() {
+        tr!("New Match")
     } else {
-        "Nächste Hand"
-    });
+        tr!("Next Hand")
+    };
+    let advance = gtk::Button::with_label(&advance_label);
     advance.add_css_class("suggested-action");
     advance.add_css_class("pill");
     advance.set_halign(gtk::Align::Center);
@@ -98,21 +110,21 @@ fn statistic(caption: &str, value: u8) -> gtk::Box {
     column
 }
 
-fn reason(reason: FinishReason) -> &'static str {
+fn reason(reason: FinishReason) -> String {
     match reason {
-        FinishReason::Reached66 => "66 Augen erreicht",
-        FinishReason::LastTrick => "Der letzte Stich hat entschieden",
-        FinishReason::SuccessfulClosure => "Zudrehen gelungen",
-        FinishReason::FailedClosure => "Zudrehen fehlgeschlagen",
+        FinishReason::Reached66 => tr!("Reached 66 card points"),
+        FinishReason::LastTrick => tr!("Decided by the last trick"),
+        FinishReason::SuccessfulClosure => tr!("Closing the stock succeeded"),
+        FinishReason::FailedClosure => tr!("Closing the stock failed"),
     }
 }
 
-fn grade(outcome: Outcome) -> Option<&'static str> {
+fn grade(outcome: Outcome) -> Option<String> {
     match (outcome.reason, outcome.game_points) {
-        (FinishReason::Reached66, 2) => Some("Schneider"),
-        (FinishReason::Reached66, 3) => Some("Schwarz"),
-        (FinishReason::SuccessfulClosure, 2) => Some("Schneider beim Zudrehen"),
-        (FinishReason::SuccessfulClosure, 3) => Some("Schwarz beim Zudrehen"),
+        (FinishReason::Reached66, 2) => Some(tr!("Schneider")),
+        (FinishReason::Reached66, 3) => Some(tr!("Schwarz")),
+        (FinishReason::SuccessfulClosure, 2) => Some(tr!("Schneider after closing the stock")),
+        (FinishReason::SuccessfulClosure, 3) => Some(tr!("Schwarz after closing the stock")),
         _ => None,
     }
 }
@@ -132,13 +144,16 @@ mod tests {
         assert_eq!(grade(outcome(FinishReason::Reached66, 1)), None);
         assert_eq!(
             grade(outcome(FinishReason::Reached66, 2)),
-            Some("Schneider")
+            Some(tr!("Schneider"))
         );
-        assert_eq!(grade(outcome(FinishReason::Reached66, 3)), Some("Schwarz"));
+        assert_eq!(
+            grade(outcome(FinishReason::Reached66, 3)),
+            Some(tr!("Schwarz"))
+        );
         assert_eq!(grade(outcome(FinishReason::LastTrick, 1)), None);
         assert_eq!(
             grade(outcome(FinishReason::SuccessfulClosure, 3)),
-            Some("Schwarz beim Zudrehen"),
+            Some(tr!("Schwarz after closing the stock")),
         );
         for points in [2, 3] {
             assert_eq!(grade(outcome(FinishReason::FailedClosure, points)), None);

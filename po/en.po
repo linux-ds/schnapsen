@@ -1,0 +1,595 @@
+# English translations for Schnapsen package.
+# Copyright (C) 2026 THE Schnapsen'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the Schnapsen package.
+# Automatically generated, 2026.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Schnapsen\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-25 06:39+0100\n"
+"PO-Revision-Date: 2026-11-25 06:39+0100\n"
+"Last-Translator: Automatically generated\n"
+"Language-Team: none\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+#: data/io.github.schnapsen.Schnapsen.desktop.in:3
+#: data/io.github.schnapsen.Schnapsen.metainfo.xml.in:5
+msgid "Schnapsen"
+msgstr "Schnapsen"
+
+#: data/io.github.schnapsen.Schnapsen.desktop.in:4
+#: data/io.github.schnapsen.Schnapsen.metainfo.xml.in:6
+msgid "A card game for GNOME"
+msgstr "A card game for GNOME"
+
+#: data/io.github.schnapsen.Schnapsen.metainfo.xml.in:8
+msgid "Schnapsen is a native GNOME application for the Austrian card game. Play a hand against the computer and win by reaching 66 card points or taking the last trick."
+msgstr "Schnapsen is a native GNOME application for the Austrian card game. Play a hand against the computer and win by reaching 66 card points or taking the last trick."
+
+#: data/io.github.schnapsen.Schnapsen.gschema.xml:6
+msgid "Card front design ID"
+msgstr "Card front design ID"
+
+#: data/io.github.schnapsen.Schnapsen.gschema.xml:10
+msgid "Card back design ID"
+msgstr "Card back design ID"
+
+#: data/io.github.schnapsen.Schnapsen.gschema.xml:14
+msgid "Highlight legal cards"
+msgstr "Highlight legal cards"
+
+#: data/io.github.schnapsen.Schnapsen.gschema.xml:18
+msgid "Show the opponent's card points"
+msgstr "Show the opponent's card points"
+
+#: data/io.github.schnapsen.Schnapsen.gschema.xml:22
+msgid "Normal window width, height and maximized state"
+msgstr "Normal window width, height and maximized state"
+
+#: data/io.github.schnapsen.Schnapsen.gschema.xml:26
+msgid "Enable game sounds"
+msgstr "Enable game sounds"
+
+#: src/ui/design/backs.rs:153
+msgid "Original"
+msgstr "Original"
+
+#: src/ui/design/backs.rs:158
+msgid "Classic"
+msgstr "Classic"
+
+#: src/ui/design/backs.rs:163
+msgid "Viennese"
+msgstr "Viennese"
+
+#: src/ui/design/backs.rs:168
+msgid "Alpine"
+msgstr "Alpine"
+
+#: src/ui/design/backs.rs:173
+msgid "Geometric"
+msgstr "Geometric"
+
+#: src/ui/design/backs.rs:178
+msgid "Ornamental"
+msgstr "Ornamental"
+
+#: src/ui/design/backs.rs:183
+msgid "Minimal"
+msgstr "Minimal"
+
+#: src/ui/design/fronts.rs:20
+msgid "A"
+msgstr "A"
+
+#: src/ui/design/fronts.rs:20
+msgid "Ace"
+msgstr "Ace"
+
+#: src/ui/design/fronts.rs:21
+msgid "Ten"
+msgstr "Ten"
+
+#: src/ui/design/fronts.rs:22
+msgid "K"
+msgstr "K"
+
+#: src/ui/design/fronts.rs:22
+msgid "King"
+msgstr "King"
+
+#: src/ui/design/fronts.rs:23
+msgid "O"
+msgstr "O"
+
+#: src/ui/design/fronts.rs:23
+msgid "Ober"
+msgstr "Ober"
+
+#: src/ui/design/fronts.rs:24
+msgid "U"
+msgstr "U"
+
+#: src/ui/design/fronts.rs:24
+msgid "Unter"
+msgstr "Unter"
+
+#: src/ui/design/fronts.rs:30 src/ui/design/fronts.rs:90
+msgid "Hearts"
+msgstr "Hearts"
+
+#: src/ui/design/fronts.rs:31
+msgid "Bells"
+msgstr "Bells"
+
+#: src/ui/design/fronts.rs:32 src/ui/turn.rs:500
+#, rust-format
+msgid "Leaves"
+msgstr "Leaves"
+
+#: src/ui/design/fronts.rs:33
+msgid "Acorns"
+msgstr "Acorns"
+
+#. Translators: corner index for a queen in the French deck.
+#: src/ui/design/fronts.rs:79
+msgid "Q"
+msgstr "Q"
+
+#: src/ui/design/fronts.rs:79
+msgid "Queen"
+msgstr "Queen"
+
+#. Translators: corner index for a jack in the French deck.
+#: src/ui/design/fronts.rs:81
+msgid "J"
+msgstr "J"
+
+#: src/ui/design/fronts.rs:81 src/ui/turn.rs:508
+#, rust-format
+msgid "Jack"
+msgstr "Jack"
+
+#: src/ui/design/fronts.rs:91
+msgid "Diamonds"
+msgstr "Diamonds"
+
+#: src/ui/design/fronts.rs:92 src/ui/turn.rs:504
+#, rust-format
+msgid "Spades"
+msgstr "Spades"
+
+#: src/ui/design/fronts.rs:93
+msgid "Clubs"
+msgstr "Clubs"
+
+#: src/ui/design/fronts.rs:136
+msgid "Double German"
+msgstr "Double German"
+
+#: src/ui/design/fronts.rs:145
+msgid "French"
+msgstr "French"
+
+#: src/ui/design/mod.rs:38
+#, rust-format
+msgid "{rank} of {suit}"
+msgstr "{rank} of {suit}"
+
+#: src/ui/mod.rs:24
+#, rust-format
+msgid "Austrian two-player Schnapsen"
+msgstr "Austrian two-player Schnapsen"
+
+#: src/ui/mod.rs:30
+#, rust-format
+msgid "Soft Schnapsen"
+msgstr "Soft Schnapsen"
+
+#: src/ui/mod.rs:31
+#, rust-format
+msgid "Sharp Schnapsen"
+msgstr "Sharp Schnapsen"
+
+#: src/ui/mod.rs:59
+#, rust-format
+msgid "For the next match"
+msgstr "For the next match"
+
+#: src/ui/mod.rs:72
+#, rust-format
+msgid "Rules profile"
+msgstr "Rules profile"
+
+#: src/ui/mod.rs:74
+#, rust-format
+msgid "Count Schneider double"
+msgstr "Count Schneider double"
+
+#: src/ui/mod.rs:78
+#, rust-format
+msgid "Reset Bummerl…"
+msgstr "Reset Bummerl…"
+
+#: src/ui/mod.rs:83
+#, rust-format
+msgid "Match"
+msgstr "Match"
+
+#: src/ui/mod.rs:88 src/ui/preferences.rs:15
+#, rust-format
+msgid "Preferences"
+msgstr "Preferences"
+
+#: src/ui/mod.rs:91
+#, rust-format
+msgid "Open menu"
+msgstr "Open menu"
+
+#: src/ui/mod.rs:118
+#, rust-format
+msgid "Play card"
+msgstr "Play card"
+
+#: src/ui/paint.rs:100
+#, rust-format
+msgid "B {count}"
+msgstr "B {count}"
+
+#: src/ui/paint.rs:106
+#, rust-format
+msgid "Hands"
+msgstr "Hands"
+
+#: src/ui/preferences.rs:20
+#, rust-format
+msgid "Appearance"
+msgstr "Appearance"
+
+#: src/ui/preferences.rs:33
+#, rust-format
+msgid "Card theme"
+msgstr "Card theme"
+
+#: src/ui/preferences.rs:46
+#, rust-format
+msgid "Card backs"
+msgstr "Card backs"
+
+#: src/ui/preferences.rs:87
+#, rust-format
+msgid "Playing aids"
+msgstr "Playing aids"
+
+#: src/ui/preferences.rs:90
+#, rust-format
+msgid "Highlight playable cards"
+msgstr "Highlight playable cards"
+
+#: src/ui/preferences.rs:97
+#, rust-format
+msgid "Show opponent’s card points"
+msgstr "Show opponent’s card points"
+
+#: src/ui/result.rs:10
+#, rust-format
+msgid "You won!"
+msgstr "You won!"
+
+#: src/ui/result.rs:11
+#, rust-format
+msgid "You lost."
+msgstr "You lost."
+
+#: src/ui/result.rs:12
+#, rust-format
+msgid "You won the match!"
+msgstr "You won the match!"
+
+#: src/ui/result.rs:13
+#, rust-format
+msgid "You lost the match."
+msgstr "You lost the match."
+
+#: src/ui/result.rs:33
+#, rust-format
+msgid "Your card points"
+msgstr "Your card points"
+
+#: src/ui/result.rs:37
+#, rust-format
+msgid "Opponent’s card points"
+msgstr "Opponent’s card points"
+
+#: src/ui/result.rs:43
+#, rust-format
+msgid "{count} game point"
+msgid_plural "{count} game points"
+msgstr[0] "{count} game point"
+msgstr[1] "{count} game points"
+
+#: src/ui/result.rs:54
+#, rust-format
+msgid "Schneider · {count} Bummerls"
+msgstr "Schneider · {count} Bummerls"
+
+#: src/ui/result.rs:59 src/ui/turn.rs:424
+#, rust-format
+msgid "{count} Bummerl"
+msgid_plural "{count} Bummerls"
+msgstr[0] "{count} Bummerl"
+msgstr[1] "{count} Bummerls"
+
+#: src/ui/result.rs:67
+#, rust-format
+msgid "Points remaining · You {local} : {opponent} Computer"
+msgstr "Points remaining · You {local} : {opponent} Computer"
+
+#: src/ui/result.rs:82
+#, rust-format
+msgid "New Match"
+msgstr "New Match"
+
+#: src/ui/result.rs:84
+#, rust-format
+msgid "Next Hand"
+msgstr "Next Hand"
+
+#: src/ui/result.rs:115
+#, rust-format
+msgid "Reached 66 card points"
+msgstr "Reached 66 card points"
+
+#: src/ui/result.rs:116
+#, rust-format
+msgid "Decided by the last trick"
+msgstr "Decided by the last trick"
+
+#: src/ui/result.rs:117
+#, rust-format
+msgid "Closing the stock succeeded"
+msgstr "Closing the stock succeeded"
+
+#: src/ui/result.rs:118
+#, rust-format
+msgid "Closing the stock failed"
+msgstr "Closing the stock failed"
+
+#: src/ui/result.rs:124 src/ui/result.rs:147
+#, rust-format
+msgid "Schneider"
+msgstr "Schneider"
+
+#: src/ui/result.rs:125 src/ui/result.rs:151
+#, rust-format
+msgid "Schwarz"
+msgstr "Schwarz"
+
+#: src/ui/result.rs:126
+#, rust-format
+msgid "Schneider after closing the stock"
+msgstr "Schneider after closing the stock"
+
+#: src/ui/result.rs:127 src/ui/result.rs:156
+#, rust-format
+msgid "Schwarz after closing the stock"
+msgstr "Schwarz after closing the stock"
+
+#: src/ui/review.rs:13
+#, rust-format
+msgid "Your tricks"
+msgstr "Your tricks"
+
+#: src/ui/review.rs:14
+#, rust-format
+msgid "Computer’s first trick"
+msgstr "Computer’s first trick"
+
+#: src/ui/review.rs:50
+#, rust-format
+msgid "Trick {number}"
+msgstr "Trick {number}"
+
+#: src/ui/review.rs:61
+#, rust-format
+msgid "{first}, {second}"
+msgstr "{first}, {second}"
+
+#: src/ui/review.rs:88
+#, rust-format
+msgid "Close"
+msgstr "Close"
+
+#: src/ui/turn.rs:38 src/ui/turn.rs:53
+#, rust-format
+msgid "Declare {points} · {rank}"
+msgstr "Declare {points} · {rank}"
+
+#: src/ui/turn.rs:43
+#, rust-format
+msgid "Declare {points}"
+msgstr "Declare {points}"
+
+#: src/ui/turn.rs:64
+#, rust-format
+msgid "You"
+msgstr "You"
+
+#: src/ui/turn.rs:66
+#, rust-format
+msgid "Computer"
+msgstr "Computer"
+
+#: src/ui/turn.rs:69
+#, rust-format
+msgid "{player} · {points}"
+msgstr "{player} · {points}"
+
+#: src/ui/turn.rs:178
+#, rust-format
+msgid "Close the stock?"
+msgstr "Close the stock?"
+
+#: src/ui/turn.rs:179
+#, rust-format
+msgid "Neither player draws any more cards. From now on, you must follow suit and win the trick if possible, or play trump if you cannot follow suit. You must reach at least 66 card points, or the computer wins."
+msgstr "Neither player draws any more cards. From now on, you must follow suit and win the trick if possible, or play trump if you cannot follow suit. You must reach at least 66 card points, or the computer wins."
+
+#: src/ui/turn.rs:180
+#, rust-format
+msgid "Close Stock"
+msgstr "Close Stock"
+
+#: src/ui/turn.rs:183
+#, rust-format
+msgid "Stock closed"
+msgstr "Stock closed"
+
+#: src/ui/turn.rs:191
+#, rust-format
+msgid "Reset the Bummerl counters?"
+msgstr "Reset the Bummerl counters?"
+
+#: src/ui/turn.rs:192
+#, rust-format
+msgid "Both Bummerl counters will be set to zero. The current match score stays the same."
+msgstr "Both Bummerl counters will be set to zero. The current match score stays the same."
+
+#: src/ui/turn.rs:193
+#, rust-format
+msgid "Reset"
+msgstr "Reset"
+
+#: src/ui/turn.rs:207
+#, rust-format
+msgid "Cancel"
+msgstr "Cancel"
+
+#: src/ui/turn.rs:229
+#, rust-format
+msgid "Wait for the current turn to finish."
+msgstr "Wait for the current turn to finish."
+
+#: src/ui/turn.rs:238
+#, rust-format
+msgid "Tricks stay face down in Sharp Schnapsen."
+msgstr "Tricks stay face down in Sharp Schnapsen."
+
+#: src/ui/turn.rs:240
+#, rust-format
+msgid "This pile has no tricks yet."
+msgstr "This pile has no tricks yet."
+
+#: src/ui/turn.rs:355
+#, rust-format
+msgid "{count} hand played"
+msgid_plural "{count} hands played"
+msgstr[0] "{count} hand played"
+msgstr[1] "{count} hands played"
+
+#: src/ui/turn.rs:352
+#, rust-format
+msgid "Top: {opponent_points}, {opponent_bummerls}. {hands}. Bottom: {local_points}, {local_bummerls}. Trump: {suit}."
+msgstr "Top: {opponent_points}, {opponent_bummerls}. {hands}. Bottom: {local_points}, {local_bummerls}. Trump: {suit}."
+
+#: src/ui/turn.rs:362
+#, rust-format
+msgid "Exchange trump · Press T or tap the face-up card"
+msgstr "Exchange trump · Press T or tap the face-up card"
+
+#: src/ui/turn.rs:364
+#, rust-format
+msgid "Close the stock · Press Z or tap the face-down pile"
+msgstr "Close the stock · Press Z or tap the face-down pile"
+
+#: src/ui/turn.rs:420
+#, rust-format
+msgid "{count} point remaining"
+msgid_plural "{count} points remaining"
+msgstr[0] "{count} point remaining"
+msgstr[1] "{count} points remaining"
+
+#: src/ui/turn.rs:430
+#, rust-format
+msgid "You need a face-up trump card to exchange."
+msgstr "You need a face-up trump card to exchange."
+
+#: src/ui/turn.rs:432
+#, rust-format
+msgid "Exchange the trump card before leading to the trick."
+msgstr "Exchange the trump card before leading to the trick."
+
+#: src/ui/turn.rs:434
+#, rust-format
+msgid "You can exchange the trump card only when it is your lead."
+msgstr "You can exchange the trump card only when it is your lead."
+
+#: src/ui/turn.rs:438 src/ui/turn.rs:508
+#, rust-format
+msgid "Select the trump {rank}."
+msgstr "Select the trump {rank}."
+
+#: src/ui/turn.rs:442 src/ui/turn.rs:451
+#, rust-format
+msgid "Available after the first trick."
+msgstr "Available after the first trick."
+
+#: src/ui/turn.rs:443 src/ui/turn.rs:453
+#, rust-format
+msgid "Too few cards in the stock."
+msgstr "Too few cards in the stock."
+
+#: src/ui/turn.rs:449
+#, rust-format
+msgid "The stock must be open."
+msgstr "The stock must be open."
+
+#: src/ui/turn.rs:450
+#, rust-format
+msgid "Close the stock before leading to the trick."
+msgstr "Close the stock before leading to the trick."
+
+#: src/ui/turn.rs:452
+#, rust-format
+msgid "You can close the stock only when it is your lead."
+msgstr "You can close the stock only when it is your lead."
+
+#: src/ui/turn.rs:460
+#, rust-format
+msgid "You must play a higher card of the same suit ({suit})."
+msgstr "You must play a higher card of the same suit ({suit})."
+
+#: src/ui/turn.rs:464 src/ui/turn.rs:500 src/ui/turn.rs:504
+#, rust-format
+msgid "You must follow suit: {suit}."
+msgstr "You must follow suit: {suit}."
+
+#: src/ui/turn.rs:467
+#, rust-format
+msgid "You must play a trump card."
+msgstr "You must play a trump card."
+
+#: src/ui/turn.rs:468
+#, rust-format
+msgid "It is not your turn yet."
+msgstr "It is not your turn yet."
+
+#: src/ui/turn.rs:469
+#, rust-format
+msgid "The current trick is still being resolved."
+msgstr "The current trick is still being resolved."
+
+#: src/ui/turn.rs:470
+#, rust-format
+msgid "This card is no longer in your hand."
+msgstr "This card is no longer in your hand."
+
+#: src/ui/turn.rs:471
+#, rust-format
+msgid "The hand is already over."
+msgstr "The hand is already over."

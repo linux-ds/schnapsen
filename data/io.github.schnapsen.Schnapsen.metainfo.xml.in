@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.schnapsen.Schnapsen</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <name>Schnapsen</name>
+  <summary>A card game for GNOME</summary>
+  <description>
+    <p>Schnapsen is a native GNOME application for the Austrian card game. Play a hand against the computer and win by reaching 66 card points or taking the last trick.</p>
+  </description>
+  <launchable type="desktop-id">io.github.schnapsen.Schnapsen.desktop</launchable>
+  <content_rating type="oars-1.1"/>
+</component>

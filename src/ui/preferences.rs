@@ -12,23 +12,25 @@ pub(super) fn present(
     parent: &impl IsA<gtk::Widget>,
 ) -> adw::PreferencesDialog {
     let dialog = adw::PreferencesDialog::builder()
-        .title("Einstellungen")
+        .title(tr!("Preferences"))
         .search_enabled(false)
         .build();
     let page = adw::PreferencesPage::new();
     let appearance = adw::PreferencesGroup::builder()
-        .title("Darstellung")
+        .title(tr!("Appearance"))
         .build();
     let design = CardDesign::from_ids(&settings.front_id(), &settings.back_id());
 
-    let themes: Vec<_> = FRONTS.iter().map(|front| front.label).collect();
-    let themes = gtk::StringList::new(&themes);
+    let themes = gtk::StringList::new(&[]);
+    for front in FRONTS {
+        themes.append(&front.label());
+    }
     let selected_front = FRONTS
         .iter()
         .position(|front| front.id == design.front.id)
         .expect("the selected card theme is registered");
     let front = adw::ComboRow::builder()
-        .title("Kartenthema")
+        .title(tr!("Card theme"))
         .model(&themes)
         .selected(selected_front as u32)
         .build();
@@ -41,12 +43,13 @@ pub(super) fn present(
     appearance.add(&front);
 
     let backs = adw::ExpanderRow::builder()
-        .title("Kartenrücken")
+        .title(tr!("Card backs"))
         .expanded(true)
         .build();
     let mut group = None;
     for back in BACKS {
-        let row = adw::ActionRow::builder().title(back.label).build();
+        let label = back.label();
+        let row = adw::ActionRow::builder().title(label.as_str()).build();
         let preview = gtk::DrawingArea::builder()
             .content_width(44)
             .content_height(62)
@@ -60,7 +63,7 @@ pub(super) fn present(
         row.add_prefix(&preview);
         let choice = gtk::CheckButton::new();
         choice.set_valign(gtk::Align::Center);
-        choice.update_property(&[gtk::accessible::Property::Label(back.label)]);
+        choice.update_property(&[gtk::accessible::Property::Label(&label)]);
         if let Some(first) = &group {
             choice.set_group(Some(first));
         } else {
@@ -81,17 +84,17 @@ pub(super) fn present(
     page.add(&appearance);
 
     let aids = adw::PreferencesGroup::builder()
-        .title("Spielhilfen")
+        .title(tr!("Playing aids"))
         .build();
     let legal = adw::SwitchRow::builder()
-        .title("Zulässige Karten hervorheben")
+        .title(tr!("Highlight playable cards"))
         .active(settings.show_legal())
         .build();
     let preference = settings.clone();
     legal.connect_active_notify(move |row| preference.set_show_legal(row.is_active()));
     aids.add(&legal);
     let eyes = adw::SwitchRow::builder()
-        .title("Gegnerische Augen anzeigen")
+        .title(tr!("Show opponent’s card points"))
         .active(settings.show_opponent_eyes())
         .build();
     let preference = settings.clone();

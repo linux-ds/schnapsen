@@ -2,7 +2,7 @@ use adw::{gio, glib, gtk, prelude::*};
 use schnapsen::core::{
     game::Player,
     match_play::Match,
-    rules::{MatchConfig, SchneiderRule},
+    rules::{GameVariant, MatchConfig, RuleProfile, SchneiderRule},
 };
 use std::{cell::RefCell, rc::Rc};
 
@@ -18,6 +18,19 @@ mod review;
 mod table;
 mod turn;
 mod window_state;
+
+fn variant_label(variant: GameVariant) -> String {
+    match variant {
+        GameVariant::AustrianSchnapsen => tr!("Austrian two-player Schnapsen"),
+    }
+}
+
+fn profile_label(profile: RuleProfile) -> String {
+    match profile {
+        RuleProfile::Soft => tr!("Soft Schnapsen"),
+        RuleProfile::Sharp => tr!("Sharp Schnapsen"),
+    }
+}
 
 fn choose_index(upper: usize) -> usize {
     adw::glib::random_int_range(0, upper as i32) as usize
@@ -36,18 +49,19 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let header = adw::HeaderBar::new();
     let initial_config = MatchConfig::default();
-    let title = adw::WindowTitle::new("Schnapsen", initial_config.profile.label());
+    let title = adw::WindowTitle::new("Schnapsen", &profile_label(initial_config.profile));
     header.set_title_widget(Some(&title));
     let options = gtk::Box::new(gtk::Orientation::Vertical, 8);
     options.set_margin_start(12);
     options.set_margin_end(12);
     options.set_margin_top(12);
     options.set_margin_bottom(12);
-    options.append(&gtk::Label::new(Some("Für die nächste Partie")));
+    options.append(&gtk::Label::new(Some(&tr!("For the next match"))));
     let game_variant = initial_config.variant;
-    options.append(&gtk::Label::new(Some(game_variant.label())));
+    options.append(&gtk::Label::new(Some(&variant_label(game_variant))));
     let profiles = game_variant.profiles();
-    let labels: Vec<_> = profiles.iter().map(|profile| profile.label()).collect();
+    let labels: Vec<_> = profiles.iter().copied().map(profile_label).collect();
+    let labels: Vec<_> = labels.iter().map(String::as_str).collect();
     let profile = gtk::DropDown::from_strings(&labels);
     profile.set_selected(
         profiles
@@ -55,26 +69,26 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
             .position(|&profile| profile == initial_config.profile)
             .expect("the default profile belongs to the game variant") as u32,
     );
-    profile.update_property(&[gtk::accessible::Property::Label("Regelprofil")]);
+    profile.update_property(&[gtk::accessible::Property::Label(&tr!("Rules profile"))]);
     options.append(&profile);
-    let schneider = gtk::CheckButton::with_label("Schneider zählt doppelt");
+    let schneider = gtk::CheckButton::with_label(&tr!("Count Schneider double"));
     schneider.set_active(initial_config.schneider == SchneiderRule::Double);
     options.append(&schneider);
     options.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
-    let reset_bummerls = gtk::Button::with_label("Bummerl zurücksetzen …");
+    let reset_bummerls = gtk::Button::with_label(&tr!("Reset Bummerl…"));
     options.append(&reset_bummerls);
     let popover = gtk::Popover::new();
     popover.set_child(Some(&options));
     let match_menu = gtk::MenuButton::builder()
-        .label("Partie")
+        .label(tr!("Match"))
         .popover(&popover)
         .build();
     header.pack_start(&match_menu);
     let app_menu = gio::Menu::new();
-    app_menu.append(Some("Einstellungen"), Some("win.preferences"));
+    app_menu.append(Some(&tr!("Preferences")), Some("win.preferences"));
     let app_menu = gtk::MenuButton::builder()
         .icon_name("open-menu-symbolic")
-        .tooltip_text("Menü öffnen")
+        .tooltip_text(tr!("Open menu"))
         .menu_model(&app_menu)
         .build();
     header.pack_end(&app_menu);
@@ -101,7 +115,7 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
     let actions = gtk::Box::new(gtk::Orientation::Horizontal, 6);
     actions.set_halign(gtk::Align::Center);
     actions.set_valign(gtk::Align::Center);
-    let play = gtk::Button::with_label("Ausspielen");
+    let play = gtk::Button::with_label(&tr!("Play card"));
     let king = gtk::Button::new();
     let ober = gtk::Button::new();
     let announcement = gtk::Label::new(None);
@@ -187,7 +201,7 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
         } else {
             model.next_hand(choose_index)?;
         }
-        title.set_subtitle(model.session().config().profile.label());
+        title.set_subtitle(&profile_label(model.session().config().profile));
         if let Some(touch) = touch.upgrade() {
             touch.reset();
         }

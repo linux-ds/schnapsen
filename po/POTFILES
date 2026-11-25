@@ -1,0 +1,12 @@
+data/io.github.schnapsen.Schnapsen.desktop.in
+data/io.github.schnapsen.Schnapsen.metainfo.xml.in
+data/io.github.schnapsen.Schnapsen.gschema.xml
+src/ui/design/backs.rs
+src/ui/design/fronts.rs
+src/ui/design/mod.rs
+src/ui/mod.rs
+src/ui/paint.rs
+src/ui/preferences.rs
+src/ui/result.rs
+src/ui/review.rs
+src/ui/turn.rs

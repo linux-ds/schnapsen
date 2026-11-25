@@ -9,6 +9,8 @@
 
 Entwicklung eines nativen, schlanken Schnapsenspiels für GNOME. Das Spiel soll sich wie ein physischer Kartentisch in Draufsicht anfühlen, ohne eine klassische Game-Engine oder eine physikalische Simulation einzusetzen. Im Vordergrund stehen korrekte Spielregeln, natürliche Bedienung und ein nachvollziehbarer Spielzustand. Grafische Perfektion ist **kein** Ziel der ersten Version.
 
+Die funktionale Entwicklung bis zur Beta-Abnahme hat Vorrang. Historische Grafik, Audio und zusätzliche Animationen folgen in einer eigenen Phase. Die Reihenfolge der Aufträge und die offenen Prüfungen stehen in [PLAN.md](PLAN.md).
+
 ### Leitprinzipien
 
 1. **Physisch nachvollziehbar, nicht physikalisch simuliert.** Karten, Talon und Stichstapel verhalten sich erkennbar wie reale Gegenstände; aufwändige Flugbahnen sind unnötig.
@@ -31,7 +33,7 @@ Entwicklung eines nativen, schlanken Schnapsenspiels für GNOME. Das Spiel soll 
 - Auswahl einzelner Karten, gegebenenfalls zweier Karten zur Vorbereitung einer Ansage.
 - Ausspielen per Tastatur und Touchgeste sowie eindeutige Mausbedienung.
 - Einsicht in Stichstapel entsprechend den gewählten Regeln; optionale Spielhilfen.
-- Grundlegende Animationen: Auswählen, kurzes Verschieben, Ein-/Ausblenden und sichtbare Aktualisierung von Stapeln.
+- Visuelle Rückmeldung für Auswahl und Stapel. Zusätzliche Animationen folgen in der grafischen Verfeinerungsphase.
 - Lokale Einstellungen; keine Netzwerkverbindung erforderlich.
 
 ### Nicht Bestandteil der ersten Version
@@ -97,6 +99,32 @@ Die Profile bündeln die bestehenden Hausregeln für Ansagen und deren Wirksamke
 Das native Einstellungsfenster speichert Designs und Spielhilfen über GSettings. Die Spielhilfen unterliegen weiterhin dem aktiven Regelprofil. Unbekannte Design-IDs fallen auf Doppeldeutsch beziehungsweise den bisherigen Kartenrücken zurück. Der Schlüssel für Audio ist vorbereitet. Eine Audiooption erscheint erst mit der Wiedergabe.
 
 Für einen weiteren Rücken kann beispielsweise ein Modul mit einer Cairo-Zeichenfunktion ergänzt und ein Eintrag mit unveränderlicher ID, Anzeigename und Renderer in `BACKS` registriert werden. Eine weitere Front wird analog in `FRONTS` registriert und liefert zusätzlich Bezeichnungen und Farbsymbole. Ein späterer Renderer kann etwa vorbereitete SVG-Ressourcen in den übergebenen Cairo-Kontext zeichnen. Änderungen am Kartenmodell oder an den Spielregeln sind dafür nicht erforderlich.
+
+### Internationalisierung
+
+Die Oberfläche folgt der System-Locale. Deutsch verwendet österreichische Schnapsen-Terminologie. Englisch ist zugleich die Quellsprache und der Rückfall für Sprachen ohne Katalog. Eine vom System gesetzte gettext-Sprachpriorität (`LANGUAGE`) wird berücksichtigt.
+
+`src/i18n.rs` bindet GNU gettext im Anwendungsprozess. Die Oberfläche übersetzt Spielereignisse, Abschlussgründe, Designnamen, Kartenbezeichnungen und Cairo-Beschriftungen bei der Ausgabe. Varianten, Regelprofile und Karten bleiben fachliche Typen. Die technischen Design-IDs und GSettings-Werte ändern sich mit der Sprache nicht. Desktop-Datei und AppStream entstehen über Meson aus englischen Vorlagen und den Katalogen.
+
+Neue sichtbare Texte werden mit `tr!` markiert. Dynamische Texte verwenden vollständige Sätze mit benannten Platzhaltern, deren Reihenfolge der Katalog ändern kann. `trn!` übergibt den Zähler an gettext und stellt ihn als `{count}` bereit. Statische Einträge in Designbeschreibungen werden mit `msgid!` markiert und bei der Verwendung übersetzt.
+
+| Deutsch | Englisch | Bedeutung |
+|---|---|---|
+| Schnapsen | Schnapsen | Spielname |
+| Bummerl, Schneiderbummerl | Bummerl, Schneider | Verlust einer Partie, bei der Schneiderwertung zwei Bummerl |
+| Schneider, Schwarz | Schneider, Schwarz | Zwei beziehungsweise drei Spielpunkte bei der entsprechenden Handwertung |
+| Talon, Zudrehen | stock, close the stock | Nachziehstapel und seine Sperre |
+| Augen, Spielpunkte | card points, game points | Punkte aus Karten und Ansagen beziehungsweise Wertung einer Hand |
+| Stich, Ansage | trick, marriage | Ausgespieltes Kartenpaar beziehungsweise Ansage eines gleichfarbigen König-Ober-Paars |
+| Weich, Scharf | Soft Schnapsen, Sharp Schnapsen | Regelprofile |
+| Ober, Unter | Ober, Unter | Doppeldeutsche Kartenwerte. Im französischen Thema lauten sie Queen und Jack. |
+
+#### Übersetzungen pflegen
+
+1. Neue Quelldateien in `po/POTFILES` eintragen. Im GNOME SDK die Meson-Ziele `schnapsen-pot` und `schnapsen-update-po` ausführen, etwa mit `meson compile -C BUILD schnapsen-update-po`.
+2. `po/de.po` aktualisieren und benannte Platzhalter erhalten. Der englische Katalog enthält die Quelltexte. Mit `msginit --no-translator --locale=en -i po/schnapsen.pot -o BUILD/en-base.po` und `msgen --lang=en BUILD/en-base.po -o po/en.po` neu erzeugen. Er stellt sicher, dass Englisch auch in einer Sprachpräferenzliste vor Deutsch gewählt werden kann.
+3. Beide Kataloge mit `msgfmt --check --statistics -o /dev/null po/de.po` beziehungsweise `po/en.po` prüfen. Für weitere Sprachen einen Katalog aus der POT-Datei anlegen und den Sprachcode in `po/LINGUAS` aufnehmen.
+4. Cargo baut für Entwicklung und Tests eigene MO-Dateien. Meson installiert die Kataloge im Locale-Verzeichnis. Das Flatpak enthält beide Kataloge direkt.
 
 ## 4. Datenmodell und Spielmechanik
 

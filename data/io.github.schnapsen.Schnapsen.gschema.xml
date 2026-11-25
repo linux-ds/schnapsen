@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<schemalist>
+<schemalist gettext-domain="schnapsen">
   <schema id="io.github.schnapsen.Schnapsen" path="/io/github/schnapsen/Schnapsen/">
     <key name="card-front" type="s">
       <default>'double-german'</default>

@@ -17,6 +17,7 @@
 
 - [RULE_AUDIT.md](RULE_AUDIT.md) vergleicht die implementierten Profile mit drei Regelquellen und dokumentiert Abweichungen und Stabilitätsprüfungen.
 
+- `src/i18n.rs` bindet GNU gettext für die Oberfläche an. Das Flatpak enthält beide Kataloge und die aus lokalisierten Vorlagen erzeugten Desktop- und AppStream-Dateien.
 - `src/app/mod.rs` verwaltet den Lebenszyklus der Anwendung und öffnet oder aktiviert das Fenster.
 - `src/ui/mod.rs` bindet den Kartentisch über eine `GtkDrawingArea` in das Fenster ein. Die Zeichenfläche hat eine Mindestgröße von 560 × 400 logischen Pixeln. Die Titelleiste liegt außerhalb. Der Partiestand steht in einer festen Spalte links auf der Zeichenfläche und nutzt den vorhandenen Abstand zum Talon. Die Zielgröße des Fensters ist 680 × 560. Kontextaktionen liegen in einer ungemessenen GTK-Overlay-Ebene. Hand- und Partieergebnisse erscheinen in einem modalen libadwaita-Dialog über dem Tisch.
 - `src/core/game.rs` prüft Ausspielaktionen und löst vollständige Stiche auf. Eine Ansage prüft Ausspielrecht, Paar und Profil und spielt atomar eine Karte aus. Stichaugen und vorgemerkte oder wirksame Ansageaugen werden aus Stichpaaren und Ansageereignissen abgeleitet. Ab 66 wirksamen Augen beendet die Engine die Hand nach Stichauflösung oder Ansage automatisch. Der Abschlussgrund und die Spielpunkte stehen in `Finished`.
@@ -39,6 +40,38 @@
 - `Cargo.toml` und `Cargo.lock` definieren die Anwendung und ihre Abhängigkeiten. GTK4 wird über libadwaita eingebunden. Die App-ID `io.github.schnapsen.Schnapsen` ist vorläufig.
 - `io.github.schnapsen.Schnapsen.json` ist die Build-Konfiguration für GNOME Builder und Flatpak. `meson.build` startet Cargo und installiert Programm, Desktop-Datei, AppStream-Metadaten und Icon.
 - `cargo-sources.json` enthält die Crate-Archive und Prüfsummen aus `Cargo.lock`. Flatpak lädt die Archive vor dem Build. Das Modul `cargo-dependencies` stellt sie auch der separaten Meson-Pipeline in Builder bereit. Cargo baut mit `--locked --offline`. Flatpak entfernt die vorbereiteten Quellen beim Paketabschluss.
+
+## Roadmap ab Auftrag 23
+
+Die funktionale Spielentwicklung hat Vorrang. Die vorhandene Darstellung reicht für die laufende Entwicklung und praktische Spieltests aus.
+
+### Phase 1 – Funktionale Spielentwicklung
+
+| Auftrag | Thema |
+|---|---|
+| 23 | Internationalisierung |
+| 24 | Spielstände speichern und fortsetzen |
+| 25 | Computerstrategien und Schwierigkeitsstufen |
+| 26 | Erweiterte Spieltests, reproduzierbare Spielsituationen und Simulationen |
+| 27 | Weitere regionale Regelprofile |
+| 28 | Weitere Spielvarianten |
+| 29 | Funktionale Beta-Abnahme |
+
+### Phase 2 – Grafische und akustische Verfeinerung
+
+| Auftrag | Thema |
+|---|---|
+| 30 | Historische und hochwertige Kartengrafiken |
+| 31 | Audio und Kartengeräusche |
+| 32 | Animationen und Überblendungen |
+
+### Phase 3 – Veröffentlichung
+
+| Auftrag | Thema |
+|---|---|
+| 33 | Anwendungssymbol und AppStream-Metadaten |
+| 34 | Abschließende Qualitäts- und Barrierefreiheitsprüfung |
+| 35 | Veröffentlichung auf Flathub |
 
 ## Meilensteine
 
@@ -126,7 +159,7 @@ Die Tischdarstellung und die Hausregeln für Stichdarstellung und automatischen 
 
 ## Nächster Schritt
 
-Die offenen manuellen Eingabeprüfungen durchführen.
+Auftrag 24 behandelt das Speichern und Fortsetzen von Spielständen. Die offenen manuellen Eingabeprüfungen bleiben Teil der Abnahme.
 
 ## Build in GNOME Builder
 
@@ -173,6 +206,13 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-25 – Auftrag 23
+
+- Funktionale Entwicklung bis zur Beta-Abnahme priorisiert. Grafik, Audio und Animationen folgen in Phase 2, Veröffentlichung in Phase 3. Die bisherigen Meilensteine, offenen Prüfungen und Protokolle bleiben erhalten.
+- GNU gettext lokalisiert GTK-Oberfläche, Spielmeldungen, Cairo-Beschriftungen, Kartenbezeichnungen, Desktop und AppStream. Die System-Locale wählt Deutsch oder Englisch. Englisch ist zugleich die Quellsprache und der Rückfall. Terminologie und Katalogpflege sind in [SPEC.md](SPEC.md) beschrieben.
+- Formatierung, Cargo-Check, alle 73 Tests, Clippy mit `-D warnings`, Prüfung der jeweils 120 Katalogeinträge und Flatpak-Release-Build einschließlich Tests waren im GNOME SDK 51 erfolgreich. Im gebauten Flatpak wurden beide MO-Dateien und die zweisprachigen Metadaten geprüft. Die Testfälle decken Locale, Sprachpriorität, Rückfall, dynamische Meldungen, Pluralformen, Design-IDs und GSettings über einen Sprachwechsel hinweg ab.
+- Ein isolierter GTK-Prüflauf unter Wayland bestätigte bei 560 × 450 logischen Pixeln in `de_AT.UTF-8` und `en_GB.UTF-8` Partiemenü, Rücksetzbestätigung, Einstellungen und vollständig sichtbare Handergebnisse. Manuelle Prüfung mit physischem Touch, HiDPI und assistiver Technik bleibt offen.
 
 ### 2026-11-25 – Auftrag 22a
 

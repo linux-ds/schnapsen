@@ -97,6 +97,7 @@ mod tests {
         const MODE: &str = "SCHNAPSEN_SETTINGS_TEST_MODE";
         match env::var(MODE).as_deref() {
             Ok("write") => {
+                crate::i18n::init();
                 let settings = Preferences::new();
                 assert_eq!(settings.front_id(), "double-german");
                 assert_eq!(settings.back_id(), "legacy");
@@ -111,6 +112,7 @@ mod tests {
                 settings.save_window_state((900, 700, true));
             }
             Ok("read") => {
+                crate::i18n::init();
                 let settings = Preferences::new();
                 assert_eq!(settings.front_id(), "french");
                 assert_eq!(settings.back_id(), "alpine");
@@ -133,6 +135,15 @@ mod tests {
                             "app::settings::tests::restores_personal_preferences_across_processes",
                         ])
                         .env(MODE, mode)
+                        .env("LANGUAGE", "")
+                        .env(
+                            "LC_ALL",
+                            if mode == "write" {
+                                "de_AT.UTF-8"
+                            } else {
+                                "en_GB.UTF-8"
+                            },
+                        )
                         .env("GSETTINGS_BACKEND", "keyfile")
                         .env("XDG_CONFIG_HOME", &directory)
                         .output()

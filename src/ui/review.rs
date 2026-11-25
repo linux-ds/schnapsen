@@ -10,8 +10,8 @@ pub(super) fn layer(
     dismiss: impl Fn() + Clone + 'static,
 ) -> (gtk::Overlay, gtk::Button) {
     let title = match owner {
-        Player::Local => "Deine Stiche",
-        Player::Opponent => "Erster Stich des Computers",
+        Player::Local => tr!("Your tricks"),
+        Player::Opponent => tr!("Computer’s first trick"),
     };
     let layer = gtk::Overlay::new();
     layer.set_halign(gtk::Align::Fill);
@@ -47,7 +47,7 @@ pub(super) fn layer(
         .build();
     for trick in tricks {
         let pair = gtk::Box::new(gtk::Orientation::Vertical, 6);
-        let number = gtk::Label::new(Some(&format!("Stich {}", trick.number)));
+        let number = gtk::Label::new(Some(&tr!("Trick {number}", number = trick.number)));
         number.add_css_class("dim-label");
         pair.append(&number);
         let cards = gtk::DrawingArea::builder()
@@ -57,8 +57,10 @@ pub(super) fn layer(
             .accessible_role(gtk::AccessibleRole::Img)
             .build();
         let [first, second] = trick.cards.map(|card| theme.card_name(card));
-        cards.update_property(&[gtk::accessible::Property::Label(&format!(
-            "{first}, {second}"
+        cards.update_property(&[gtk::accessible::Property::Label(&tr!(
+            "{first}, {second}",
+            first = first,
+            second = second
         ))]);
         cards.set_draw_func(move |_, cr, _, _| {
             if let Err(error) = paint::review_pair(cr, trick.cards, theme) {
@@ -83,12 +85,12 @@ pub(super) fn layer(
         .vexpand(true)
         .child(&flow)
         .build();
-    let close = gtk::Button::with_label("Schließen");
+    let close = gtk::Button::with_label(&tr!("Close"));
     close.add_css_class("suggested-action");
     let header = adw::HeaderBar::builder()
         .show_start_title_buttons(false)
         .show_end_title_buttons(false)
-        .title_widget(&adw::WindowTitle::new(title, ""))
+        .title_widget(&adw::WindowTitle::new(&title, ""))
         .build();
     header.pack_end(&close);
     let content = adw::ToolbarView::new();
