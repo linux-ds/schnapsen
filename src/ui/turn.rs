@@ -6,14 +6,14 @@ use std::{
 
 use adw::{glib, gtk, prelude::*};
 use schnapsen::core::{
-    cards::Suit,
+    cards::Rank,
     game::{
         Announcement, CloseError, Exchange, ExchangeError, PlayError, Player, TrickReviewError,
     },
     match_play::DealError,
 };
 
-use super::{result, review, table::Table};
+use super::{design::FrontTheme, result, review, table::Table};
 
 type AdvanceHand = Box<dyn Fn(&mut Table) -> Result<(), DealError>>;
 
@@ -30,10 +30,15 @@ impl TableControls {
             play.set_visible(table.can_play_selected());
         }
         let marriage = table.selected_marriage();
+        let theme = table.design().front;
         if let Some(king) = self.king.upgrade() {
             if let Some(marriage) = marriage {
                 let label = if marriage.may_play_ober {
-                    format!("{} ansagen · König", marriage.eyes)
+                    format!(
+                        "{} ansagen · {}",
+                        marriage.eyes,
+                        theme.rank_name(Rank::King)
+                    )
                 } else {
                     format!("{} ansagen", marriage.eyes)
                 };
@@ -44,7 +49,11 @@ impl TableControls {
         if let Some(ober) = self.ober.upgrade() {
             let option = marriage.filter(|marriage| marriage.may_play_ober);
             if let Some(marriage) = option {
-                ober.set_label(&format!("{} ansagen · Ober", marriage.eyes));
+                ober.set_label(&format!(
+                    "{} ansagen · {}",
+                    marriage.eyes,
+                    theme.rank_name(Rank::Ober)
+                ));
             }
             ober.set_visible(option.is_some());
         }
@@ -246,7 +255,8 @@ impl TurnTimers {
         let weak = Rc::downgrade(self);
         let layer_ref = Rc::new(glib::WeakRef::<gtk::Overlay>::new());
         let close_layer = layer_ref.clone();
-        let (layer, close) = review::layer(owner, tricks, move || {
+        let theme = self.state.borrow().design().front;
+        let (layer, close) = review::layer(owner, tricks, theme, move || {
             if let (Some(timers), Some(layer)) = (weak.upgrade(), close_layer.upgrade()) {
                 let Some(host) = timers.review_host.upgrade() else {
                     return;
@@ -304,6 +314,14 @@ impl TurnTimers {
         dialog.present(Some(&window));
     }
 
+    pub fn refresh_appearance(self: &Rc<Self>) {
+        self.dismiss_feedback();
+        if let Some(area) = self.area.upgrade() {
+            area.queue_draw();
+        }
+        self.refresh();
+    }
+
     pub fn refresh(self: &Rc<Self>) {
         if self.input_blocked() {
             return;
@@ -315,10 +333,11 @@ impl TurnTimers {
         let message = {
             let mut table = self.state.borrow_mut();
             let play_error = table.take_play_error();
+            let theme = table.design().front;
             table
                 .take_exchange_error()
-                .map(exchange_message)
-                .or_else(|| play_error.map(play_message))
+                .map(|error| exchange_message(error, theme))
+                .or_else(|| play_error.map(|error| play_message(error, theme)))
         };
         if let Some(message) = message {
             self.show_feedback(&message);
@@ -332,7 +351,7 @@ impl TurnTimers {
             session.completed_hands(),
             session.remaining(Player::Local),
             session.bummerls(Player::Local),
-            suit_name(session.hand().trump_suit()),
+            table.design().front.suit_name(session.hand().trump_suit()),
         );
         area.update_property(&[gtk::accessible::Property::Description(&status)]);
         let tooltip = if table.exchange_available() {
@@ -393,14 +412,16 @@ impl TurnTimers {
     }
 }
 
-fn exchange_message(error: ExchangeError) -> String {
+fn exchange_message(error: ExchangeError, theme: &FrontTheme) -> String {
     match error {
         ExchangeError::TalonNotOpen | ExchangeError::NoOpenTrump => {
             "Zum Tauschen brauchst du eine offene Trumpfkarte."
         }
         ExchangeError::TrickStarted => "Du kannst nur vor dem Ausspiel tauschen.",
         ExchangeError::CannotLead => "Du kannst nur mit Ausspielrecht tauschen.",
-        ExchangeError::MissingTrumpUnder => "Wähle den Trumpf-Unter aus.",
+        ExchangeError::MissingTrumpUnder => {
+            return format!("Wähle den Trumpf-{} aus.", theme.rank_name(Rank::Unter));
+        }
         ExchangeError::FirstTrickNotCompleted => "Erst nach dem ersten Stich möglich.",
         ExchangeError::NotEnoughTalonCards => "Zu wenige Karten im Talon.",
     }
@@ -417,27 +438,18 @@ fn close_message(error: CloseError) -> &'static str {
     }
 }
 
-fn play_message(error: PlayError) -> String {
+fn play_message(error: PlayError, theme: &FrontTheme) -> String {
     match error {
         PlayError::MustBeat(suit) => format!(
             "Du musst mit einer höheren {}-Karte stechen.",
-            suit_name(suit)
+            theme.suit_name(suit)
         ),
-        PlayError::MustFollow(suit) => format!("Du musst {} bedienen.", suit_name(suit)),
+        PlayError::MustFollow(suit) => format!("Du musst {} bedienen.", theme.suit_name(suit)),
         PlayError::MustTrump => "Du musst Trumpf spielen.".into(),
         PlayError::OutOfTurn { .. } => "Du bist noch nicht am Zug.".into(),
         PlayError::TrickPending => "Der Stich wird noch aufgelöst.".into(),
         PlayError::CardNotInHand => "Diese Karte ist nicht mehr auf deiner Hand.".into(),
         PlayError::UnsupportedPhase(_) => "Die Hand ist bereits beendet.".into(),
-    }
-}
-
-fn suit_name(suit: Suit) -> &'static str {
-    match suit {
-        Suit::Hearts => "Herz",
-        Suit::Bells => "Schellen",
-        Suit::Leaves => "Grün",
-        Suit::Acorns => "Eichel",
     }
 }
 

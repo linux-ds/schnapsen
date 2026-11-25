@@ -11,8 +11,11 @@ use schnapsen::{
     },
 };
 
+use super::design::CardDesign;
+
 pub(super) struct Table {
     session: Match,
+    design: CardDesign,
     selected: Vec<Card>,
     focus: Option<Card>,
     show_legal: bool,
@@ -29,6 +32,7 @@ impl Table {
         let focus = session.hand().view(Player::Local).hand.first().copied();
         Self {
             session,
+            design: CardDesign::default(),
             selected: Vec::new(),
             focus,
             show_legal: false,
@@ -76,6 +80,14 @@ impl Table {
         self.play_error = None;
         self.exchange_error = None;
         self.hide_card_effects();
+    }
+
+    pub fn design(&self) -> CardDesign {
+        self.design
+    }
+
+    pub fn set_design(&mut self, design: CardDesign) {
+        self.design = design;
     }
 
     pub fn set_show_legal(&mut self, enabled: bool) {
@@ -360,6 +372,44 @@ mod tests {
     fn replace_for_test(table: &mut Table, session: Match) {
         table.session = session;
         table.reset_hand_ui();
+    }
+
+    #[test]
+    fn changing_front_and_back_keeps_selection_geometry_and_the_running_trick() {
+        let mut table = Table::new(Match::new(
+            Player::Local,
+            Variant::Soft,
+            SchneiderRule::Double,
+            |upper| upper - 1,
+        ));
+        let lead = table.view().hand[0];
+        assert!(table.swipe(lead));
+        let selected = table.view().hand[0];
+        table.toggle(selected);
+        let hand = table.session().hand().clone();
+        let config = table.session().config();
+        let score = table.session().remaining(Player::Local);
+        let focus = table.focus();
+        let positions = |table: &Table| {
+            crate::ui::layout::arrange(table, 680.0, 560.0)
+                .into_iter()
+                .map(|placement| placement.rect)
+                .collect::<Vec<_>>()
+        };
+        let before = positions(&table);
+        table.set_design(CardDesign::from_ids("french", "legacy"));
+        assert_eq!(table.design().front.id, "french");
+        assert_eq!(table.design().back.id, "legacy");
+        table.set_design(CardDesign::from_ids("french", "alpine"));
+        assert_eq!(table.design().front.id, "french");
+        assert_eq!(table.design().back.id, "alpine");
+        assert_eq!(*table.session().hand(), hand);
+        assert_eq!(table.session().config(), config);
+        assert_eq!(table.session().remaining(Player::Local), score);
+        assert_eq!(table.view().played, [(Player::Local, lead)]);
+        assert!(table.is_selected(selected));
+        assert_eq!(table.focus(), focus);
+        assert_eq!(positions(&table), before);
     }
 
     #[test]

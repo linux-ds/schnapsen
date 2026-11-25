@@ -1,11 +1,12 @@
 use adw::{gdk, glib, gtk, prelude::*};
 use schnapsen::core::game::{Player, ReviewedTrick};
 
-use super::paint;
+use super::{design::FrontTheme, paint};
 
 pub(super) fn layer(
     owner: Player,
     tricks: Vec<ReviewedTrick>,
+    theme: &'static FrontTheme,
     dismiss: impl Fn() + Clone + 'static,
 ) -> (gtk::Overlay, gtk::Button) {
     let title = match owner {
@@ -55,12 +56,12 @@ pub(super) fn layer(
             .halign(gtk::Align::Center)
             .accessible_role(gtk::AccessibleRole::Img)
             .build();
-        let [first, second] = trick.cards.map(card_name);
+        let [first, second] = trick.cards.map(|card| theme.card_name(card));
         cards.update_property(&[gtk::accessible::Property::Label(&format!(
             "{first}, {second}"
         ))]);
         cards.set_draw_func(move |_, cr, _, _| {
-            if let Err(error) = paint::review_pair(cr, trick.cards) {
+            if let Err(error) = paint::review_pair(cr, trick.cards, theme) {
                 eprintln!("Could not draw reviewed trick: {error}");
             }
         });
@@ -116,22 +117,4 @@ pub(super) fn layer(
     });
     layer.add_controller(keys);
     (layer, close)
-}
-
-fn card_name(card: schnapsen::core::cards::Card) -> String {
-    use schnapsen::core::cards::{Rank, Suit};
-    let suit = match card.suit {
-        Suit::Hearts => "Herz",
-        Suit::Bells => "Schellen",
-        Suit::Leaves => "Grün",
-        Suit::Acorns => "Eichel",
-    };
-    let rank = match card.rank {
-        Rank::Ace => "Ass",
-        Rank::Ten => "Zehn",
-        Rank::King => "König",
-        Rank::Ober => "Ober",
-        Rank::Unter => "Unter",
-    };
-    format!("{suit} {rank}")
 }

@@ -174,6 +174,14 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 
 ## Änderungsprotokoll
 
+### 2026-11-25 – Auftrag 22
+
+- `ui::design` registriert Doppeldeutsch und Französisch als Kartenfronten sowie die Rücken Original, Klassisch, Wienerisch, Alpin, Geometrisch, Ornament und Minimal. Kartentisch, Trumpfanzeige, Stichübersicht und Rückenvorschau verwenden denselben Cairo-Renderer. Kartenspezifische Hinweise verwenden die Namen des gewählten Themas.
+- `ui::preferences` bündelt Darstellung und beide persönlichen Spielhilfen im nativen Einstellungsdialog. `app::settings` speichert stabile IDs über GSettings. Das Flatpak verwendet dessen Keyfile-Backend im app-eigenen Konfigurationsverzeichnis. Der Audio-Schlüssel ist vorbereitet.
+- Formatierung, Offline-Cargo-Check, alle 67 Tests, Clippy für alle Targets mit `-D warnings` und der Flatpak-Release-Build einschließlich Tests waren im GNOME SDK 51 erfolgreich. Die Layout- und Rendererprüfungen decken 560 × 400 bis 3840 × 2160 logische Pixel ab.
+- Ein GTK-Test unter Wayland prüfte den Dialog mit zwei Fronten und sieben Rückenvorschauen, den unmittelbaren Designwechsel während eines Stichs samt erhaltener Auswahl und die Wiederherstellung nach einem zweiten Start. Zwei getrennte Flatpak-Prozesse schrieben und lasen eine Design-ID im isolierten Keyfile-Profil. Der Fensterstart über `flatpak-builder --run` erreichte den Wayland-Compositor; in dieser Umgebung wurde dabei kein Fensterpuffer bestätigt.
+- Die visuelle Abnahme bei physischen Touch- und HiDPI-Konfigurationen bleibt offen. Erweiterungspunkte für weitere Kartenfronten und -rücken stehen in [SPEC.md](SPEC.md).
+
 ### 2026-11-24 – Auftrag 21
 
 - `core::rules` trennt die Identität und Grundregeln des österreichischen Zweierschnapsens von den zentralen Profilen Weich und Scharf. Die bisherigen Hausregeln einschließlich der Wienerisch-Wertung bleiben maßgeblich.

@@ -1,11 +1,12 @@
 use adw::gtk::cairo::{Context, Error, FontSlant, FontWeight};
 use schnapsen::core::{
-    cards::{Card, Rank, Suit},
+    cards::{Card, Suit},
     game::Player,
     match_play::Match,
 };
 use std::f64::consts::TAU;
 
+use super::design::{rounded_rect, CardBack, CardDesign, FrontTheme};
 use super::layout::{
     eye_layout, status_layout, trump_indicator, Face, Placement, ASPECT, CORNER_RADIUS,
 };
@@ -16,6 +17,7 @@ pub(super) fn table(
     cr: &Context,
     placements: &[Placement],
     focus: Option<Card>,
+    design: CardDesign,
 ) -> Result<(), Error> {
     cr.set_source_rgb(0.10, 0.25, 0.21);
     cr.paint()?;
@@ -38,6 +40,7 @@ pub(super) fn table(
             placement.selected,
             placement.highlighted,
             focused,
+            design,
         )?;
         cr.restore()?;
     }
@@ -110,16 +113,20 @@ pub(super) fn match_status(
     cr.restore()
 }
 
-pub(super) fn trump(cr: &Context, width: f64, height: f64, suit: Suit) -> Result<(), Error> {
+pub(super) fn trump(
+    cr: &Context,
+    width: f64,
+    height: f64,
+    suit: Suit,
+    theme: &FrontTheme,
+) -> Result<(), Error> {
     let (x, y, radius) = trump_indicator(width, height);
     cr.save()?;
     cr.new_sub_path();
     cr.arc(x, y, radius, 0.0, TAU);
     cr.set_source_rgb(0.98, 0.96, 0.90);
     cr.fill()?;
-    let (r, g, b) = suit_color(suit);
-    cr.set_source_rgb(r, g, b);
-    symbol(cr, suit, x, y, radius * 1.35)?;
+    theme.draw_symbol(cr, suit, x, y, radius * 1.35)?;
     cr.restore()
 }
 
@@ -127,38 +134,48 @@ fn eye_label(value: u8) -> String {
     value.to_string()
 }
 
-fn rounded_rect(cr: &Context, x: f64, y: f64, width: f64, height: f64, radius: f64) {
-    let quarter = TAU / 4.0;
-    cr.new_sub_path();
-    cr.arc(x + width - radius, y + radius, radius, -quarter, 0.0);
-    cr.arc(
-        x + width - radius,
-        y + height - radius,
-        radius,
-        0.0,
-        quarter,
-    );
-    cr.arc(
-        x + radius,
-        y + height - radius,
-        radius,
-        quarter,
-        2.0 * quarter,
-    );
-    cr.arc(x + radius, y + radius, radius, 2.0 * quarter, 3.0 * quarter);
-    cr.close_path();
-}
-
-pub(super) fn review_pair(cr: &Context, cards: [Card; 2]) -> Result<(), Error> {
+pub(super) fn review_pair(
+    cr: &Context,
+    cards: [Card; 2],
+    theme: &'static FrontTheme,
+) -> Result<(), Error> {
+    let design = CardDesign {
+        front: theme,
+        ..CardDesign::default()
+    };
     const WIDTH: f64 = 96.0;
     for (index, face) in cards.into_iter().enumerate() {
         cr.save()?;
         cr.translate(3.0 + index as f64 * (WIDTH + 10.0), 3.0);
         cr.scale(WIDTH, WIDTH);
-        card(cr, Face::Front(face), false, false, false)?;
+        card(cr, Face::Front(face), false, false, false, design)?;
         cr.restore()?;
     }
     Ok(())
+}
+
+pub(super) fn back_preview(
+    cr: &Context,
+    width: f64,
+    height: f64,
+    back: &'static CardBack,
+) -> Result<(), Error> {
+    let size = width.min(height / ASPECT) * 0.94;
+    cr.save()?;
+    cr.translate((width - size) / 2.0, (height - size * ASPECT) / 2.0);
+    cr.scale(size, size);
+    card(
+        cr,
+        Face::Back,
+        false,
+        false,
+        false,
+        CardDesign {
+            back,
+            ..CardDesign::default()
+        },
+    )?;
+    cr.restore()
 }
 
 fn card(
@@ -167,6 +184,7 @@ fn card(
     selected: bool,
     highlighted: bool,
     focused: bool,
+    design: CardDesign,
 ) -> Result<(), Error> {
     rounded_rect(cr, 0.014, 0.032, 1.0, ASPECT, CORNER_RADIUS);
     cr.set_source_rgba(0.02, 0.08, 0.06, 0.38);
@@ -185,8 +203,8 @@ fn card(
     cr.stroke()?;
 
     match face {
-        Face::Front(card) => front(cr, card)?,
-        Face::Back => back(cr)?,
+        Face::Front(card) => design.front.draw(cr, card)?,
+        Face::Back => design.back.draw(cr)?,
     }
     if highlighted {
         cr.new_sub_path();
@@ -204,100 +222,13 @@ fn card(
     Ok(())
 }
 
-fn front(cr: &Context, card: Card) -> Result<(), Error> {
-    let value = match card.rank {
-        Rank::Ace => "A",
-        Rank::Ten => "10",
-        Rank::King => "K",
-        Rank::Ober => "O",
-        Rank::Unter => "U",
-    };
-    let (r, g, b) = suit_color(card.suit);
-    cr.set_source_rgb(r, g, b);
-    cr.select_font_face("Sans", FontSlant::Normal, FontWeight::Bold);
-    cr.set_font_size(0.255);
-    cr.move_to(0.105, 0.315);
-    cr.show_text(value)?;
-    symbol(cr, card.suit, 0.19, 0.47, 0.19)?;
-    symbol(cr, card.suit, 0.50, 0.81, 0.53)
-}
-
-fn suit_color(suit: Suit) -> (f64, f64, f64) {
-    match suit {
-        Suit::Hearts => (0.67, 0.15, 0.21),
-        Suit::Bells => (0.56, 0.32, 0.04),
-        Suit::Leaves => (0.12, 0.37, 0.24),
-        Suit::Acorns => (0.29, 0.19, 0.14),
-    }
-}
-
-fn symbol(cr: &Context, suit: Suit, x: f64, y: f64, size: f64) -> Result<(), Error> {
-    cr.save()?;
-    cr.translate(x - size / 2.0, y - size / 2.0);
-    cr.scale(size, size);
-    cr.new_path();
-    match suit {
-        Suit::Hearts => {
-            cr.move_to(0.50, 0.93);
-            cr.curve_to(-0.48, 0.17, 0.27, -0.19, 0.50, 0.30);
-            cr.curve_to(0.73, -0.19, 1.48, 0.17, 0.50, 0.93);
-        }
-        Suit::Bells => {
-            cr.move_to(0.12, 0.72);
-            cr.curve_to(0.34, 0.65, 0.17, 0.10, 0.50, 0.08);
-            cr.curve_to(0.83, 0.10, 0.66, 0.65, 0.88, 0.72);
-            cr.line_to(0.88, 0.81);
-            cr.line_to(0.12, 0.81);
-            cr.close_path();
-            cr.new_sub_path();
-            cr.arc(0.50, 0.88, 0.088, 0.0, TAU);
-        }
-        Suit::Leaves => {
-            cr.move_to(0.14, 0.92);
-            cr.line_to(0.07, 0.85);
-            cr.line_to(0.24, 0.69);
-            cr.curve_to(0.04, 0.34, 0.32, 0.13, 0.94, 0.06);
-            cr.curve_to(0.86, 0.68, 0.65, 0.95, 0.31, 0.76);
-        }
-        Suit::Acorns => {
-            cr.move_to(0.16, 0.47);
-            cr.curve_to(0.13, 0.72, 0.30, 0.88, 0.50, 0.96);
-            cr.curve_to(0.70, 0.88, 0.87, 0.72, 0.84, 0.47);
-            cr.close_path();
-            cr.move_to(0.09, 0.40);
-            cr.curve_to(0.09, 0.22, 0.29, 0.14, 0.47, 0.15);
-            cr.line_to(0.54, 0.04);
-            cr.line_to(0.66, 0.07);
-            cr.line_to(0.60, 0.16);
-            cr.curve_to(0.78, 0.18, 0.91, 0.26, 0.91, 0.40);
-        }
-    }
-    cr.fill()?;
-    cr.restore()
-}
-
-fn back(cr: &Context) -> Result<(), Error> {
-    rounded_rect(cr, 0.055, 0.055, 0.89, ASPECT - 0.11, 0.054);
-    cr.set_source_rgb(0.17, 0.34, 0.42);
-    cr.fill()?;
-
-    rounded_rect(cr, 0.13, 0.13, 0.74, ASPECT - 0.26, 0.043);
-    cr.set_source_rgb(0.52, 0.70, 0.72);
-    cr.set_line_width(0.016);
-    cr.stroke()?;
-
-    cr.move_to(0.50, 0.44);
-    cr.line_to(0.68, 0.70);
-    cr.line_to(0.50, 0.96);
-    cr.line_to(0.32, 0.70);
-    cr.close_path();
-    cr.stroke()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::ui::layout::Rect;
+    use crate::ui::{
+        design::{BACKS, FRONTS},
+        layout::Rect,
+    };
     use adw::gtk::cairo::{Format, ImageSurface};
 
     #[test]
@@ -322,7 +253,13 @@ mod tests {
             .unwrap();
             surface.set_device_scale(scale, scale);
             let cr = Context::new(&surface).unwrap();
-            table(&cr, std::slice::from_ref(&card), None).unwrap();
+            table(
+                &cr,
+                std::slice::from_ref(&card),
+                None,
+                CardDesign::default(),
+            )
+            .unwrap();
             drop(cr);
             let stride = surface.stride() as usize;
             let data = surface.data().unwrap();
@@ -340,27 +277,53 @@ mod tests {
 
     #[test]
     fn trump_indicator_renders_all_four_suits_at_small_and_large_sizes() {
-        for (width, height) in [(560, 400), (1920, 1080)] {
-            for suit in [Suit::Hearts, Suit::Bells, Suit::Leaves, Suit::Acorns] {
+        for (width, height) in [(560, 400), (3840, 2160)] {
+            for theme in FRONTS {
+                for suit in [Suit::Hearts, Suit::Bells, Suit::Leaves, Suit::Acorns] {
+                    let mut surface = ImageSurface::create(Format::ARgb32, width, height).unwrap();
+                    let cr = Context::new(&surface).unwrap();
+                    trump(&cr, width.into(), height.into(), suit, theme).unwrap();
+                    drop(cr);
+                    let stride = surface.stride() as usize;
+                    let data = surface.data().unwrap();
+                    let (x, y, radius) = trump_indicator(width.into(), height.into());
+                    let (r, g, b) = theme.suit(suit).1;
+                    let channels = [r, g, b].map(|channel| (channel * 255.0).round() as u32);
+                    assert!(((y - radius) as usize..(y + radius) as usize).any(|row| {
+                        ((x - radius) as usize..(x + radius) as usize).any(|col| {
+                            let start = row * stride + col * 4;
+                            let pixel =
+                                u32::from_ne_bytes(data[start..start + 4].try_into().unwrap());
+                            pixel >> 24 == 255
+                                && [16, 8, 0].into_iter().zip(channels).all(|(shift, target)| {
+                                    ((pixel >> shift) & 255).abs_diff(target) <= 1
+                                })
+                        })
+                    }));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn all_card_backs_render_distinct_patterns_at_both_scales() {
+        use std::{
+            collections::HashSet,
+            hash::{DefaultHasher, Hash, Hasher},
+        };
+
+        for (width, height) in [(32, 45), (220, 308)] {
+            let mut signatures = HashSet::new();
+            for back in BACKS {
                 let mut surface = ImageSurface::create(Format::ARgb32, width, height).unwrap();
                 let cr = Context::new(&surface).unwrap();
-                trump(&cr, width.into(), height.into(), suit).unwrap();
+                back_preview(&cr, width.into(), height.into(), back).unwrap();
                 drop(cr);
-                let stride = surface.stride() as usize;
                 let data = surface.data().unwrap();
-                let (x, y, radius) = trump_indicator(width.into(), height.into());
-                let (r, g, b) = suit_color(suit);
-                let channels = [r, g, b].map(|channel| (channel * 255.0).round() as u32);
-                assert!(((y - radius) as usize..(y + radius) as usize).any(|row| {
-                    ((x - radius) as usize..(x + radius) as usize).any(|col| {
-                        let start = row * stride + col * 4;
-                        let pixel = u32::from_ne_bytes(data[start..start + 4].try_into().unwrap());
-                        pixel >> 24 == 255
-                            && [16, 8, 0].into_iter().zip(channels).all(|(shift, target)| {
-                                ((pixel >> shift) & 255).abs_diff(target) <= 1
-                            })
-                    })
-                }));
+                assert!(data.iter().any(|&channel| channel != 0), "{}", back.id);
+                let mut hasher = DefaultHasher::new();
+                data.hash(&mut hasher);
+                assert!(signatures.insert(hasher.finish()), "{}", back.id);
             }
         }
     }

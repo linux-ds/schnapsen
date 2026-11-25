@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="io.github.schnapsen.Schnapsen" path="/io/github/schnapsen/Schnapsen/">
+    <key name="card-front" type="s">
+      <default>'double-german'</default>
+      <summary>Card front design ID</summary>
+    </key>
+    <key name="card-back" type="s">
+      <default>'legacy'</default>
+      <summary>Card back design ID</summary>
+    </key>
+    <key name="highlight-legal-cards" type="b">
+      <default>false</default>
+      <summary>Highlight legal cards</summary>
+    </key>
+    <key name="show-opponent-eyes" type="b">
+      <default>false</default>
+      <summary>Show the opponent's card points</summary>
+    </key>
+    <key name="audio-enabled" type="b">
+      <default>true</default>
+      <summary>Enable game sounds</summary>
+    </key>
+  </schema>
+</schemalist>

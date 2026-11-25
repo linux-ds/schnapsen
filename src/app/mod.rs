@@ -2,15 +2,18 @@ use adw::prelude::*;
 
 use crate::ui;
 
+pub(crate) mod settings;
+
 const APP_ID: &str = "io.github.schnapsen.Schnapsen";
 
 pub fn run() -> adw::glib::ExitCode {
     let app = adw::Application::builder().application_id(APP_ID).build();
-    app.connect_activate(|app| {
+    let preferences = settings::Preferences::new();
+    app.connect_activate(move |app| {
         if let Some(window) = app.active_window() {
             window.present();
         } else {
-            ui::build_window(app).present();
+            ui::build_window(app, &preferences).present();
         }
     });
     app.run()

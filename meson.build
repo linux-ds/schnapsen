@@ -35,3 +35,10 @@ install_data('data/' + app_id + '.desktop', install_dir: get_option('datadir') /
 install_data('data/' + app_id + '.metainfo.xml', install_dir: get_option('datadir') / 'metainfo')
 install_data('data/' + app_id + '.svg',
   install_dir: get_option('datadir') / 'icons/hicolor/scalable/apps')
+
+install_data(
+  'data/' + app_id + '.gschema.xml',
+  install_dir: get_option('datadir') / 'glib-2.0/schemas',
+)
+gnome = import('gnome')
+gnome.post_install(glib_compile_schemas: true)

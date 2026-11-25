@@ -1,4 +1,4 @@
-use adw::{gtk, prelude::*};
+use adw::{gio, glib, gtk, prelude::*};
 use schnapsen::core::{
     game::Player,
     match_play::Match,
@@ -6,9 +6,13 @@ use schnapsen::core::{
 };
 use std::{cell::RefCell, rc::Rc};
 
+use crate::app::settings::Preferences;
+
+mod design;
 mod input;
 mod layout;
 mod paint;
+mod preferences;
 mod result;
 mod review;
 mod table;
@@ -18,7 +22,16 @@ fn choose_index(upper: usize) -> usize {
     adw::glib::random_int_range(0, upper as i32) as usize
 }
 
-pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
+fn apply_preferences(table: &mut table::Table, preferences: &Preferences) {
+    table.set_design(design::CardDesign::from_ids(
+        &preferences.front_id(),
+        &preferences.back_id(),
+    ));
+    table.set_show_legal(preferences.show_legal());
+    table.set_show_opponent_eyes(preferences.show_opponent_eyes());
+}
+
+pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::ApplicationWindow {
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let header = adw::HeaderBar::new();
     let initial_config = MatchConfig::default();
@@ -56,11 +69,14 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         .popover(&popover)
         .build();
     header.pack_start(&match_menu);
-    let help = gtk::CheckButton::with_label("Spielhilfe");
-    help.set_tooltip_text(Some("Zulässige Karten markieren"));
-    header.pack_end(&help);
-    let opponent_eyes = gtk::CheckButton::with_label("Gegnerische Augen anzeigen");
-    options.append(&opponent_eyes);
+    let app_menu = gio::Menu::new();
+    app_menu.append(Some("Einstellungen"), Some("win.preferences"));
+    let app_menu = gtk::MenuButton::builder()
+        .icon_name("open-menu-symbolic")
+        .tooltip_text("Menü öffnen")
+        .menu_model(&app_menu)
+        .build();
+    header.pack_end(&app_menu);
     content.append(&header);
 
     let table = gtk::DrawingArea::builder()
@@ -74,6 +90,7 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         initial_config,
         choose_index,
     ))));
+    apply_preferences(&mut state.borrow_mut(), preferences);
     let overlay = adw::ToastOverlay::new();
     let modal_layer = gtk::Overlay::new();
     modal_layer.set_child(Some(&overlay));
@@ -143,20 +160,14 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         }
         reset_timers.request_reset_bummerls();
     });
-    let learning_model = state.clone();
-    let learning_timers = timers.clone();
-    opponent_eyes.connect_toggled(move |help| {
-        learning_model
-            .borrow_mut()
-            .set_show_opponent_eyes(help.is_active());
-        learning_timers.refresh();
-    });
-    let help_area = table.downgrade();
-    let help_model = state.clone();
-    help.connect_toggled(move |help| {
-        help_model.borrow_mut().set_show_legal(help.is_active());
-        if let Some(area) = help_area.upgrade() {
-            area.queue_draw();
+    let preference_model = Rc::downgrade(&state);
+    let preference_timers = Rc::downgrade(&timers);
+    preferences.connect_changed(move |preferences| {
+        if let (Some(model), Some(timers)) =
+            (preference_model.upgrade(), preference_timers.upgrade())
+        {
+            apply_preferences(&mut model.borrow_mut(), preferences);
+            timers.refresh_appearance();
         }
     });
     let touch = touch.downgrade();
@@ -185,7 +196,7 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         let state = state.borrow();
         let placements = layout::arrange(&state, width.into(), height.into());
         let focus = state.focus().filter(|_| area.has_visible_focus());
-        if let Err(error) = paint::table(cr, &placements, focus).and_then(|()| {
+        if let Err(error) = paint::table(cr, &placements, focus, state.design()).and_then(|()| {
             paint::eyes(
                 cr,
                 width.into(),
@@ -199,6 +210,7 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
                 width.into(),
                 height.into(),
                 state.session().hand().trump_suit(),
+                state.design().front,
             )
         }) {
             eprintln!("Could not draw the card table: {error}");
@@ -214,6 +226,20 @@ pub fn build_window(app: &adw::Application) -> adw::ApplicationWindow {
         .default_height(560)
         .content(&modal_layer)
         .build();
+    let preferences_action = gio::SimpleAction::new("preferences", None);
+    let parent = window.downgrade();
+    let preferences = preferences.clone();
+    let presented = glib::WeakRef::<adw::PreferencesDialog>::new();
+    let settings_timers = timers.clone();
+    preferences_action.connect_activate(move |_, _| {
+        if let Some(parent) = parent.upgrade() {
+            if !settings_timers.input_blocked() && presented.upgrade().is_none() {
+                let dialog = preferences::present(&preferences, &parent);
+                presented.set(Some(&dialog));
+            }
+        }
+    });
+    window.add_action(&preferences_action);
     GtkWindowExt::set_focus(&window, Some(&table));
     timers.refresh();
     window
