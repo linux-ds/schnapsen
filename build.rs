@@ -1,6 +1,10 @@
 use std::{env, fs, path::PathBuf, process::Command};
 
 fn main() {
+    if env::var_os("CARGO_FEATURE_GUI").is_none() {
+        return;
+    }
+
     println!("cargo:rerun-if-changed=data/io.github.schnapsen.Schnapsen.gschema.xml");
     let output = PathBuf::from(env::var_os("OUT_DIR").expect("Cargo must set OUT_DIR"));
     let status = Command::new("glib-compile-schemas")

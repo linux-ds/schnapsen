@@ -158,7 +158,7 @@ Der Zustand enthält mindestens:
 
 `app::save` verwaltet einen automatischen Speicherplatz in `$XDG_DATA_HOME/schnapsen/save.json`. Ohne gesetztes `XDG_DATA_HOME` verwendet GLib das XDG-Standardverzeichnis unter `~/.local/share`. Im Flatpak liegt die Datei im app-eigenen Datenverzeichnis unter `~/.var/app/io.github.schnapsen.Schnapsen/data/schnapsen/`. Persönliche Einstellungen und Fensterzustand verbleiben in GSettings.
 
-Die JSON-Datei verwendet ein Serde-Schema mit numerischem Versionsfeld `version` (aktuell `2`). `snapshot.session` enthält den vollständigen fachlichen Partiezustand mit festgeschriebener Konfiguration, geordneten Karten, Zugfolge, Wertung und Ergebnissen. `snapshot.selection` enthält bis zu zwei ausgewählte Handkarten. Karten, Varianten und Regelprofile verwenden sprachunabhängige IDs. Augen und vorgemerkte Ansagen ergeben sich aus gespeicherten Stichen und Ansageereignissen. Die Engine leitet offene Trumpfkarte, Geber und ausstehende Aktionen aus den gespeicherten Daten ab. Beim Fortsetzen der aktuellen Hand wird kein Zufall benötigt. Erst die nächste Verteilung verwendet wieder den Zufallsgenerator.
+Die JSON-Datei verwendet ein Serde-Schema mit numerischem Versionsfeld `version` (aktuell `3`). `snapshot.session` enthält den vollständigen fachlichen Partiezustand mit festgeschriebener Konfiguration, geordneten Karten, Zugfolge, Wertung und Ergebnissen. `snapshot.selection` enthält bis zu zwei ausgewählte Handkarten. Karten, Varianten und Regelprofile verwenden sprachunabhängige IDs. Augen und vorgemerkte Ansagen ergeben sich aus gespeicherten Stichen und Ansageereignissen. Die Engine leitet offene Trumpfkarte, Geber und ausstehende Aktionen aus den gespeicherten Daten ab. Beim Fortsetzen der aktuellen Hand wird kein Zufall benötigt. Erst die nächste Verteilung verwendet wieder den Zufallsgenerator.
 
 Die Anwendung speichert nach einer Zustandsänderung und beim regulären Schließen. Gleiche Snapshots lösen keinen Dateiaustausch aus. Der Austausch schreibt und synchronisiert eine private temporäre Datei im selben Verzeichnis und ersetzt danach den bisherigen Spielstand atomar. Ein abgebrochener Schreibvorgang vor der Ersetzung lässt die bereits geschriebene Version bestehen. Eine bestätigte neue Partie ersetzt den bisherigen Spielstand.
 
@@ -166,7 +166,9 @@ Beim Start prüft die Anwendung Version, Kartenbestand, Zugfolge, Ansagen und We
 
 Bei einer beschädigten, inkompatiblen oder nicht lesbaren Datei bleibt der Speicherplatz gesperrt. Erst die bestätigte Archivierung verschiebt die alte Datei in ein eigenes `unreadable-…`-Verzeichnis und erlaubt die neue Partie. Bei Schreibfehlern zeigt das Spiel einen Hinweis. Beim Schließen kann der Spieler es erneut versuchen oder das Verwerfen ungespeicherter Änderungen bestätigen.
 
-Version 2 speichert die feste Schwierigkeit in der Partiekonfiguration, die zugehörige `strategy_id` und das öffentliche Spielgedächtnis. Der Lader prüft die Zuordnung von Schwierigkeit und Strategie-ID. Er übernimmt Version 1 mit Einfach und rekonstruiert bekannte Stiche und Ansagen aus der Hand. Früher beobachtete Tausche und der letzte offene Trumpfzug aus Version 1 sind nur insoweit verfügbar, wie sie aus den erhaltenen Daten hervorgehen. Die erste reguläre Speicherung ersetzt die migrierte Datei atomar. Künftige Migrationen können am Versionskopf ansetzen. Die Strategien brauchen keinen gespeicherten Zufallszustand.
+Seit Version 2 speichert das Format die feste Schwierigkeit in der Partiekonfiguration, die zugehörige `strategy_id` und das öffentliche Spielgedächtnis. Der Lader prüft die Zuordnung von Schwierigkeit und Strategie-ID. Er übernimmt Version 1 mit Einfach und rekonstruiert bekannte Stiche und Ansagen aus der Hand. Früher beobachtete Tausche und der letzte offene Trumpfzug aus Version 1 sind nur insoweit verfügbar, wie sie aus den erhaltenen Daten hervorgehen. Bei der ersten regulären Speicherung legt die Anwendung eine unveränderte Sicherung in einem privaten `legacy-v…`-Verzeichnis ab und ersetzt danach den aktiven Speicherplatz atomar. Künftige Migrationen können am Versionskopf ansetzen. Die Strategien brauchen keinen gespeicherten Zufallszustand.
+
+Version 3 speichert zusätzlich die interne Historie der aktuellen Partie. Version 1 und 2 werden mit einer als partiell markierten Historie geladen. Aufgezeichnet werden ab dann die tatsächlich ausgeführten Aktionen. Die nächste Partie beginnt mit vollständiger neuer Historie, die kumulierten Bummerl bleiben erhalten.
 
 ### Aktionen (fachliche Schnittstelle)
 
@@ -299,6 +301,40 @@ Mindestens vorsehen:
 - UI-Smoketests für Auswahl, Aktion, Overlay und verschiedene Fenstergrößen.
 - Prüfung von Tastatur, Maus und Touch; reduzierte Bewegung und lesbare kleine Karten.
 - Flatpak-Build und Start unter GNOME prüfen.
+
+### Historie, Testfälle und Replay
+
+`core::history` erfasst Handbeginn mit Vorhand, offenem Trumpf und interner Austeilung, das Ausspielen, Ansagen, Trumpftausch, Zudrehen, Stichauflösung, Augenänderung und Aktivierung von Ansageaugen. Es speichert Ziehreihenfolge und Talonende, Hand- und Partieabschluss, Spielpunkte und Bummerl. Geber ist die Gegenseite der Vorhand. Stichkarten folgen aus den ausgespielten Karten. Private Einträge halten verdeckte Austeilungen und Züge sowie die tatsächlichen Shuffle-Entscheidungen. Die getrennte öffentliche Projektion enthält den offen gezogenen letzten Trumpf. Strategien erhalten weiterhin ausschließlich `core::observation::Observation`. Die Historie bleibt auf die aktuelle Partie begrenzt, beim Laden gilt eine Schranke von 1.024 Ereignissen.
+
+`testing::validation` prüft bei Bedarf nach jeder Aktion die Engine-Invarianten und zählt Augen, Wertungsgrenzen und die Partieabrechnung zusätzlich unabhängig nach. `testing::case` spielt die aufgezeichneten Aktionen über die Engine erneut aus. Es prüft Zulässigkeit, erwartete Ereignisse und Zustände. Abweichungen werden mit der frühesten erkannten Aktion gemeldet. Eine vollständige gespeicherte Partiehistorie kann mit den Echt-Austeilentscheidungen ohne Seed nachgespielt werden.
+
+Das eigenständige Testfallformat ist JSON Version 1 mit `created_with`, einem seedbasierten Start oder einem exakten Engine-Snapshot, geordneten Aktionen und optionalen Kontrollständen, erwarteter Historie und Endzustand. Wertung und Ergebnis sind Teil der erwarteten Zustände. Ein importierter Spielstand bleibt unverändert. Partielle Historien eignen sich als Ausgangssnapshot für nachfolgende Aktionen. Ein Seed garantiert einen identischen Verlauf bei identischer Engine, Shuffle-Implementierung und Strategie. Ein Testfall mit expliziten Aktionen oder eine vollständige Historie macht Änderungen über Programmversionen hinweg sichtbar. Kompatible Wiedergabe über beliebige künftige Regel- oder Formatänderungen ist nicht zugesichert.
+
+### Entwicklerwerkzeug
+
+Die folgenden Befehle verwenden die GTK-freie Konfiguration. Das frühere Vergleichsprogramm bleibt als Einstieg für die Vergleichsmatrix von Auftrag 25 verfügbar und ruft dieselbe Simulation auf.
+
+```sh
+cargo build --release --no-default-features --bin schnapsen_lab
+lab=target/release/schnapsen_lab
+"$lab" --help
+"$lab" simulate --seed 11 --count 20 --variant austrian_schnapsen --profile sharp \
+  --schneider single --local medium --opponent hard --forehand local --mirror \
+  --validate --output report.json --failure failure
+"$lab" matrix --seed 1 --count 224 --output matrix.json
+"$lab" record --seed 11 --profile soft --local medium --opponent hard \
+  --validate --output recorded.json
+"$lab" replay recorded.json
+"$lab" validate-case recorded.json
+"$lab" validate-save save.json
+"$lab" from-save save.json --seed 12 --output regression.json
+```
+
+`simulate` nutzt pro Seed eine Partie und mit `--mirror` zusätzlich dieselbe Austeilfolge mit getauschten Strategien. `matrix` aktiviert Validierung und Spiegelung und umfasst alle Profile der gewählten Variante, beide Schneiderregeln und alle Strategiepaare. `record` zeichnet eine Partie auf, wobei `--mirror` hier nur die getauschte Anordnung auswählt. `validate-save` prüft Spielstand und, bei vollständiger Historie, deren Wiederholung. `from-save` erzeugt einen exakten Ausgangszustand mit Seed für spätere Austeilungen. `--failure` legt den Ausgabepfad für Fehlerdiagnose und Replay fest. Bestehende Ausgabedateien werden geschützt.
+
+`testing::statistics` gruppiert Berichte nach Variante, Profil, Schneiderregel und Strategiepaar. Gewinnquoten beziehen sich auf die abgeschlossenen Partien beziehungsweise Hände der Gruppe. Durchschnittliche Augen verwenden sämtliche Hände der Gruppe. Strategielaufzeiten messen Beobachtung und Entscheidung. Die Gesamtdauer umfasst auch Engine, Validierung und Statistik. JSON enthält dieselben Kennzahlen wie der menschenlesbare Bericht.
+
+Ein späteres Regelprofil wird als technische ID in `RuleProfile` und in den unterstützten Profilen der Variante geführt. Die Matrix nimmt es über `GameVariant::profiles()` auf. Ergänzende Referenzfälle können beispielsweise mit `record --profile <id>` erstellt und mit festen erwarteten Kontrollständen geprüft werden. Varianten mit anderen Wertungsgrenzen ergänzen die zugehörigen unabhängigen Prüfwerte in `testing::validation`.
 
 ## 10. Abnahmekriterien für den ersten spielbaren Prototyp
 

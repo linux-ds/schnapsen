@@ -223,6 +223,12 @@ pub struct Game {
     public_memory: PublicMemory,
 }
 
+pub(super) struct DrawnCards {
+    pub order: [Player; 2],
+    pub cards: [Card; 2],
+    pub exposed_trump: Option<Card>,
+}
+
 pub struct View<'a> {
     pub hand: &'a [Card],
     pub opponent_hand_count: usize,
@@ -616,7 +622,21 @@ impl Game {
         Ok(())
     }
 
+    pub(super) fn initial_cards(&self) -> ([Vec<Card>; 2], Vec<Card>, Card) {
+        let (trump, hidden) = self
+            .talon
+            .split_last()
+            .expect("A fresh deal has a trump card");
+        (self.hands.clone(), hidden.to_vec(), *trump)
+    }
+
     pub fn resolve_trick(&mut self) -> Result<Player, ResolveError> {
+        self.resolve_trick_with_draw().map(|(winner, _)| winner)
+    }
+
+    pub(super) fn resolve_trick_with_draw(
+        &mut self,
+    ) -> Result<(Player, Option<DrawnCards>), ResolveError> {
         let &[(leader, first), (follower, second)] = self.played.as_slice() else {
             return Err(ResolveError::IncompleteTrick);
         };
@@ -632,13 +652,21 @@ impl Game {
         self.leader = winner;
 
         if self.finish_at_66(winner) || self.finish_at_66(winner.other()) {
-            return Ok(winner);
+            return Ok((winner, None));
         }
 
+        let mut draw = None;
         if let Some(order) = self.game_variant.draw_order(winner, self.phase) {
-            if self.talon.len() == order.len() {
+            let cards = [self.talon[0], self.talon[1]];
+            let exposed_trump = (self.talon.len() == order.len()).then_some(cards[1]);
+            draw = Some(DrawnCards {
+                order,
+                cards,
+                exposed_trump,
+            });
+            if exposed_trump.is_some() {
                 // Both sides saw the last card and know who draws it.
-                self.public_memory.last_trump = self.talon.last().copied();
+                self.public_memory.last_trump = exposed_trump;
             }
             for (player, card) in order.into_iter().zip(self.talon.drain(..order.len())) {
                 self.hands[player as usize].push(card);
@@ -658,7 +686,7 @@ impl Game {
                 });
             }
         }
-        Ok(winner)
+        Ok((winner, draw))
     }
 
     pub fn view(&self, player: Player) -> View<'_> {

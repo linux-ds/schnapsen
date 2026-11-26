@@ -18,7 +18,7 @@
 - [RULE_AUDIT.md](RULE_AUDIT.md) vergleicht die implementierten Profile mit drei Regelquellen und dokumentiert Abweichungen und Stabilitätsprüfungen.
 
 - `src/i18n.rs` bindet GNU gettext für die Oberfläche an. Das Flatpak enthält beide Kataloge und die aus lokalisierten Vorlagen erzeugten Desktop- und AppStream-Dateien.
-- `src/app/save.rs` speichert die laufende Partie mit Kartenauswahl als versionierte JSON-Datei im XDG-Datenverzeichnis. Die Engine validiert geladene Zustände. Persönliche Einstellungen und Fensterzustand liegen weiterhin in GSettings.
+- `src/save.rs` verwaltet die versionierte JSON-Datei. `src/app/save.rs` bindet den XDG-Speicherpfad der Anwendung an. Die Engine validiert geladene Zustände. Persönliche Einstellungen und Fensterzustand liegen weiterhin in GSettings.
 - `src/app/mod.rs` verwaltet den Lebenszyklus der Anwendung und öffnet oder aktiviert das Fenster.
 - `src/ui/mod.rs` bindet den Kartentisch über eine `GtkDrawingArea` in das Fenster ein. Die Zeichenfläche hat eine Mindestgröße von 560 × 400 logischen Pixeln. Die Titelleiste liegt außerhalb. Der Partiestand steht in einer festen Spalte links auf der Zeichenfläche und nutzt den vorhandenen Abstand zum Talon. Die Zielgröße des Fensters ist 680 × 560. Kontextaktionen liegen in einer ungemessenen GTK-Overlay-Ebene. Hand- und Partieergebnisse erscheinen in einem modalen libadwaita-Dialog über dem Tisch.
 - `src/core/game.rs` prüft Ausspielaktionen und löst vollständige Stiche auf. Eine Ansage prüft Ausspielrecht, Paar und Profil und spielt atomar eine Karte aus. Stichaugen und vorgemerkte oder wirksame Ansageaugen werden aus Stichpaaren und Ansageereignissen abgeleitet. Ab 66 wirksamen Augen beendet die Engine die Hand nach Stichauflösung oder Ansage automatisch. Der Abschlussgrund und die Spielpunkte stehen in `Finished`.
@@ -160,7 +160,7 @@ Die Tischdarstellung und die Hausregeln für Stichdarstellung und automatischen 
 
 ## Nächster Schritt
 
-Auftrag 26 baut die Spieltests, reproduzierbaren Spielsituationen und Simulationen weiter aus. Die offenen manuellen Eingabeprüfungen bleiben Teil der Abnahme.
+Auftrag 27 behandelt weitere regionale Regelprofile und kann die Testmatrix und Replay-Fälle aus Auftrag 26 nutzen. Die offenen manuellen Eingabeprüfungen bleiben Teil der Abnahme.
 
 ## Build in GNOME Builder
 
@@ -205,6 +205,24 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-26 – Auftrag 26
+
+- `core::history` führt die vollständige interne Historie der aktuellen Partie mit öffentlicher Projektion. Austeil- und Ziehdaten bleiben von der KI-Beobachtung getrennt. Spielstand Version 3 speichert die Historie. Version 1 und 2 behalten ihren Zustand, beginnen mit partieller Historie und werden bei der Migration unverändert gesichert.
+- `testing::case` exportiert und importiert versionierte Testfälle, spielt explizite Aktionen und vollständige Historien nach und meldet Abweichungen auf Aktionsebene. `testing::validation` prüft Zustandsinvarianten, zählt Augen unabhängig nach und kontrolliert Ziehfolge, Tausch, Abschluss, Punkte und Bummerl. Die bestehende Regelsuite einschließlich aller 93 bisherigen Tests bleibt erhalten.
+- `testing::simulation` und `testing::statistics` bedienen beide Kommandozeilenprogramme. Das bisherige Vergleichsprogramm ergab für 1.536 nochmals ausgeführte Partien dieselben fachlichen Berichte wie in Auftrag 25. Das neue Werkzeug läuft mit `--no-default-features` ohne GTK und exportiert den Zustand, die bisherige Historie und eine Replay-Datei bei Simulationsfehlern.
+- Finale Release-Matrix mit `schnapsen_lab matrix --seed 1 --count 224 --output matrix.json`. 224 Seeds, zwei Sitze, sechs Strategiepaare, zwei Profile und zwei Schneiderwertungen ergaben 24 Gruppen mit insgesamt **10.752 Partien und 65.331 Händen**. Alle Übergänge wurden nachgeprüft. Es gab **0 ungültige Aktionen und 0 inkonsistente Zustände**. Die Matrix erforderte keine Regelkorrektur.
+
+| Regelprofil | Schneiderwertung | Partien | Hände |
+|---|---|---:|---:|
+| Weich | Doppelt | 2.688 | 16.290 |
+| Weich | Einfach | 2.688 | 16.288 |
+| Scharf | Doppelt | 2.688 | 16.377 |
+| Scharf | Einfach | 2.688 | 16.376 |
+
+- 56.509 Hände endeten bei 66 Augen, 2.946 mit dem letzten Stich, 5.746 nach erfolgreichem Zudrehen und 130 nach fehlgeschlagenem Zudrehen. Die Matrix erfasste 59.293 Ansagen, 21.927 Tausche und 1.117 doppelte Schneiderwertungen. Die Spiegelkontrollen jeder Gleichstufenpaarung endeten 224:224.
+- Die Matrix dauerte 52,27 Sekunden. Durchschnittliche Entscheidungszeiten einschließlich Beobachtungsaufbau lagen bei 1,75 µs für Einfach, 2,49 µs für Mittel und 133,14 µs für Schwer. Das höchste gemessene Einzelmaximum lag bei 17,11 ms für Schwer.
+- Formatierung, Cargo-Check, 104 Tests, Clippy und der Flatpak-Release-Build einschließlich Tests waren im GNOME SDK 51 erfolgreich. Mit deaktiviertem GTK-Feature bestanden 63 Tests und Clippy. Unter Wayland wurde eine gespeicherte Partie mit Historie und ausstehendem Computerzug fortgesetzt. Der Zug wurde genau einmal ausgeführt. Physische Touch- und HiDPI-Abnahme sowie manuelle Langzeitprüfung bleiben offen.
 
 ### 2026-11-26 – Auftrag 25
 

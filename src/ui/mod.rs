@@ -7,7 +7,7 @@ use schnapsen::core::{
 use std::{cell::RefCell, rc::Rc};
 
 use crate::app::{
-    save::{SaveStore, Snapshot},
+    save::{self, Snapshot},
     settings::Preferences,
 };
 
@@ -65,7 +65,7 @@ fn apply_preferences(table: &mut table::Table, preferences: &Preferences) {
 }
 
 pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::ApplicationWindow {
-    let mut store = SaveStore::for_app();
+    let mut store = save::for_app();
     let (snapshot, load_error) = match store.load() {
         Ok(snapshot) => (snapshot, None),
         Err(error) => (None, Some(error)),
