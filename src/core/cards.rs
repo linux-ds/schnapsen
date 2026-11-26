@@ -1,4 +1,7 @@
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Suit {
     Hearts,
     Bells,
@@ -10,7 +13,8 @@ impl Suit {
     const ALL: [Self; 4] = [Self::Hearts, Self::Bells, Self::Leaves, Self::Acorns];
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Rank {
     Ace,
     Ten,
@@ -33,7 +37,8 @@ impl Rank {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Card {
     pub suit: Suit,
     pub rank: Rank,

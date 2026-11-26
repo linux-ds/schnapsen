@@ -4,7 +4,7 @@ use std::{
     time::Duration,
 };
 
-use adw::{glib, gtk, prelude::*};
+use adw::{gio, glib, gtk, prelude::*};
 use schnapsen::core::{
     cards::Rank,
     game::{
@@ -13,7 +13,12 @@ use schnapsen::core::{
     match_play::DealError,
 };
 
-use super::{design::FrontTheme, result, review, table::Table};
+use crate::app::{
+    save::{SaveError, SaveStore},
+    settings::Preferences,
+};
+
+use super::{design::FrontTheme, result, review, table::Table, window_state};
 
 type AdvanceHand = Box<dyn Fn(&mut Table) -> Result<(), DealError>>;
 
@@ -88,6 +93,8 @@ pub(super) struct TurnTimers {
     shown_effects: Cell<(Option<Announcement>, Option<Exchange>)>,
     effects_timer: RefCell<Option<glib::SourceId>>,
     modal_open: Cell<bool>,
+    store: Option<RefCell<SaveStore>>,
+    save_failed: Cell<bool>,
 }
 
 impl TurnTimers {
@@ -97,6 +104,7 @@ impl TurnTimers {
         overlay: &adw::ToastOverlay,
         review_host: &gtk::Overlay,
         controls: TableControls,
+        store: SaveStore,
     ) -> Rc<Self> {
         Rc::new(Self {
             state: state.clone(),
@@ -110,7 +118,157 @@ impl TurnTimers {
             shown_effects: Cell::new((None, None)),
             effects_timer: RefCell::new(None),
             modal_open: Cell::new(false),
+            store: Some(RefCell::new(store)),
+            save_failed: Cell::new(false),
         })
+    }
+
+    pub fn bind_save(
+        self: &Rc<Self>,
+        window: &adw::ApplicationWindow,
+        load_error: Option<SaveError>,
+        preferences: &Preferences,
+    ) {
+        self.modal_open.set(load_error.is_some());
+        let timers = self.clone();
+        let active_alert = glib::WeakRef::<adw::AlertDialog>::new();
+        let preferences = preferences.clone();
+        let try_close = Rc::new(move |window: &adw::ApplicationWindow| {
+            window_state::save(window, &preferences);
+            if active_alert.upgrade().is_some() {
+                return glib::Propagation::Stop;
+            }
+            match timers.persist() {
+                Ok(()) | Err(SaveError::Blocked) => glib::Propagation::Proceed,
+                Err(error) => {
+                    eprintln!("Could not save the match on close: {error}");
+                    let alert = adw::AlertDialog::new(
+                        Some(&tr!("Could not save the match")),
+                        Some(&tr!("Any unsaved progress will be lost. Close anyway?")),
+                    );
+                    alert.add_responses(&[
+                        ("cancel", &tr!("Keep playing")),
+                        ("quit", &tr!("Close without saving")),
+                    ]);
+                    alert.set_close_response("cancel");
+                    alert.set_default_response(Some("cancel"));
+                    alert.set_response_appearance("quit", adw::ResponseAppearance::Destructive);
+                    let window_ref = window.downgrade();
+                    alert.connect_response(Some("quit"), move |_, _| {
+                        if let Some(window) = window_ref.upgrade() {
+                            window.destroy();
+                        }
+                    });
+                    active_alert.set(Some(&alert));
+                    if timers.input_blocked() {
+                        alert.present(Some(window));
+                    } else {
+                        timers.present_modal(&alert);
+                    }
+                    glib::Propagation::Stop
+                }
+            }
+        });
+        let close_request = try_close.clone();
+        window.connect_close_request(move |window| close_request(window));
+
+        // A non-dismissible result dialog intercepts native window closing.
+        // The application quit action still saves and exits without advancing.
+        let quit = gio::SimpleAction::new("quit", None);
+        let window_ref = window.downgrade();
+        quit.connect_activate(move |_, _| {
+            if let Some(window) = window_ref.upgrade() {
+                if try_close(&window) == glib::Propagation::Proceed {
+                    window.destroy();
+                }
+            }
+        });
+        window.add_action(&quit);
+
+        let weak = Rc::downgrade(self);
+        let window = window.downgrade();
+        glib::idle_add_local_once(move || {
+            if let (Some(timers), Some(window)) = (weak.upgrade(), window.upgrade()) {
+                if let Some(error) = load_error {
+                    eprintln!("Could not load the match: {error}");
+                    let message = match error {
+                        SaveError::UnsupportedVersion(_) => {
+                            tr!("This saved match uses an unsupported format.")
+                        }
+                        SaveError::Corrupt => tr!("This saved match is damaged or inconsistent."),
+                        _ => tr!("The saved match could not be read."),
+                    };
+                    timers.request_save_recovery(&window, &message);
+                } else {
+                    timers.refresh();
+                }
+            }
+        });
+    }
+
+    fn request_save_recovery(self: &Rc<Self>, window: &adw::ApplicationWindow, message: &str) {
+        let alert = adw::AlertDialog::new(Some(&tr!("Could not restore the match")), Some(message));
+        alert.add_responses(&[
+            ("quit", &tr!("Keep the file and quit")),
+            ("restart", &tr!("Archive the file and start over")),
+        ]);
+        alert.set_close_response("quit");
+        alert.set_default_response(Some("quit"));
+        let weak = Rc::downgrade(self);
+        let window_ref = window.downgrade();
+        alert.connect_response(None, move |_, response| {
+            let (Some(timers), Some(window)) = (weak.upgrade(), window_ref.upgrade()) else {
+                return;
+            };
+            if response != "restart" {
+                let _ = gtk::prelude::WidgetExt::activate_action(&window, "win.quit", None);
+                return;
+            }
+            let archived = timers
+                .store
+                .as_ref()
+                .unwrap()
+                .borrow_mut()
+                .archive_invalid();
+            glib::idle_add_local_once(move || match archived {
+                Ok(()) => {
+                    timers.modal_open.set(false);
+                    timers.refresh();
+                }
+                Err(error) => {
+                    eprintln!("Could not archive the saved match: {error}");
+                    timers.request_save_recovery(
+                        &window,
+                        &tr!("The saved file could not be archived. You can retry or quit."),
+                    );
+                }
+            });
+        });
+        alert.present(Some(window));
+    }
+
+    fn persist(&self) -> Result<(), SaveError> {
+        if let Some(store) = &self.store {
+            let state = self.state.borrow();
+            store
+                .borrow_mut()
+                .save(state.session(), state.selection())?;
+        }
+        Ok(())
+    }
+
+    fn autosave(&self) {
+        match self.persist() {
+            Ok(()) => self.save_failed.set(false),
+            Err(SaveError::Blocked) => {}
+            Err(error) if !self.save_failed.replace(true) => {
+                eprintln!("Could not autosave the match: {error}");
+                if let Some(overlay) = self.overlay.upgrade() {
+                    overlay.add_toast(adw::Toast::new(&tr!("Could not save the match")));
+                }
+            }
+            Err(_) => {}
+        }
     }
 
     pub fn set_advance(&self, advance: impl Fn(&mut Table) -> Result<(), DealError> + 'static) {
@@ -212,6 +370,7 @@ impl TurnTimers {
         dialog.connect_response(Some("confirm"), move |_, _| {
             if let Some(timers) = timers.upgrade() {
                 apply(&timers);
+                timers.autosave();
             }
         });
         self.present_modal(&dialog);
@@ -330,6 +489,7 @@ impl TurnTimers {
         if self.input_blocked() {
             return;
         }
+        self.autosave();
         let Some(area) = self.area.upgrade() else {
             return;
         };
@@ -384,6 +544,7 @@ impl TurnTimers {
                     .as_ref()
                     .is_some_and(|advance| advance(&mut timers.state.borrow_mut()).is_ok());
                 if advanced {
+                    timers.autosave();
                     timers.cancel();
                     dialog.force_close();
                 } else {
@@ -534,6 +695,8 @@ mod tests {
             shown_effects: Cell::new((None, None)),
             effects_timer: RefCell::new(None),
             modal_open: Cell::new(false),
+            store: None,
+            save_failed: Cell::new(false),
         };
         let context = glib::MainContext::default();
         let _owner = context.acquire().unwrap();

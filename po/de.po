@@ -3,6 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Schnapsen 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-11-26 06:39+0100\n"
 "PO-Revision-Date: 2026-11-25 00:00+0100\n"
 "Last-Translator: Schnapsen contributors\n"
 "Language-Team: German\n"
@@ -122,7 +123,7 @@ msgstr "Herz"
 msgid "Bells"
 msgstr "Schellen"
 
-#: src/ui/design/fronts.rs:32 src/ui/turn.rs:500
+#: src/ui/design/fronts.rs:32 src/ui/turn.rs:661
 #, rust-format
 msgid "Leaves"
 msgstr "Grün"
@@ -145,7 +146,7 @@ msgstr "Dame"
 msgid "J"
 msgstr "B"
 
-#: src/ui/design/fronts.rs:81 src/ui/turn.rs:508
+#: src/ui/design/fronts.rs:81 src/ui/turn.rs:669
 #, rust-format
 msgid "Jack"
 msgstr "Bube"
@@ -154,7 +155,7 @@ msgstr "Bube"
 msgid "Diamonds"
 msgstr "Karo"
 
-#: src/ui/design/fronts.rs:92 src/ui/turn.rs:504
+#: src/ui/design/fronts.rs:92 src/ui/turn.rs:665
 #, rust-format
 msgid "Spades"
 msgstr "Pik"
@@ -176,57 +177,62 @@ msgstr "Französisch"
 msgid "{rank} of {suit}"
 msgstr "{suit} {rank}"
 
-#: src/ui/mod.rs:24
+#: src/ui/mod.rs:27
 #, rust-format
 msgid "Austrian two-player Schnapsen"
 msgstr "Österreichisches Zweierschnapsen"
 
-#: src/ui/mod.rs:30
+#: src/ui/mod.rs:33
 #, rust-format
 msgid "Soft Schnapsen"
 msgstr "Weiches Schnapsen"
 
-#: src/ui/mod.rs:31
+#: src/ui/mod.rs:34
 #, rust-format
 msgid "Sharp Schnapsen"
 msgstr "Scharfes Schnapsen"
 
-#: src/ui/mod.rs:59
+#: src/ui/mod.rs:71
 #, rust-format
 msgid "For the next match"
 msgstr "Für die nächste Partie"
 
-#: src/ui/mod.rs:72
+#: src/ui/mod.rs:84
 #, rust-format
 msgid "Rules profile"
 msgstr "Regelprofil"
 
-#: src/ui/mod.rs:74
+#: src/ui/mod.rs:86
 #, rust-format
 msgid "Count Schneider double"
 msgstr "Schneider zählt doppelt"
 
-#: src/ui/mod.rs:78
+#: src/ui/mod.rs:90
 #, rust-format
 msgid "Reset Bummerl…"
 msgstr "Bummerl zurücksetzen …"
 
-#: src/ui/mod.rs:83
+#: src/ui/mod.rs:95
 #, rust-format
 msgid "Match"
 msgstr "Partie"
 
-#: src/ui/mod.rs:88 src/ui/preferences.rs:15
+#: src/ui/mod.rs:100 src/ui/preferences.rs:15
 #, rust-format
 msgid "Preferences"
 msgstr "Einstellungen"
 
-#: src/ui/mod.rs:91
+#: src/ui/mod.rs:101
+#, rust-format
+msgid "Quit"
+msgstr "Beenden"
+
+#: src/ui/mod.rs:105
 #, rust-format
 msgid "Open menu"
 msgstr "Menü öffnen"
 
-#: src/ui/mod.rs:118
+#: src/ui/mod.rs:130
 #, rust-format
 msgid "Play card"
 msgstr "Ausspielen"
@@ -313,7 +319,7 @@ msgstr[1] "{count} Spielpunkte"
 msgid "Schneider · {count} Bummerls"
 msgstr "Schneiderbummerl · {count} Bummerl"
 
-#: src/ui/result.rs:59 src/ui/turn.rs:424
+#: src/ui/result.rs:59 src/ui/turn.rs:585
 #, rust-format
 msgid "{count} Bummerl"
 msgid_plural "{count} Bummerls"
@@ -400,191 +406,246 @@ msgstr "{first}, {second}"
 msgid "Close"
 msgstr "Schließen"
 
-#: src/ui/turn.rs:38 src/ui/turn.rs:53
+#: src/ui/turn.rs:43 src/ui/turn.rs:58
 #, rust-format
 msgid "Declare {points} · {rank}"
 msgstr "{points} ansagen · {rank}"
 
-#: src/ui/turn.rs:43
+#: src/ui/turn.rs:48
 #, rust-format
 msgid "Declare {points}"
 msgstr "{points} ansagen"
 
-#: src/ui/turn.rs:64
+#: src/ui/turn.rs:69
 #, rust-format
 msgid "You"
 msgstr "Du"
 
-#: src/ui/turn.rs:66
+#: src/ui/turn.rs:71
 #, rust-format
 msgid "Computer"
 msgstr "Computer"
 
-#: src/ui/turn.rs:69
+#: src/ui/turn.rs:74
 #, rust-format
 msgid "{player} · {points}"
 msgstr "{player} · {points}"
 
-#: src/ui/turn.rs:178
+#: src/ui/turn.rs:146 src/ui/turn.rs:267
+#, rust-format
+msgid "Could not save the match"
+msgstr "Die Partie konnte nicht gespeichert werden"
+
+#: src/ui/turn.rs:147
+#, rust-format
+msgid "Any unsaved progress will be lost. Close anyway?"
+msgstr "Ungespeicherter Spielfortschritt geht verloren. Trotzdem schließen?"
+
+#: src/ui/turn.rs:150
+#, rust-format
+msgid "Keep playing"
+msgstr "Weiterspielen"
+
+#: src/ui/turn.rs:151
+#, rust-format
+msgid "Close without saving"
+msgstr "Ohne Speichern schließen"
+
+#: src/ui/turn.rs:196
+#, rust-format
+msgid "This saved match uses an unsupported format."
+msgstr "Dieser Spielstand verwendet ein nicht unterstütztes Format."
+
+#: src/ui/turn.rs:198
+#, rust-format
+msgid "This saved match is damaged or inconsistent."
+msgstr "Dieser Spielstand ist beschädigt oder widersprüchlich."
+
+#: src/ui/turn.rs:199
+#, rust-format
+msgid "The saved match could not be read."
+msgstr "Der Spielstand konnte nicht gelesen werden."
+
+#: src/ui/turn.rs:210
+#, rust-format
+msgid "Could not restore the match"
+msgstr "Die Partie konnte nicht fortgesetzt werden"
+
+#: src/ui/turn.rs:212
+#, rust-format
+msgid "Keep the file and quit"
+msgstr "Datei behalten und beenden"
+
+#: src/ui/turn.rs:213
+#, rust-format
+msgid "Archive the file and start over"
+msgstr "Datei archivieren und neu beginnen"
+
+#: src/ui/turn.rs:242
+#, rust-format
+msgid "The saved file could not be archived. You can retry or quit."
+msgstr "Der Spielstand konnte nicht archiviert werden. Du kannst es noch einmal versuchen oder die Anwendung beenden."
+
+#: src/ui/turn.rs:336
 #, rust-format
 msgid "Close the stock?"
 msgstr "Talon zudrehen?"
 
-#: src/ui/turn.rs:179
+#: src/ui/turn.rs:337
 #, rust-format
 msgid "Neither player draws any more cards. From now on, you must follow suit and win the trick if possible, or play trump if you cannot follow suit. You must reach at least 66 card points, or the computer wins."
 msgstr "Ihr zieht keine Karten mehr nach. Ab jetzt gilt Farb-, Stich- und Trumpfzwang. Du musst mindestens 66 wirksame Augen erreichen, sonst gewinnt der Computer."
 
-#: src/ui/turn.rs:180
+#: src/ui/turn.rs:338
 #, rust-format
 msgid "Close Stock"
 msgstr "Zudrehen"
 
-#: src/ui/turn.rs:183
+#: src/ui/turn.rs:341
 #, rust-format
 msgid "Stock closed"
 msgstr "Talon zugedreht"
 
-#: src/ui/turn.rs:191
+#: src/ui/turn.rs:349
 #, rust-format
 msgid "Reset the Bummerl counters?"
 msgstr "Bummerl zurücksetzen?"
 
-#: src/ui/turn.rs:192
+#: src/ui/turn.rs:350
 #, rust-format
 msgid "Both Bummerl counters will be set to zero. The current match score stays the same."
 msgstr "Die Bummerl-Zähler beider Seiten werden auf null gesetzt. Der aktuelle Partiestand bleibt erhalten."
 
-#: src/ui/turn.rs:193
+#: src/ui/turn.rs:351
 #, rust-format
 msgid "Reset"
 msgstr "Zurücksetzen"
 
-#: src/ui/turn.rs:207
+#: src/ui/turn.rs:365
 #, rust-format
 msgid "Cancel"
 msgstr "Abbrechen"
 
-#: src/ui/turn.rs:229
+#: src/ui/turn.rs:388
 #, rust-format
 msgid "Wait for the current turn to finish."
 msgstr "Warte, bis der laufende Zug abgeschlossen ist."
 
-#: src/ui/turn.rs:238
+#: src/ui/turn.rs:397
 #, rust-format
 msgid "Tricks stay face down in Sharp Schnapsen."
 msgstr "Bei scharfem Schnapsen bleiben die Stiche verdeckt."
 
-#: src/ui/turn.rs:240
+#: src/ui/turn.rs:399
 #, rust-format
 msgid "This pile has no tricks yet."
 msgstr "Dieser Stapel enthält noch keine Stiche."
 
-#: src/ui/turn.rs:355
+#: src/ui/turn.rs:515
 #, rust-format
 msgid "{count} hand played"
 msgid_plural "{count} hands played"
 msgstr[0] "{count} gespielte Hand"
 msgstr[1] "{count} gespielte Hände"
 
-#: src/ui/turn.rs:352
+#: src/ui/turn.rs:512
 #, rust-format
 msgid "Top: {opponent_points}, {opponent_bummerls}. {hands}. Bottom: {local_points}, {local_bummerls}. Trump: {suit}."
 msgstr "Oben: {opponent_points}, {opponent_bummerls}. {hands}. Unten: {local_points}, {local_bummerls}. Trumpf: {suit}."
 
-#: src/ui/turn.rs:362
+#: src/ui/turn.rs:522
 #, rust-format
 msgid "Exchange trump · Press T or tap the face-up card"
 msgstr "Trumpf tauschen · T oder offene Karte antippen"
 
-#: src/ui/turn.rs:364
+#: src/ui/turn.rs:524
 #, rust-format
 msgid "Close the stock · Press Z or tap the face-down pile"
 msgstr "Talon zudrehen · Z oder verdeckten Stapel antippen"
 
-#: src/ui/turn.rs:420
+#: src/ui/turn.rs:581
 #, rust-format
 msgid "{count} point remaining"
 msgid_plural "{count} points remaining"
 msgstr[0] "{count} Restpunkt"
 msgstr[1] "{count} Restpunkte"
 
-#: src/ui/turn.rs:430
+#: src/ui/turn.rs:591
 #, rust-format
 msgid "You need a face-up trump card to exchange."
 msgstr "Zum Tauschen brauchst du eine offene Trumpfkarte."
 
-#: src/ui/turn.rs:432
+#: src/ui/turn.rs:593
 #, rust-format
 msgid "Exchange the trump card before leading to the trick."
 msgstr "Du kannst nur vor dem Ausspiel tauschen."
 
-#: src/ui/turn.rs:434
+#: src/ui/turn.rs:595
 #, rust-format
 msgid "You can exchange the trump card only when it is your lead."
 msgstr "Du kannst nur mit Ausspielrecht tauschen."
 
-#: src/ui/turn.rs:438 src/ui/turn.rs:508
+#: src/ui/turn.rs:599 src/ui/turn.rs:669
 #, rust-format
 msgid "Select the trump {rank}."
 msgstr "Wähle den Trumpf-{rank} aus."
 
-#: src/ui/turn.rs:442 src/ui/turn.rs:451
+#: src/ui/turn.rs:603 src/ui/turn.rs:612
 #, rust-format
 msgid "Available after the first trick."
 msgstr "Erst nach dem ersten Stich möglich."
 
-#: src/ui/turn.rs:443 src/ui/turn.rs:453
+#: src/ui/turn.rs:604 src/ui/turn.rs:614
 #, rust-format
 msgid "Too few cards in the stock."
 msgstr "Zu wenige Karten im Talon."
 
-#: src/ui/turn.rs:449
+#: src/ui/turn.rs:610
 #, rust-format
 msgid "The stock must be open."
 msgstr "Der Talon muss offen sein."
 
-#: src/ui/turn.rs:450
+#: src/ui/turn.rs:611
 #, rust-format
 msgid "Close the stock before leading to the trick."
 msgstr "Du kannst nur vor dem Ausspiel zudrehen."
 
-#: src/ui/turn.rs:452
+#: src/ui/turn.rs:613
 #, rust-format
 msgid "You can close the stock only when it is your lead."
 msgstr "Du kannst nur mit Ausspielrecht zudrehen."
 
-#: src/ui/turn.rs:460
+#: src/ui/turn.rs:621
 #, rust-format
 msgid "You must play a higher card of the same suit ({suit})."
 msgstr "Du musst mit einer höheren {suit}-Karte stechen."
 
-#: src/ui/turn.rs:464 src/ui/turn.rs:500 src/ui/turn.rs:504
+#: src/ui/turn.rs:625 src/ui/turn.rs:661 src/ui/turn.rs:665
 #, rust-format
 msgid "You must follow suit: {suit}."
 msgstr "Du musst {suit} bedienen."
 
-#: src/ui/turn.rs:467
+#: src/ui/turn.rs:628
 #, rust-format
 msgid "You must play a trump card."
 msgstr "Du musst Trumpf spielen."
 
-#: src/ui/turn.rs:468
+#: src/ui/turn.rs:629
 #, rust-format
 msgid "It is not your turn yet."
 msgstr "Du bist noch nicht am Zug."
 
-#: src/ui/turn.rs:469
+#: src/ui/turn.rs:630
 #, rust-format
 msgid "The current trick is still being resolved."
 msgstr "Der Stich wird noch aufgelöst."
 
-#: src/ui/turn.rs:470
+#: src/ui/turn.rs:631
 #, rust-format
 msgid "This card is no longer in your hand."
 msgstr "Diese Karte ist nicht mehr auf deiner Hand."
 
-#: src/ui/turn.rs:471
+#: src/ui/turn.rs:632
 #, rust-format
 msgid "The hand is already over."
 msgstr "Die Hand ist bereits beendet."

@@ -45,6 +45,15 @@ impl Table {
         }
     }
 
+    pub fn selection(&self) -> &[Card] {
+        &self.selected
+    }
+
+    pub fn restore_selection(&mut self, selection: Vec<Card>) {
+        self.focus = selection.first().copied().or(self.focus);
+        self.selected = selection;
+    }
+
     #[cfg(test)]
     pub fn into_session(self) -> Match {
         self.session

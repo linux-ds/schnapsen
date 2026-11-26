@@ -6,7 +6,10 @@ use schnapsen::core::{
 };
 use std::{cell::RefCell, rc::Rc};
 
-use crate::app::settings::Preferences;
+use crate::app::{
+    save::{SaveStore, Snapshot},
+    settings::Preferences,
+};
 
 mod design;
 mod input;
@@ -46,9 +49,18 @@ fn apply_preferences(table: &mut table::Table, preferences: &Preferences) {
 }
 
 pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::ApplicationWindow {
+    let mut store = SaveStore::for_app();
+    let (snapshot, load_error) = match store.load() {
+        Ok(snapshot) => (snapshot, None),
+        Err(error) => (None, Some(error)),
+    };
+    let Snapshot { session, selection } = snapshot.unwrap_or_else(|| Snapshot {
+        session: Match::with_config(Player::Local, MatchConfig::default(), choose_index),
+        selection: Vec::new(),
+    });
+    let initial_config = session.config();
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let header = adw::HeaderBar::new();
-    let initial_config = MatchConfig::default();
     let title = adw::WindowTitle::new("Schnapsen", &profile_label(initial_config.profile));
     header.set_title_widget(Some(&title));
     let options = gtk::Box::new(gtk::Orientation::Vertical, 8);
@@ -67,7 +79,7 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
         profiles
             .iter()
             .position(|&profile| profile == initial_config.profile)
-            .expect("the default profile belongs to the game variant") as u32,
+            .expect("the active profile belongs to the game variant") as u32,
     );
     profile.update_property(&[gtk::accessible::Property::Label(&tr!("Rules profile"))]);
     options.append(&profile);
@@ -86,6 +98,8 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
     header.pack_start(&match_menu);
     let app_menu = gio::Menu::new();
     app_menu.append(Some(&tr!("Preferences")), Some("win.preferences"));
+    app_menu.append(Some(&tr!("Quit")), Some("win.quit"));
+    app.set_accels_for_action("win.quit", &["<Primary>q"]);
     let app_menu = gtk::MenuButton::builder()
         .icon_name("open-menu-symbolic")
         .tooltip_text(tr!("Open menu"))
@@ -100,11 +114,9 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
         .vexpand(true)
         .focusable(true)
         .build();
-    let state = Rc::new(RefCell::new(table::Table::new(Match::with_config(
-        Player::Local,
-        initial_config,
-        choose_index,
-    ))));
+    let mut model = table::Table::new(session);
+    model.restore_selection(selection);
+    let state = Rc::new(RefCell::new(model));
     apply_preferences(&mut state.borrow_mut(), preferences);
     let overlay = adw::ToastOverlay::new();
     let modal_layer = gtk::Overlay::new();
@@ -139,7 +151,7 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
         ober: ober.downgrade(),
         announcement: announcement.downgrade(),
     };
-    let timers = turn::TurnTimers::new(&state, &table, &overlay, &modal_layer, controls);
+    let timers = turn::TurnTimers::new(&state, &table, &overlay, &modal_layer, controls, store);
     let touch = input::attach(&table, &state, &timers);
     for (button, play_ober) in [(&king, false), (&ober, true)] {
         let model = state.clone();
@@ -239,7 +251,8 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
         .title("Schnapsen")
         .content(&modal_layer)
         .build();
-    window_state::bind(&window, preferences);
+    window_state::restore(&window, preferences);
+    timers.bind_save(&window, load_error, preferences);
     let preferences_action = gio::SimpleAction::new("preferences", None);
     let parent = window.downgrade();
     let preferences = preferences.clone();
@@ -255,6 +268,5 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
     });
     window.add_action(&preferences_action);
     GtkWindowExt::set_focus(&window, Some(&table));
-    timers.refresh();
     window
 }

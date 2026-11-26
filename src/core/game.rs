@@ -1,9 +1,13 @@
+use serde::{Deserialize, Serialize};
+
 use super::{
     cards::{Card, Rank, Suit},
     rules::{GameVariant, ProfileRules, RuleProfile},
 };
 
 pub use super::rules::RuleProfile as Variant;
+
+mod snapshot;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ExchangeError {
@@ -32,7 +36,8 @@ pub enum MarriageError {
     InvalidLeadCard,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Marriage {
     pub suit: Suit,
     pub eyes: u8,
@@ -55,7 +60,8 @@ impl Marriage {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Announcement {
     pub player: Player,
     pub marriage: Marriage,
@@ -79,7 +85,8 @@ pub struct EyeBreakdown {
     pub pending_announcements: u8,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Player {
     Local = 0,
     Opponent = 1,
@@ -94,7 +101,8 @@ impl Player {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum Phase {
     OpenTalon,
     EmptyTalon,
@@ -102,7 +110,8 @@ pub enum Phase {
     Finished(Outcome),
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct TalonClosure {
     pub closer: Player,
     pub opponent_at_closing: Score,
@@ -117,7 +126,8 @@ pub enum CloseError {
     NotEnoughTalonCards,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum FinishReason {
     Reached66,
     LastTrick,
@@ -138,7 +148,8 @@ pub enum TrickReviewError {
     Empty,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Outcome {
     pub winner: Player,
     pub reason: FinishReason,
@@ -146,7 +157,8 @@ pub struct Outcome {
     pub closure: Option<TalonClosure>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Score {
     pub eyes: u8,
     pub tricks: usize,
@@ -189,7 +201,8 @@ pub enum ResolveError {
     IncompleteTrick,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Game {
     hands: [Vec<Card>; 2],
     // Draw order, with the face-up trump card at the bottom.
@@ -1259,6 +1272,10 @@ mod tests {
                 });
                 for _ in 0..=20 {
                     assert_deck_partition(&game);
+                    assert!(
+                        game.validate_snapshot(forehand),
+                        "{variant:?} seed {seed}: {game:?}"
+                    );
                     if game.result().is_some() {
                         break;
                     }
@@ -1273,6 +1290,7 @@ mod tests {
                         && game.check_close_talon(leader).is_ok()
                     {
                         game.close_talon(leader).unwrap();
+                        assert!(game.validate_snapshot(forehand));
                     }
                     if game.talon.len() == 2
                         && game.hands[leader as usize].contains(&game.trump_under())
@@ -1300,11 +1318,19 @@ mod tests {
                         game.play_card(leader, card).unwrap();
                     }
                     assert_deck_partition(&game);
+                    assert!(
+                        game.validate_snapshot(forehand),
+                        "{variant:?} seed {seed}: {game:?}"
+                    );
                     let reply = leader.other();
                     assert_eq!(game.next_player(), Some(reply));
                     let card = crate::ai::choose_card(&game.legal_cards(reply)).unwrap();
                     game.play_card(reply, card).unwrap();
                     assert_deck_partition(&game);
+                    assert!(
+                        game.validate_snapshot(forehand),
+                        "{variant:?} seed {seed}: {game:?}"
+                    );
                     let pending = game.clone();
                     assert!(game.result().is_none());
                     assert!(game.play_card(reply, card).is_err());
@@ -1314,6 +1340,10 @@ mod tests {
                 }
 
                 assert_deck_partition(&game);
+                assert!(
+                    game.validate_snapshot(forehand),
+                    "{variant:?} seed {seed}: {game:?}"
+                );
                 let result = game
                     .result()
                     .expect("the hand must finish within ten tricks");

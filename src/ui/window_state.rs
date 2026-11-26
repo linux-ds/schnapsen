@@ -1,10 +1,10 @@
-use adw::{glib, gtk, prelude::*};
+use adw::{gtk, prelude::*};
 
 use crate::app::settings::Preferences;
 
 use super::layout;
 
-pub(super) fn bind(window: &adw::ApplicationWindow, preferences: &Preferences) {
+pub(super) fn restore(window: &adw::ApplicationWindow, preferences: &Preferences) {
     let (width, height, maximized) = preferences.window_state();
     let display = gtk::prelude::WidgetExt::display(window);
     // Wayland assigns the monitor when mapping the window. Use the largest
@@ -21,14 +21,12 @@ pub(super) fn bind(window: &adw::ApplicationWindow, preferences: &Preferences) {
     if maximized {
         window.maximize();
     }
+}
 
-    let preferences = preferences.clone();
-    window.connect_close_request(move |window| {
-        // GTK keeps the last normal size here even while maximized.
-        let (width, height) = window.default_size();
-        preferences.save_window_state((width, height, window.is_maximized()));
-        glib::Propagation::Proceed
-    });
+pub(super) fn save(window: &adw::ApplicationWindow, preferences: &Preferences) {
+    // GTK keeps the last normal size here even while maximized.
+    let (width, height) = window.default_size();
+    preferences.save_window_state((width, height, window.is_maximized()));
 }
 
 fn normal_size(size: (i32, i32), bounds: Option<(i32, i32)>) -> (i32, i32) {

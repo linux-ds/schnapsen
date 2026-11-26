@@ -1,11 +1,14 @@
 //! Game identity and fixed rules for the supported Austrian two-player game.
 
+use serde::{Deserialize, Serialize};
+
 use super::{
     cards::{full_deck, Card, Suit},
     game::{Phase, Player, Score, TalonClosure},
 };
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum GameVariant {
     #[default]
     AustrianSchnapsen,
@@ -113,7 +116,8 @@ impl GameVariant {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum RuleProfile {
     #[default]
     Soft,
@@ -203,7 +207,8 @@ impl ProfileRules {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SchneiderRule {
     #[default]
     Double,
@@ -220,7 +225,8 @@ impl SchneiderRule {
     }
 }
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct MatchConfig {
     pub variant: GameVariant,
     pub profile: RuleProfile,

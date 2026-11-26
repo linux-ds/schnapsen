@@ -18,6 +18,7 @@
 - [RULE_AUDIT.md](RULE_AUDIT.md) vergleicht die implementierten Profile mit drei Regelquellen und dokumentiert Abweichungen und Stabilitätsprüfungen.
 
 - `src/i18n.rs` bindet GNU gettext für die Oberfläche an. Das Flatpak enthält beide Kataloge und die aus lokalisierten Vorlagen erzeugten Desktop- und AppStream-Dateien.
+- `src/app/save.rs` speichert die laufende Partie mit Kartenauswahl als versionierte JSON-Datei im XDG-Datenverzeichnis. Die Engine validiert geladene Zustände. Persönliche Einstellungen und Fensterzustand liegen weiterhin in GSettings.
 - `src/app/mod.rs` verwaltet den Lebenszyklus der Anwendung und öffnet oder aktiviert das Fenster.
 - `src/ui/mod.rs` bindet den Kartentisch über eine `GtkDrawingArea` in das Fenster ein. Die Zeichenfläche hat eine Mindestgröße von 560 × 400 logischen Pixeln. Die Titelleiste liegt außerhalb. Der Partiestand steht in einer festen Spalte links auf der Zeichenfläche und nutzt den vorhandenen Abstand zum Talon. Die Zielgröße des Fensters ist 680 × 560. Kontextaktionen liegen in einer ungemessenen GTK-Overlay-Ebene. Hand- und Partieergebnisse erscheinen in einem modalen libadwaita-Dialog über dem Tisch.
 - `src/core/game.rs` prüft Ausspielaktionen und löst vollständige Stiche auf. Eine Ansage prüft Ausspielrecht, Paar und Profil und spielt atomar eine Karte aus. Stichaugen und vorgemerkte oder wirksame Ansageaugen werden aus Stichpaaren und Ansageereignissen abgeleitet. Ab 66 wirksamen Augen beendet die Engine die Hand nach Stichauflösung oder Ansage automatisch. Der Abschlussgrund und die Spielpunkte stehen in `Finished`.
@@ -159,7 +160,7 @@ Die Tischdarstellung und die Hausregeln für Stichdarstellung und automatischen 
 
 ## Nächster Schritt
 
-Auftrag 24 behandelt das Speichern und Fortsetzen von Spielständen. Die offenen manuellen Eingabeprüfungen bleiben Teil der Abnahme.
+Auftrag 25 behandelt Computerstrategien und Schwierigkeitsstufen. Die offenen manuellen Eingabeprüfungen bleiben Teil der Abnahme.
 
 ## Build in GNOME Builder
 
@@ -191,7 +192,6 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 - Die Profile unterscheiden sich bei Ansagen und beim Stichzugriff. Für Talonaktionen gilt dieselbe Hausregel. Die Sticheinsicht ist implementiert. Ihr Zeitfenster und ihre Rollenbindung weichen je nach Regelquelle ab.
 - Der Computer wählt die erste legale Karte. Die Engine beendet seine Hand bei 66 wirksamen Augen automatisch wie beim Menschen.
 - Der Computer nutzt die gemeinsame Regelprüfung und Wertung. Automatisches Zudrehen bleibt ohne konservative Entscheidungsregel deaktiviert.
-- Bummerl werden bis zum Schließen des Fensters gehalten.
 - Der SDK-Build ist der vorgesehene Entwicklungsweg auf GNOME OS. Außerhalb des SDKs fehlen der Codex-Umgebung die GTK4- und libadwaita-Entwicklungsbibliotheken.
 - Für die Veröffentlichung fehlen Projektlizenz, Homepage, Entwicklerangaben und Release-Metadaten. Die App-ID ist vorläufig.
 
@@ -206,6 +206,14 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-26 – Auftrag 24
+
+- `app::save` speichert Partie und Kartenauswahl als JSON Version 1. Der Austausch ist atomar und gleiche Snapshots verursachen keine Dateischreibvorgänge. Der XDG-Pfad, die Wiederherstellung und die Migrationsgrenzen sind in [SPEC.md](SPEC.md) dokumentiert.
+- Die Engine prüft Kartenbestand, Zugfolge, Ansagen, Talonsperre und Abrechnung. Ein gültiger Stand wird automatisch geladen. Der Computer und die Stichauflösung setzen bei Bedarf ein. Ergebnisdialoge erscheinen mit ihrer vorhandenen Wertung. Der Beenden-Befehl speichert auch bei sichtbarem Abschluss.
+- Beschädigte und inkompatible Dateien werden bis zur bestätigten Archivierung geschützt. Schreibfehler werden angezeigt. Neue Meldungen sind in beiden gettext-Katalogen enthalten.
+- Formatierung, Cargo-Check, 82 Tests, Clippy mit `-D warnings`, beide Katalogprüfungen und der Flatpak-Release-Build einschließlich Tests waren im GNOME SDK 51 erfolgreich. Die Regressionen umfassen beide Profile, beide Schneiderwertungen, Vergleich mit ununterbrochenen Partien, Fehler beim Lesen und Schreiben sowie einen Locale-Wechsel.
+- Vier getrennte Flatpak-SDK-Prozesse mit isoliertem Speicherpfad bestätigten unter Wayland den deutschen Speicherlauf, die englische Fortsetzung eines ausstehenden Computerzugs, einen erneut angezeigten Handabschluss mit unveränderten Punkten und die bestätigte Archivierung einer beschädigten Datei. Die manuelle Bedienungsabnahme mit physischem Touch und HiDPI bleibt offen.
 
 ### 2026-11-25 – Auftrag 23
 

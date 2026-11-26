@@ -1,15 +1,18 @@
+use serde::{Deserialize, Serialize};
+
 use super::{
     cards::{Card, Suit},
     game::{
-        Announcement, CloseError, Exchange, ExchangeError, Game, MarriageError, Outcome, PlayError,
-        Player, ResolveError, Variant,
+        Announcement, CloseError, Exchange, ExchangeError, Game, MarriageError, Outcome, Phase,
+        PlayError, Player, ResolveError, Variant,
     },
     rules::MatchConfig,
 };
 
 pub use super::rules::SchneiderRule;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct MatchResult {
     pub winner: Player,
     pub awarded_bummerls: u8,
@@ -22,7 +25,8 @@ pub enum DealError {
     MatchInProgress,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Match {
     hand: Game,
     forehand: Player,
@@ -96,6 +100,69 @@ impl Match {
     }
     pub fn bummerls(&self, player: Player) -> u32 {
         self.bummerls[player as usize]
+    }
+
+    /// Checks a decoded save before it is used for further play.
+    pub fn validate_snapshot(&self) -> bool {
+        let start = self.config.variant.start_points();
+        if self.hand.game_variant() != self.config.variant
+            || self.hand.variant() != self.config.profile
+            || !self
+                .config
+                .variant
+                .profiles()
+                .contains(&self.config.profile)
+            || self.remaining.iter().any(|&points| points > start)
+            || !self.hand.validate_snapshot(self.forehand)
+        {
+            return false;
+        }
+
+        let finished = match self.hand.phase() {
+            Phase::Finished(outcome) => Some(outcome),
+            _ => None,
+        };
+        if self.hand_accounted != finished.is_some() {
+            return false;
+        }
+        match self.result {
+            Some(result) => {
+                let loser_points = self.remaining(result.winner.other());
+                if !finished.is_some_and(|outcome| outcome.winner == result.winner)
+                    || self.remaining(result.winner) != 0
+                    || loser_points == 0
+                    || result.awarded_bummerls
+                        != self.config.schneider.bummerls(loser_points, start)
+                {
+                    return false;
+                }
+            }
+            None if self.remaining.contains(&0) => return false,
+            None => {}
+        }
+
+        let spent = self.remaining.map(|points| start - points);
+        let Some(outcome) = finished else {
+            return plausible_hand_count(spent, self.completed_hands);
+        };
+        let Some(previous_hands) = self.completed_hands.checked_sub(1) else {
+            return false;
+        };
+        let winner = outcome.winner as usize;
+        // A hand ending the match may spend fewer points than awarded.
+        let min_charge = if self.result.is_some() {
+            1
+        } else {
+            outcome.game_points
+        };
+        (min_charge..=outcome.game_points).any(|charge| {
+            let Some(before) = spent[winner].checked_sub(charge) else {
+                return false;
+            };
+            let mut previous_spent = spent;
+            previous_spent[winner] = before;
+            plausible_hand_count(previous_spent, previous_hands)
+        })
     }
 
     pub fn reset_bummerls(&mut self) {
@@ -200,13 +267,22 @@ impl Match {
                 .config
                 .schneider
                 .bummerls(self.remaining[loser], self.config.variant.start_points());
-            self.bummerls[loser] += u32::from(awarded_bummerls);
+            self.bummerls[loser] = self.bummerls[loser].saturating_add(u32::from(awarded_bummerls));
             self.result = Some(MatchResult {
                 winner,
                 awarded_bummerls,
             });
         }
     }
+}
+
+fn plausible_hand_count(spent: [u8; 2], hands: u8) -> bool {
+    let minimum: u16 = spent
+        .iter()
+        .map(|points| u16::from(points.div_ceil(3)))
+        .sum();
+    let maximum: u16 = spent.iter().copied().map(u16::from).sum();
+    (minimum..=maximum).contains(&u16::from(hands))
 }
 
 #[cfg(test)]
@@ -229,6 +305,27 @@ mod tests {
             reason: FinishReason::Reached66,
             closure: None,
         }
+    }
+
+    #[test]
+    fn snapshot_rejects_contradictory_match_accounting() {
+        let game = session(SchneiderRule::Double);
+        assert!(game.validate_snapshot());
+        let mut forged = game.clone();
+        forged.remaining[Player::Local as usize] = 6;
+        assert!(!forged.validate_snapshot());
+        forged = game.clone();
+        forged.hand_accounted = true;
+        assert!(!forged.validate_snapshot());
+        forged = game.clone();
+        forged.config.profile = Variant::Sharp;
+        assert!(!forged.validate_snapshot());
+        forged = game;
+        forged.result = Some(MatchResult {
+            winner: Player::Local,
+            awarded_bummerls: 2,
+        });
+        assert!(!forged.validate_snapshot());
     }
 
     #[test]

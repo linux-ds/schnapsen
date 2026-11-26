@@ -2,6 +2,9 @@ use adw::prelude::*;
 
 use crate::ui;
 
+pub(crate) mod save;
+#[cfg(test)]
+mod save_scenarios;
 pub(crate) mod settings;
 
 const APP_ID: &str = "io.github.schnapsen.Schnapsen";

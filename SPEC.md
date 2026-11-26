@@ -34,7 +34,7 @@ Die funktionale Entwicklung bis zur Beta-Abnahme hat Vorrang. Historische Grafik
 - Ausspielen per Tastatur und Touchgeste sowie eindeutige Mausbedienung.
 - Einsicht in Stichstapel entsprechend den gewählten Regeln; optionale Spielhilfen.
 - Visuelle Rückmeldung für Auswahl und Stapel. Zusätzliche Animationen folgen in der grafischen Verfeinerungsphase.
-- Lokale Einstellungen; keine Netzwerkverbindung erforderlich.
+- Lokale Einstellungen und automatische Fortsetzung der zuletzt gespeicherten Partie. Das Spiel ist offline nutzbar.
 
 ### Nicht Bestandteil der ersten Version
 
@@ -153,6 +153,20 @@ Der Zustand enthält mindestens:
 - Status des Talons (offen, zugedreht, leer) sowie die für die Stichregeln relevanten Informationen.
 - Gewähltes Regelprofil und dessen Optionen.
 - Ereignisse der letzten Aktion für UI-Animationen.
+
+### Automatischer Spielstand
+
+`app::save` verwaltet einen automatischen Speicherplatz in `$XDG_DATA_HOME/schnapsen/save.json`. Ohne gesetztes `XDG_DATA_HOME` verwendet GLib das XDG-Standardverzeichnis unter `~/.local/share`. Im Flatpak liegt die Datei im app-eigenen Datenverzeichnis unter `~/.var/app/io.github.schnapsen.Schnapsen/data/schnapsen/`. Persönliche Einstellungen und Fensterzustand verbleiben in GSettings.
+
+Die JSON-Datei verwendet ein Serde-Schema mit numerischem Versionsfeld `version` (aktuell `1`). `snapshot.session` enthält den vollständigen fachlichen Partiezustand mit festgeschriebener Konfiguration, geordneten Karten, Zugfolge, Wertung und Ergebnissen. `snapshot.selection` enthält bis zu zwei ausgewählte Handkarten. Karten, Varianten und Regelprofile verwenden sprachunabhängige IDs. Augen und vorgemerkte Ansagen ergeben sich aus gespeicherten Stichen und Ansageereignissen. Die Engine leitet offene Trumpfkarte, Geber und ausstehende Aktionen aus den gespeicherten Daten ab. Beim Fortsetzen der aktuellen Hand wird kein Zufall benötigt. Erst die nächste Verteilung verwendet wieder den Zufallsgenerator.
+
+Die Anwendung speichert nach einer Zustandsänderung und beim regulären Schließen. Gleiche Snapshots lösen keinen Dateiaustausch aus. Der Austausch schreibt und synchronisiert eine private temporäre Datei im selben Verzeichnis und ersetzt danach den bisherigen Spielstand atomar. Ein abgebrochener Schreibvorgang vor der Ersetzung lässt die bereits geschriebene Version bestehen. Eine bestätigte neue Partie ersetzt den bisherigen Spielstand.
+
+Beim Start prüft die Anwendung Version, Kartenbestand, Zugfolge, Ansagen und Wertungsdaten. Sie stellt einen gültigen Spielstand automatisch wieder her. Computerzug oder Stichauflösung werden aus der gespeicherten Situation neu eingeplant. Hand- und Partieergebnisse erscheinen erneut mit der schon gespeicherten Wertung. Die Oberfläche erstellt vorübergehende Dialoge, Timer und visuelle Effekte bei Bedarf neu. `Strg+Q` kann die Anwendung auch aus einem sichtbaren Ergebnis heraus mit der vorhandenen Wertung beenden.
+
+Bei einer beschädigten, inkompatiblen oder nicht lesbaren Datei bleibt der Speicherplatz gesperrt. Erst die bestätigte Archivierung verschiebt die alte Datei in ein eigenes `unreadable-…`-Verzeichnis und erlaubt die neue Partie. Bei Schreibfehlern zeigt das Spiel einen Hinweis. Beim Schließen kann der Spieler es erneut versuchen oder das Verwerfen ungespeicherter Änderungen bestätigen.
+
+Künftige Dateiformate können anhand des Headers vor dem typisierten Einlesen erkannt und über eigene Migrationen auf das aktuelle Modell abgebildet werden. Version 1 enthält den aktuellen Kartenbestand und die gespielten Karten. Sie dient zur exakten Wiederaufnahme. Eine vollständige Historie bereits vollzogener Zieh- und Tauschvorgänge bleibt einer späteren Formaterweiterung vorbehalten.
 
 ### Aktionen (fachliche Schnittstelle)
 
@@ -283,6 +297,5 @@ Ein Prototyp ist erst dann spielbar, wenn eine vollständige Partie gegen den Co
 1. Exakte Mausgeste für das Ausspielen und Bestätigung einer 20/40-Ansage.
 2. Minimale unterstützte Fenstergröße und Verhalten bei sehr schmalen Fenstern.
 3. Konkrete App-ID, Anzeigename und Lizenz des Quellcodes.
-4. Ob Partiestände bereits in v0.1 automatisch gespeichert werden sollen.
 
 Diese Punkte blockieren nicht den Beginn der Regel-Engine, müssen aber vor dem entsprechenden Implementierungsschritt entschieden werden.
