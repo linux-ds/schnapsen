@@ -192,7 +192,7 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 - Die Profile unterscheiden sich bei Ansagen und beim Stichzugriff. Für Talonaktionen gilt dieselbe Hausregel. Die Sticheinsicht ist implementiert. Ihr Zeitfenster und ihre Rollenbindung weichen je nach Regelquelle ab.
 - Schwer betrachtet bei offenem Talon meist nur einen Stich. Stichfolgen und Zudrehen beruhen auf einer begrenzten Auswahl möglicher Gegnerhände und vereinfachter Bewertung späterer Ansagen.
 - Der SDK-Build ist der vorgesehene Entwicklungsweg auf GNOME OS. Außerhalb des SDKs fehlen der Codex-Umgebung die GTK4- und libadwaita-Entwicklungsbibliotheken.
-- Für die Veröffentlichung fehlen Projektlizenz, Homepage, Entwicklerangaben und Release-Metadaten. Die App-ID ist vorläufig.
+- Für die Veröffentlichung auf Flathub fehlen Homepage, Entwicklerangaben und Release-Metadaten. Die App-ID ist vorläufig.
 
 ## Entscheidungen
 

@@ -28,6 +28,12 @@ cargo clippy --locked --no-default-features --all-targets -- -D warnings
 
 The headless tests require Rust and Cargo. Run `cargo test --locked` in the GNOME SDK to include the graphical application's tests. The [specification](SPEC.md) documents the simulation and replay tools.
 
-## License status
+## Licensing
 
-A project license has yet to be selected. The AppStream file declares CC0-1.0 for the metadata. The project icon has no separate license declaration. See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
+| Material | License |
+|---|---|
+| Project source code, including the card renderers, and project documentation | [GPL-3.0-or-later](LICENSE) |
+| Original card faces and backs rendered by [the card designs](src/ui/design/), and the [application icon](data/io.github.schnapsen.Schnapsen.svg) | [CC BY-SA 4.0](LICENSES/CC-BY-SA-4.0.txt) |
+| [AppStream metadata](data/io.github.schnapsen.Schnapsen.metainfo.xml.in) | [CC0 1.0](LICENSES/CC0-1.0.txt) |
+
+Credit the original artwork to **Schnapsen contributors** and include a link to the repository and the license when reusing it. Upstream dependencies retain their own licenses and notices.

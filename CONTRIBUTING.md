@@ -6,4 +6,4 @@ Schnapsen is in active development. Check the [roadmap](PLAN.md), [specification
 - Use GNOME Builder and the GNOME SDK 51 as described in [README.md](README.md). Run formatting and the tests relevant to your change. For rule changes, add a reproducible case and document the rule decision.
 - Review the diff before committing. Keep credentials, personal paths, save files, and build artifacts out of commits.
 
-The project license is still pending. Contact the maintainer before submitting code or assets intended for redistribution.
+See [the license assignments](README.md#licensing) before contributing. Identify any third-party material, include its source and license, and preserve its notices.
