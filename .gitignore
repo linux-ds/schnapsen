@@ -31,3 +31,10 @@
 .env
 .env.*
 !.env.example
+
+# Local game data and diagnostic exports at the repository root
+/save.json
+/legacy-v*/
+/unreadable-*/
+/*.case.json
+/*.failure.json
