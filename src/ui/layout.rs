@@ -147,7 +147,21 @@ impl TableGeometry {
         }
     }
 
-    fn action_top(self, height: f64) -> f64 {
+    fn talon_trump(&self, height: f64) -> Rect {
+        let width = self.size * 0.70;
+        Rect::new(
+            self.center - 2.73 * self.size,
+            self.action_top(height) - width * ASPECT,
+            width,
+        )
+    }
+
+    fn talon_stock(&self, height: f64) -> Rect {
+        let trump = self.talon_trump(height);
+        Rect::new(trump.x + trump.width * 0.53, trump.y, trump.width)
+    }
+
+    fn action_top(&self, height: f64) -> f64 {
         // Leave space for the native 44 px action row, including on a
         // narrow drawing area whose cards are limited by its width.
         height / 2.0 - (self.size * 0.32).max(28.0_f64.min(height * 0.07))
@@ -173,9 +187,13 @@ pub(super) struct StatusLayout {
 }
 
 pub(super) fn trump_indicator(width: f64, height: f64) -> (f64, f64, f64) {
-    let unit = TableGeometry::new(width, height).size;
-    let radius = unit * 0.18;
-    (width - unit * 0.54, height * 0.5, radius)
+    let geometry = TableGeometry::new(width, height);
+    let stock = geometry.talon_stock(height);
+    (
+        stock.x + stock.width / 2.0,
+        stock.y + stock.height() / 2.0,
+        geometry.size * 0.18,
+    )
 }
 
 pub(super) fn status_layout(width: f64, height: f64) -> StatusLayout {
@@ -207,9 +225,9 @@ pub(super) fn arrange(table: &Table, width: f64, height: f64) -> Vec<Placement> 
     let played_size = size * 0.71;
     let row_bottom = geometry.action_top(height);
     let played_y = row_bottom - played_size * ASPECT;
-    let talon_size = size * 0.70;
-    let talon_y = row_bottom - talon_size * ASPECT;
-    let trump_x = center - 2.73 * size;
+    let trump = geometry.talon_trump(height);
+    let talon_size = trump.width;
+    let talon_y = trump.y;
     let view = table.view();
     let legal = table.highlighted_cards();
     let announcement = table.announcement();
@@ -277,16 +295,10 @@ pub(super) fn arrange(table: &Table, width: f64, height: f64) -> Vec<Placement> 
     for rect in stack_positions(opponent_stack, covered_opponent_cards) {
         add(Face::Back, rect, false, false, Some(Player::Opponent));
     }
-    if let Some(trump) = view.open_trump {
-        add(
-            Face::Front(trump),
-            Rect::new(trump_x, talon_y, talon_size),
-            false,
-            false,
-            None,
-        );
+    if let Some(card) = view.open_trump {
+        add(Face::Front(card), trump, false, false, None);
     }
-    let stock = Rect::new(trump_x + talon_size * 0.53, talon_y, talon_size);
+    let stock = geometry.talon_stock(height);
     for rect in stack_positions(stock, view.hidden_talon_count) {
         add(Face::Back, rect, false, !view.talon_closed, None);
     }
@@ -629,6 +641,7 @@ mod tests {
                 SchneiderRule::Double,
                 |upper| upper - 1,
             );
+            let mut saw_empty_indicator = false;
             while let Some(player) = session.hand().next_player() {
                 if closed && session.hand().check_close_talon(player).is_ok() {
                     session.close_talon(player).unwrap();
@@ -636,6 +649,11 @@ mod tests {
                 let card = session.hand().legal_cards(player)[0];
                 session.play_card(player, card).unwrap();
                 let mut table = Table::new(session);
+                let expected = (table.session().hand().phase()
+                    == schnapsen::core::game::Phase::EmptyTalon)
+                    .then(|| table.session().hand().trump_suit());
+                assert_eq!(table.trump_indicator(), expected);
+                saw_empty_indicator |= expected.is_some();
                 for card in table
                     .view()
                     .hand
@@ -655,7 +673,11 @@ mod tests {
                     assert!(middle < bottom - status.unit * 0.28);
                     assert!(bottom + status.unit * 0.22 < height);
                     let (trump_x, trump_y, radius) = trump_indicator(width, height);
-                    assert!(trump_x - radius > width / 2.0 + 180.0);
+                    let stock = TableGeometry::new(width, height).talon_stock(height);
+                    assert!(trump_x - radius > stock.x);
+                    assert!(trump_x + radius < stock.x + stock.width);
+                    assert!(trump_y - radius > stock.y);
+                    assert!(trump_y + radius < stock.y + stock.height());
                     assert!(trump_x + radius < width);
                     assert!(trump_y - radius > 0.0 && trump_y + radius < height);
                     let placements = arrange(&table, width, height);
@@ -669,7 +691,10 @@ mod tests {
                         };
                         assert!(rect.x > status.x + status.width / 2.0);
                         assert!(rect.x + w <= width);
-                        if rect.x + w >= trump_x - radius {
+                        if table.trump_indicator().is_some()
+                            && rect.x + w >= trump_x - radius
+                            && rect.x <= trump_x + radius
+                        {
                             assert!(rect.y + h < trump_y - radius || rect.y > trump_y + radius);
                         }
                         assert!(rect.y >= 0.0 && rect.y + h <= height);
@@ -681,6 +706,7 @@ mod tests {
                 }
             }
             assert_eq!(session.hand().talon_closure().is_some(), closed);
+            assert_eq!(saw_empty_indicator, !closed);
         }
     }
 

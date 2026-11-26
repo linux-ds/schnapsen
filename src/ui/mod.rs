@@ -176,6 +176,12 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
     let ober = gtk::Button::new();
     let announcement = gtk::Label::new(None);
     announcement.add_css_class("title-3");
+    // Match the dark table background in both system color schemes.
+    let announcement_attributes = gtk::pango::AttrList::new();
+    announcement_attributes.insert(gtk::pango::AttrColor::new_foreground(
+        0xffff, 0xffff, 0xf000,
+    ));
+    announcement.set_attributes(Some(&announcement_attributes));
     for button in [&play, &king, &ober] {
         button.set_visible(false);
         button.set_height_request(44);
@@ -277,13 +283,10 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
                 state.opponent_eyes(),
             )?;
             paint::match_status(cr, width.into(), height.into(), state.session())?;
-            paint::trump(
-                cr,
-                width.into(),
-                height.into(),
-                state.session().hand().trump_suit(),
-                state.design().front,
-            )
+            if let Some(suit) = state.trump_indicator() {
+                paint::trump(cr, width.into(), height.into(), suit, state.design().front)?;
+            }
+            Ok(())
         }) {
             eprintln!("Could not draw the card table: {error}");
         }

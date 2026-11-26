@@ -213,7 +213,7 @@ Die frühere manuelle Ausmeldung samt Strafwertung ist historisch im Regel-Audit
 
 - **Oben:** Gegnerische Hand, nur Kartenrückseiten, kleiner als die eigene Hand. Anzahl ist jederzeit sichtbar.
 - **Mitte:** Bereich für die aktuell ausgespielten Karten.
-- **Seitlich:** Talon mit erkennbarer Kartenanzahl und sichtbar liegender Trumpfkarte.
+- **Seitlich:** Talon mit erkennbarer Kartenanzahl und sichtbar liegender Trumpfkarte. Sobald der Talon leer ist, zeigt ein Kreis an der Stelle des bisherigen Nachziehstapels die Trumpffarbe.
 - **Unten:** Eigene Hand, größer und gut lesbar.
 - **Rechts unten:** Eigener gewonnener Stichstapel; gegnerischer Stapel in dessen Nähe auf der Gegenseite.
 

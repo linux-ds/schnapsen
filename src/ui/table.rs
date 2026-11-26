@@ -1,7 +1,7 @@
 use schnapsen::{
     ai,
     core::{
-        cards::Card,
+        cards::{Card, Suit},
         game::{
             Announcement, CloseError, Exchange, ExchangeError, HandResult, Marriage, PlayError,
             Player, View,
@@ -155,6 +155,12 @@ impl Table {
 
     pub fn view(&self) -> View<'_> {
         self.session.hand().view(Player::Local)
+    }
+
+    pub fn trump_indicator(&self) -> Option<Suit> {
+        let view = self.view();
+        (view.hidden_talon_count == 0 && view.open_trump.is_none() && !view.talon_closed)
+            .then(|| self.session.hand().trump_suit())
     }
 
     pub fn is_selected(&self, card: Card) -> bool {
