@@ -206,6 +206,11 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 
 ## Änderungsprotokoll
 
+### 2026-11-26 – Auftrag 26c
+
+- Rundes Anwendungssymbol mit grünem Kartentisch und zwei überlappenden Karten mit Grün und Herz gestaltet. Das SVG unter der bestehenden App-ID ersetzt die bisherige Grafik und ist als CC BY-SA 4.0 gekennzeichnet.
+- SVG bei 16, 24, 32, 48, 64 und 128 Pixeln gerendert und visuell geprüft. Der Flatpak-Release-Build über GNOME Builder mit SDK 51 exportierte das SVG unter der Desktop-Icon-ID. Die AppStream-Komposition erzeugte dazu die PNG-Vorschauen.
+
 ### 2026-11-26 – Auftrag 26
 
 - `core::history` führt die vollständige interne Historie der aktuellen Partie mit öffentlicher Projektion. Austeil- und Ziehdaten bleiben von der KI-Beobachtung getrennt. Spielstand Version 3 speichert die Historie. Version 1 und 2 behalten ihren Zustand, beginnen mit partieller Historie und werden bei der Migration unverändert gesichert.
