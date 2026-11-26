@@ -1,10 +1,12 @@
 use adw::{gio, glib, prelude::*};
+use schnapsen::core::rules::Difficulty;
 
 const FRONT: &str = "card-front";
 const BACK: &str = "card-back";
 const LEGAL: &str = "highlight-legal-cards";
 const OPPONENT_EYES: &str = "show-opponent-eyes";
 const WINDOW_STATE: &str = "window-state";
+const DIFFICULTY: &str = "next-match-difficulty";
 
 #[derive(Clone)]
 pub(crate) struct Preferences(gio::Settings);
@@ -61,6 +63,17 @@ impl Preferences {
         write(OPPONENT_EYES, self.0.set_boolean(OPPONENT_EYES, value));
     }
 
+    pub fn next_difficulty(&self) -> Difficulty {
+        Difficulty::from_id(&self.0.string(DIFFICULTY)).unwrap_or_default()
+    }
+
+    pub fn set_next_difficulty(&self, difficulty: Difficulty) {
+        if self.next_difficulty() != difficulty {
+            write(DIFFICULTY, self.0.set_string(DIFFICULTY, difficulty.id()));
+            gio::Settings::sync();
+        }
+    }
+
     pub fn window_state(&self) -> (i32, i32, bool) {
         self.0.get(WINDOW_STATE)
     }
@@ -74,7 +87,7 @@ impl Preferences {
 
     pub fn connect_changed(&self, changed: impl Fn(&Self) + 'static) -> glib::SignalHandlerId {
         self.0.connect_changed(None, move |settings, key| {
-            if key != WINDOW_STATE {
+            if key != WINDOW_STATE && key != DIFFICULTY {
                 changed(&Self(settings.clone()));
             }
         })
@@ -100,12 +113,14 @@ mod tests {
                 crate::i18n::init();
                 let settings = Preferences::new();
                 assert_eq!(settings.front_id(), "double-german");
+                assert_eq!(settings.next_difficulty(), Difficulty::Easy);
                 assert_eq!(settings.back_id(), "legacy");
                 assert_eq!(settings.window_state(), (680, 560, false));
                 assert!(!settings.show_legal());
                 assert!(!settings.show_opponent_eyes());
                 assert!(settings.0.boolean("audio-enabled"));
                 settings.set_front_id("french");
+                settings.set_next_difficulty(Difficulty::Hard);
                 settings.set_back_id("alpine");
                 settings.set_show_legal(true);
                 settings.set_show_opponent_eyes(true);
@@ -115,6 +130,7 @@ mod tests {
                 crate::i18n::init();
                 let settings = Preferences::new();
                 assert_eq!(settings.front_id(), "french");
+                assert_eq!(settings.next_difficulty(), Difficulty::Hard);
                 assert_eq!(settings.back_id(), "alpine");
                 assert_eq!(settings.window_state(), (900, 700, true));
                 assert!(settings.show_legal());

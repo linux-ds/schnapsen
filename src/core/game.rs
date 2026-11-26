@@ -2,11 +2,13 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     cards::{Card, Rank, Suit},
+    observation::PublicMemory,
     rules::{GameVariant, ProfileRules, RuleProfile},
 };
 
 pub use super::rules::RuleProfile as Variant;
 
+mod observe;
 mod snapshot;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -20,7 +22,8 @@ pub enum ExchangeError {
     NotEnoughTalonCards,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
 pub struct Exchange {
     pub player: Player,
     pub given: Card,
@@ -189,7 +192,7 @@ pub enum PlayError {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum Reply {
+pub(super) enum Reply {
     Beat,
     Follow,
     Trump,
@@ -216,6 +219,8 @@ pub struct Game {
     profile: RuleProfile,
     announcements: Vec<Announcement>,
     phase: Phase,
+    #[serde(default)]
+    public_memory: PublicMemory,
 }
 
 pub struct View<'a> {
@@ -263,6 +268,7 @@ impl Game {
             profile,
             announcements: Vec::new(),
             phase: Phase::OpenTalon,
+            public_memory: PublicMemory::default(),
         }
     }
 
@@ -310,6 +316,9 @@ impl Game {
             .expect("the exchange was checked");
         *held = exchange.received;
         *self.talon.last_mut().expect("the exchange was checked") = exchange.given;
+        let completed_tricks = self.trick_index();
+        self.public_memory
+            .record_exchange(completed_tricks, exchange);
         Ok(exchange)
     }
 
@@ -573,38 +582,16 @@ impl Game {
         else {
             return (hand.clone(), None);
         };
-        let priority = |card: Card| {
-            if card.suit == lead.suit {
-                if self.game_variant.beats(card, lead, self.trump_suit) {
-                    Reply::Beat
-                } else {
-                    Reply::Follow
-                }
-            } else if card.suit == self.trump_suit {
-                Reply::Trump
-            } else {
-                Reply::Discard
-            }
-        };
-        let best = hand
-            .iter()
-            .copied()
-            .map(priority)
-            .min()
-            .unwrap_or(Reply::Discard);
+        let (cards, best) = self
+            .game_variant
+            .forced_replies(hand, lead, self.trump_suit);
         let restriction = match best {
             Reply::Beat => Some(PlayError::MustBeat(lead.suit)),
             Reply::Follow => Some(PlayError::MustFollow(lead.suit)),
             Reply::Trump => Some(PlayError::MustTrump),
             Reply::Discard => None,
         };
-        (
-            hand.iter()
-                .copied()
-                .filter(|&card| priority(card) == best)
-                .collect(),
-            restriction,
-        )
+        (cards, restriction)
     }
 
     /// Records one play. A complete trick stays visible until it is resolved.
@@ -649,6 +636,10 @@ impl Game {
         }
 
         if let Some(order) = self.game_variant.draw_order(winner, self.phase) {
+            if self.talon.len() == order.len() {
+                // Both sides saw the last card and know who draws it.
+                self.public_memory.last_trump = self.talon.last().copied();
+            }
             for (player, card) in order.into_iter().zip(self.talon.drain(..order.len())) {
                 self.hands[player as usize].push(card);
             }

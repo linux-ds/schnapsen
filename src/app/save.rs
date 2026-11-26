@@ -8,10 +8,13 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use schnapsen::core::{cards::Card, game::Player, match_play::Match};
+use schnapsen::{
+    ai,
+    core::{cards::Card, game::Player, match_play::Match, rules::Difficulty},
+};
 use serde::{Deserialize, Serialize};
 
-const VERSION: u64 = 1;
+const VERSION: u64 = 2;
 const MAX_BYTES: usize = 128 * 1024;
 const FILE_NAME: &str = "save.json";
 
@@ -56,12 +59,21 @@ struct Header {
 #[serde(deny_unknown_fields)]
 struct SaveFile {
     version: u64,
+    strategy_id: String,
+    snapshot: Snapshot,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LegacySaveFile {
+    version: u64,
     snapshot: Snapshot,
 }
 
 #[derive(Serialize)]
 struct SaveFileRef<'a> {
     version: u64,
+    strategy_id: &'static str,
     snapshot: SnapshotRef<'a>,
 }
 
@@ -100,8 +112,13 @@ impl SaveStore {
             self.state = State::Ready(None);
             return Ok(None);
         };
-        let snapshot = decode(&bytes)?;
-        self.state = State::Ready(Some(encode(&snapshot.session, &snapshot.selection)?));
+        let (snapshot, version) = decode(&bytes)?;
+        // Migrate after validation, using the same atomic write as a normal save.
+        self.state = State::Ready(if version == VERSION {
+            Some(encode(&snapshot.session, &snapshot.selection)?)
+        } else {
+            None
+        });
         Ok(Some(snapshot))
     }
 
@@ -164,14 +181,32 @@ fn read_file(path: &Path) -> Result<Option<Vec<u8>>, SaveError> {
     Ok(Some(bytes))
 }
 
-fn decode(bytes: &[u8]) -> Result<Snapshot, SaveError> {
+fn decode(bytes: &[u8]) -> Result<(Snapshot, u64), SaveError> {
     let header: Header = serde_json::from_slice(bytes).map_err(|_| SaveError::Corrupt)?;
-    if header.version != VERSION {
-        return Err(SaveError::UnsupportedVersion(header.version));
-    }
-    let SaveFile { version, snapshot } =
-        serde_json::from_slice(bytes).map_err(|_| SaveError::Corrupt)?;
-    debug_assert_eq!(version, VERSION);
+    let snapshot = match header.version {
+        1 => {
+            let LegacySaveFile { version, snapshot } =
+                serde_json::from_slice(bytes).map_err(|_| SaveError::Corrupt)?;
+            debug_assert_eq!(version, 1);
+            if snapshot.session.config().difficulty != Difficulty::Easy {
+                return Err(SaveError::Corrupt);
+            }
+            snapshot
+        }
+        VERSION => {
+            let SaveFile {
+                version,
+                strategy_id,
+                snapshot,
+            } = serde_json::from_slice(bytes).map_err(|_| SaveError::Corrupt)?;
+            debug_assert_eq!(version, VERSION);
+            if strategy_id != ai::strategy_id(snapshot.session.config().difficulty) {
+                return Err(SaveError::Corrupt);
+            }
+            snapshot
+        }
+        version => return Err(SaveError::UnsupportedVersion(version)),
+    };
     if !snapshot.session.validate_snapshot() {
         return Err(SaveError::Corrupt);
     }
@@ -185,12 +220,13 @@ fn decode(bytes: &[u8]) -> Result<Snapshot, SaveError> {
     {
         return Err(SaveError::Corrupt);
     }
-    Ok(snapshot)
+    Ok((snapshot, header.version))
 }
 
 fn encode(session: &Match, selection: &[Card]) -> Result<Vec<u8>, SaveError> {
     let bytes = serde_json::to_vec(&SaveFileRef {
         version: VERSION,
+        strategy_id: ai::strategy_id(session.config().difficulty),
         snapshot: SnapshotRef { session, selection },
     })
     .map_err(|_| SaveError::Corrupt)?;
@@ -297,6 +333,99 @@ mod tests {
         let restored = directory.store().load().unwrap().unwrap();
         assert_eq!(restored.session, game);
         assert_eq!(restored.selection, selection);
+    }
+
+    #[test]
+    fn restores_every_strategy_with_observed_exchange() {
+        for difficulty in Difficulty::ALL {
+            let directory = Directory::new();
+            let mut session = Match::with_config(
+                Player::Local,
+                schnapsen::core::rules::MatchConfig {
+                    difficulty,
+                    ..Default::default()
+                },
+                |upper| if upper == 10 { 7 } else { upper - 1 },
+            );
+            for player in [Player::Local, Player::Opponent] {
+                session
+                    .play_card(player, session.hand().legal_cards(player)[0])
+                    .unwrap();
+            }
+            let leader = session.resolve_trick().unwrap();
+            session.exchange_trump(leader).unwrap();
+            let view = session.observation(leader);
+            let mut store = directory.store();
+            store.load().unwrap();
+            store.save(&session, &[]).unwrap();
+            let restored = directory.store().load().unwrap().unwrap().session;
+            assert_eq!(restored, session);
+            assert_eq!(restored.observation(leader), view);
+            assert_eq!(restored.config().difficulty, difficulty);
+            assert_eq!(
+                ai::decide(difficulty, &restored.observation(leader)),
+                ai::decide(difficulty, &view),
+            );
+        }
+    }
+
+    #[test]
+    fn version_one_resumes_pending_computer_turn_and_migrates_atomically() {
+        let directory = Directory::new();
+        let mut session = new_match(Variant::Soft, SchneiderRule::Double);
+        let lead = session.hand().legal_cards(Player::Local)[0];
+        session.play_card(Player::Local, lead).unwrap();
+        let mut value: serde_json::Value =
+            serde_json::from_slice(&encode(&session, &[]).unwrap()).unwrap();
+        let object = value.as_object_mut().unwrap();
+        object.remove("strategy_id");
+        object.insert("version".into(), 1.into());
+        let old_session = value["snapshot"]["session"].as_object_mut().unwrap();
+        old_session
+            .get_mut("config")
+            .unwrap()
+            .as_object_mut()
+            .unwrap()
+            .remove("difficulty");
+        old_session
+            .get_mut("hand")
+            .unwrap()
+            .as_object_mut()
+            .unwrap()
+            .remove("public_memory");
+        let legacy = serde_json::to_vec(&value).unwrap();
+        fs::write(directory.path(), &legacy).unwrap();
+
+        let mut store = directory.store();
+        let mut restored = store.load().unwrap().unwrap().session;
+        assert_eq!(restored.config().difficulty, Difficulty::Easy);
+        assert_eq!(restored, session);
+        assert_eq!(fs::read(directory.path()).unwrap(), legacy);
+        let player = Player::Opponent;
+        let action = ai::decide(Difficulty::Easy, &restored.observation(player)).unwrap();
+        assert_eq!(
+            ai::apply(&mut restored, player, action),
+            Ok(ai::ActionEvent::Played)
+        );
+        assert!(ai::decide(Difficulty::Easy, &restored.observation(player)).is_none());
+        store.save(&restored, &[]).unwrap();
+
+        let value: serde_json::Value =
+            serde_json::from_slice(&fs::read(directory.path()).unwrap()).unwrap();
+        assert_eq!(value["version"], VERSION);
+        assert_eq!(value["strategy_id"], "first_legal");
+        assert_eq!(directory.store().load().unwrap().unwrap().session, restored);
+    }
+
+    #[test]
+    fn rejects_inconsistent_strategy_ids() {
+        let directory = Directory::new();
+        let game = new_match(Variant::Sharp, SchneiderRule::Single);
+        let mut value: serde_json::Value =
+            serde_json::from_slice(&encode(&game, &[]).unwrap()).unwrap();
+        value["strategy_id"] = "foresight".into();
+        fs::write(directory.path(), serde_json::to_vec(&value).unwrap()).unwrap();
+        assert!(matches!(directory.store().load(), Err(SaveError::Corrupt)));
     }
 
     #[test]

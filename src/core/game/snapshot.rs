@@ -62,7 +62,8 @@ impl Game {
         let Some(plays) = self.snapshot_plays(forehand) else {
             return false;
         };
-        self.validate_snapshot_timeline(forehand, &plays, drawn)
+        self.validate_public_memory(forehand, &plays, drawn)
+            && self.validate_snapshot_timeline(forehand, &plays, drawn)
     }
 
     // Per-winner piles preserve the pair order but rely on trick_winners to
@@ -118,6 +119,7 @@ impl Game {
             profile: self.profile,
             announcements: Vec::new(),
             phase: Phase::OpenTalon,
+            public_memory: PublicMemory::default(),
         };
         let completed = self.trick_index();
         for index in 0..=completed {

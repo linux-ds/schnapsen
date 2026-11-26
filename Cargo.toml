@@ -2,6 +2,7 @@
 name = "schnapsen"
 version = "0.1.0"
 edition = "2021"
+default-run = "schnapsen"
 
 [dependencies]
 adw = { package = "libadwaita", version = "0.7", features = ["v1_5"] }

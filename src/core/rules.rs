@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{
     cards::{full_deck, Card, Suit},
-    game::{Phase, Player, Score, TalonClosure},
+    game::{Phase, Player, Reply, Score, TalonClosure},
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
@@ -88,6 +88,42 @@ impl GameVariant {
             }
             Self::AustrianSchnapsen => challenger.suit == trump,
         }
+    }
+
+    pub(super) fn reply_priority(self, card: Card, lead: Card, trump: Suit) -> Reply {
+        if card.suit == lead.suit {
+            if self.beats(card, lead, trump) {
+                Reply::Beat
+            } else {
+                Reply::Follow
+            }
+        } else if card.suit == trump {
+            Reply::Trump
+        } else {
+            Reply::Discard
+        }
+    }
+
+    pub(super) fn forced_replies(
+        self,
+        hand: &[Card],
+        lead: Card,
+        trump: Suit,
+    ) -> (Vec<Card>, Reply) {
+        let priority = |card| self.reply_priority(card, lead, trump);
+        let best = hand
+            .iter()
+            .copied()
+            .map(priority)
+            .min()
+            .unwrap_or(Reply::Discard);
+        (
+            hand.iter()
+                .copied()
+                .filter(|&card| priority(card) == best)
+                .collect(),
+            best,
+        )
     }
 
     pub(super) fn enforce_reply_obligations(self, phase: Phase) -> bool {
@@ -225,12 +261,42 @@ impl SchneiderRule {
     }
 }
 
+/// Stable technical choices for the strategy fixed to a match.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Difficulty {
+    #[default]
+    Easy,
+    Medium,
+    Hard,
+}
+
+impl Difficulty {
+    pub const ALL: [Self; 3] = [Self::Easy, Self::Medium, Self::Hard];
+
+    pub const fn id(self) -> &'static str {
+        match self {
+            Self::Easy => "easy",
+            Self::Medium => "medium",
+            Self::Hard => "hard",
+        }
+    }
+
+    pub fn from_id(id: &str) -> Option<Self> {
+        Self::ALL
+            .into_iter()
+            .find(|difficulty| difficulty.id() == id)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
 pub struct MatchConfig {
     pub variant: GameVariant,
     pub profile: RuleProfile,
     pub schneider: SchneiderRule,
+    #[serde(default)]
+    pub difficulty: Difficulty,
 }
 
 #[cfg(test)]
@@ -244,6 +310,7 @@ mod tests {
         assert_eq!(config.variant, GameVariant::AustrianSchnapsen);
         assert_eq!(config.profile, RuleProfile::Soft);
         assert_eq!(config.schneider, SchneiderRule::Double);
+        assert_eq!(config.difficulty, Difficulty::Easy);
         assert_eq!(
             config.variant.profiles(),
             [RuleProfile::Soft, RuleProfile::Sharp]

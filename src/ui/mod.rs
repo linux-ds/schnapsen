@@ -2,7 +2,7 @@ use adw::{gio, glib, gtk, prelude::*};
 use schnapsen::core::{
     game::Player,
     match_play::Match,
-    rules::{GameVariant, MatchConfig, RuleProfile, SchneiderRule},
+    rules::{Difficulty, GameVariant, MatchConfig, RuleProfile, SchneiderRule},
 };
 use std::{cell::RefCell, rc::Rc};
 
@@ -35,6 +35,22 @@ fn profile_label(profile: RuleProfile) -> String {
     }
 }
 
+fn difficulty_label(difficulty: Difficulty) -> String {
+    match difficulty {
+        Difficulty::Easy => tr!("Easy"),
+        Difficulty::Medium => tr!("Medium"),
+        Difficulty::Hard => tr!("Hard"),
+    }
+}
+
+fn match_subtitle(config: MatchConfig) -> String {
+    tr!(
+        "{profile} · {difficulty}",
+        profile = profile_label(config.profile),
+        difficulty = difficulty_label(config.difficulty),
+    )
+}
+
 fn choose_index(upper: usize) -> usize {
     adw::glib::random_int_range(0, upper as i32) as usize
 }
@@ -55,13 +71,20 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
         Err(error) => (None, Some(error)),
     };
     let Snapshot { session, selection } = snapshot.unwrap_or_else(|| Snapshot {
-        session: Match::with_config(Player::Local, MatchConfig::default(), choose_index),
+        session: Match::with_config(
+            Player::Local,
+            MatchConfig {
+                difficulty: preferences.next_difficulty(),
+                ..MatchConfig::default()
+            },
+            choose_index,
+        ),
         selection: Vec::new(),
     });
     let initial_config = session.config();
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     let header = adw::HeaderBar::new();
-    let title = adw::WindowTitle::new("Schnapsen", &profile_label(initial_config.profile));
+    let title = adw::WindowTitle::new("Schnapsen", &match_subtitle(initial_config));
     header.set_title_widget(Some(&title));
     let options = gtk::Box::new(gtk::Orientation::Vertical, 8);
     options.set_margin_start(12);
@@ -86,6 +109,27 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
     let schneider = gtk::CheckButton::with_label(&tr!("Count Schneider double"));
     schneider.set_active(initial_config.schneider == SchneiderRule::Double);
     options.append(&schneider);
+    let difficulty_caption = tr!("Computer difficulty");
+    let difficulty_label_widget = gtk::Label::new(Some(&difficulty_caption));
+    difficulty_label_widget.set_xalign(0.0);
+    options.append(&difficulty_label_widget);
+    let difficulty_labels = Difficulty::ALL.map(difficulty_label);
+    let difficulty = gtk::DropDown::from_strings(&difficulty_labels.each_ref().map(String::as_str));
+    let draft_difficulty = preferences.next_difficulty();
+    difficulty.set_selected(
+        Difficulty::ALL
+            .iter()
+            .position(|&level| level == draft_difficulty)
+            .unwrap() as u32,
+    );
+    difficulty.update_property(&[gtk::accessible::Property::Label(&difficulty_caption)]);
+    let draft_preferences = preferences.clone();
+    difficulty.connect_selected_notify(move |dropdown| {
+        if let Some(&level) = Difficulty::ALL.get(dropdown.selected() as usize) {
+            draft_preferences.set_next_difficulty(level);
+        }
+    });
+    options.append(&difficulty);
     options.append(&gtk::Separator::new(gtk::Orientation::Horizontal));
     let reset_bummerls = gtk::Button::with_label(&tr!("Reset Bummerl…"));
     options.append(&reset_bummerls);
@@ -202,6 +246,7 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
         if model.session().result().is_some() {
             let config = MatchConfig {
                 variant: game_variant,
+                difficulty: Difficulty::ALL[difficulty.selected() as usize],
                 profile: profiles[profile.selected() as usize],
                 schneider: if schneider.is_active() {
                     SchneiderRule::Double
@@ -213,7 +258,7 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
         } else {
             model.next_hand(choose_index)?;
         }
-        title.set_subtitle(&profile_label(model.session().config().profile));
+        title.set_subtitle(&match_subtitle(model.session().config()));
         if let Some(touch) = touch.upgrade() {
             touch.reset();
         }

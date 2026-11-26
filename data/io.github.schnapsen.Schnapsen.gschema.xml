@@ -17,6 +17,10 @@
       <default>false</default>
       <summary>Show the opponent's card points</summary>
     </key>
+    <key name="next-match-difficulty" type="s">
+      <default>'easy'</default>
+      <summary>Difficulty for the next match</summary>
+    </key>
     <key name="window-state" type="(iib)">
       <default>(680, 560, false)</default>
       <summary>Normal window width, height and maximized state</summary>

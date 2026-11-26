@@ -28,7 +28,7 @@ Die funktionale Entwicklung bis zur Beta-Abnahme hat Vorrang. Historische Grafik
 - Doppeldeutsche Kartenfarben: **Herz, Schellen, Grün/Laub, Eichel**.
 - Werte: **Ass, Zehn, König, Ober, Unter**.
 - Karten geben, Talon/Trumpf, gültige Spielzüge, Stichentscheidung, Ziehen, Ansagen (20/40), Trumpftausch, Zudrehen, Punktewertung, Spielende und nächste Runde.
-- Einfacher, legal spielender Computergegner; Architektur für spätere Verbesserung offenhalten.
+- Regelkonformer Computergegner mit drei Spielstärken und einer gemeinsamen öffentlichen Beobachtung.
 - Tischdarstellung mit eigener Hand, kleiner verdeckter Gegnerhand, Talon mit Trumpfkarte, Tischmitte und sichtbaren gewonnenen Stichstapeln.
 - Auswahl einzelner Karten, gegebenenfalls zweier Karten zur Vorbereitung einer Ansage.
 - Ausspielen per Tastatur und Touchgeste sowie eindeutige Mausbedienung.
@@ -83,13 +83,13 @@ Dies ist eine **logische** Struktur, keine Verpflichtung zu einer bestimmten Anz
 
 Die Profile bündeln die bestehenden Hausregeln für Ansagen und deren Wirksamkeit, Talonaktionen, Handabschluss, Zudrehwertung, Sticheinsicht und erlaubte Spielhilfen. Die manuelle Ausmeldung ist eine mögliche spätere Alternative zum automatischen Abschluss. Sie ist derzeit nicht auswählbar.
 
-`MatchConfig` bindet Spielvariante, Regelprofil und Schneiderwertung an eine Partie. Jede weitere Hand derselben Partie übernimmt diese Konfiguration. Das Menü **Partie** zeigt das unterstützte Spiel und seine Profile. Die dort gewählte Konfiguration greift erst mit **Neue Partie**. Lernhilfen sind davon unabhängige lokale Einstellungen innerhalb der vom aktiven Profil erlaubten Grenzen.
+`MatchConfig` bindet Spielvariante, Regelprofil, Schneiderwertung und Computer-Spielstärke an eine Partie. Jede weitere Hand derselben Partie übernimmt diese Konfiguration. Das Menü **Partie** zeigt das unterstützte Spiel und seine Profile. Die dort gewählte Konfiguration greift erst mit **Neue Partie**. Lernhilfen sind davon unabhängige lokale Einstellungen innerhalb der vom aktiven Profil erlaubten Grenzen.
 
 ### Schnittstellen für Darstellung und Strategie
 
 - Die Kartenzeichnung erhält Kartenidentität, Vorder- oder Rückseite und Darstellungszustand. Kartenfront und Kartenrücken werden unabhängig gewählt. Ein Wechsel wirkt sofort und erhält Kartenauswahl, Geometrie, Hand und Partiekonfiguration.
 - Audio und Animationen können auf geprüfte Aktionen und ihre sichtbaren Ergebnisse reagieren. Der fachliche Zustand bleibt in der Engine.
-- Die Computerstrategie wählt aus den von der Engine gelieferten legalen Karten und Ansagen sowie erlaubten Tauschoptionen. Eine spätere Schwierigkeit ist eine Strategieauswahl auf dieser Schnittstelle.
+- Die Computerstrategie entscheidet anhand der öffentlichen `Observation` zwischen von der Engine gelieferten legalen Karten, Ansagen, Trumpftausch und Zudrehen. Die Engine überprüft die gewählte Aktion.
 - Persönliche Einstellungen gehören zur Anwendung und Darstellung. Spielvariante, Regelprofil und Schneiderwertung werden als eigene Konfiguration an die Partie übergeben.
 
 ### Kartendesigns und persönliche Einstellungen
@@ -158,7 +158,7 @@ Der Zustand enthält mindestens:
 
 `app::save` verwaltet einen automatischen Speicherplatz in `$XDG_DATA_HOME/schnapsen/save.json`. Ohne gesetztes `XDG_DATA_HOME` verwendet GLib das XDG-Standardverzeichnis unter `~/.local/share`. Im Flatpak liegt die Datei im app-eigenen Datenverzeichnis unter `~/.var/app/io.github.schnapsen.Schnapsen/data/schnapsen/`. Persönliche Einstellungen und Fensterzustand verbleiben in GSettings.
 
-Die JSON-Datei verwendet ein Serde-Schema mit numerischem Versionsfeld `version` (aktuell `1`). `snapshot.session` enthält den vollständigen fachlichen Partiezustand mit festgeschriebener Konfiguration, geordneten Karten, Zugfolge, Wertung und Ergebnissen. `snapshot.selection` enthält bis zu zwei ausgewählte Handkarten. Karten, Varianten und Regelprofile verwenden sprachunabhängige IDs. Augen und vorgemerkte Ansagen ergeben sich aus gespeicherten Stichen und Ansageereignissen. Die Engine leitet offene Trumpfkarte, Geber und ausstehende Aktionen aus den gespeicherten Daten ab. Beim Fortsetzen der aktuellen Hand wird kein Zufall benötigt. Erst die nächste Verteilung verwendet wieder den Zufallsgenerator.
+Die JSON-Datei verwendet ein Serde-Schema mit numerischem Versionsfeld `version` (aktuell `2`). `snapshot.session` enthält den vollständigen fachlichen Partiezustand mit festgeschriebener Konfiguration, geordneten Karten, Zugfolge, Wertung und Ergebnissen. `snapshot.selection` enthält bis zu zwei ausgewählte Handkarten. Karten, Varianten und Regelprofile verwenden sprachunabhängige IDs. Augen und vorgemerkte Ansagen ergeben sich aus gespeicherten Stichen und Ansageereignissen. Die Engine leitet offene Trumpfkarte, Geber und ausstehende Aktionen aus den gespeicherten Daten ab. Beim Fortsetzen der aktuellen Hand wird kein Zufall benötigt. Erst die nächste Verteilung verwendet wieder den Zufallsgenerator.
 
 Die Anwendung speichert nach einer Zustandsänderung und beim regulären Schließen. Gleiche Snapshots lösen keinen Dateiaustausch aus. Der Austausch schreibt und synchronisiert eine private temporäre Datei im selben Verzeichnis und ersetzt danach den bisherigen Spielstand atomar. Ein abgebrochener Schreibvorgang vor der Ersetzung lässt die bereits geschriebene Version bestehen. Eine bestätigte neue Partie ersetzt den bisherigen Spielstand.
 
@@ -166,7 +166,7 @@ Beim Start prüft die Anwendung Version, Kartenbestand, Zugfolge, Ansagen und We
 
 Bei einer beschädigten, inkompatiblen oder nicht lesbaren Datei bleibt der Speicherplatz gesperrt. Erst die bestätigte Archivierung verschiebt die alte Datei in ein eigenes `unreadable-…`-Verzeichnis und erlaubt die neue Partie. Bei Schreibfehlern zeigt das Spiel einen Hinweis. Beim Schließen kann der Spieler es erneut versuchen oder das Verwerfen ungespeicherter Änderungen bestätigen.
 
-Künftige Dateiformate können anhand des Headers vor dem typisierten Einlesen erkannt und über eigene Migrationen auf das aktuelle Modell abgebildet werden. Version 1 enthält den aktuellen Kartenbestand und die gespielten Karten. Sie dient zur exakten Wiederaufnahme. Eine vollständige Historie bereits vollzogener Zieh- und Tauschvorgänge bleibt einer späteren Formaterweiterung vorbehalten.
+Version 2 speichert die feste Schwierigkeit in der Partiekonfiguration, die zugehörige `strategy_id` und das öffentliche Spielgedächtnis. Der Lader prüft die Zuordnung von Schwierigkeit und Strategie-ID. Er übernimmt Version 1 mit Einfach und rekonstruiert bekannte Stiche und Ansagen aus der Hand. Früher beobachtete Tausche und der letzte offene Trumpfzug aus Version 1 sind nur insoweit verfügbar, wie sie aus den erhaltenen Daten hervorgehen. Die erste reguläre Speicherung ersetzt die migrierte Datei atomar. Künftige Migrationen können am Versionskopf ansetzen. Die Strategien brauchen keinen gespeicherten Zufallszustand.
 
 ### Aktionen (fachliche Schnittstelle)
 
@@ -259,13 +259,25 @@ Kurze Animationen genügen, z. B. 120–350 ms abhängig vom Vorgang. Auswahl be
 
 Einheitliche Karten-Geometrie, Hit-Tests und Interaktionen gelten unabhängig vom Theme. Die grafische Ebene darf anstelle von Bilddateien auch einfache Vektorformen zeichnen.
 
-## 7. Einfacher Computergegner
+## 7. Computerstrategien
 
-- Erzeugt ausschließlich regelkonforme Aktionen.
-- Beginnt mit einfachen Heuristiken für Trumpf, Augen, sichere Stiche und Ansagen.
-- Verhalten darf nicht auf verdeckten Informationen des Menschen beruhen.
-- Entscheidungen müssen reproduzierbar testbar sein.
-- Ein späterer stärkerer Gegner soll das gleiche Regel- und Aktionsinterface benutzen.
+`core::observation::Observation` ist die für alle Stufen gleiche Informationsgrenze. Sie enthält die eigene Hand, eigene und aus öffentlichen Ereignissen abzählbare gegnerische Augen, Partiestand, öffentliche Karten, Zugfolge, Ansagen, Trumpftausche, Kartenanzahlen und die legalen Aktionen. Sie leitet mögliche gegnerische Karten aus beobachteten Antworten unter Farb-, Stich- und Trumpfzwang ab. Die Engine speichert Tausch und letzten öffentlichen Trumpfzug pro Hand. Stiche und Ansagen liefern die übrigen öffentlichen Fakten. Das Austeilen einer neuen Hand startet ein neues Gedächtnis. Die verdeckte Verteilung und Ziehreihenfolge bleiben in der Engine.
+
+`ai` registriert je Schwierigkeit eine Strategie mit stabiler ID. Ein neues Modul mit `Strategy::decide` kann über die Registrierung ergänzt werden. Die Oberfläche steuert Zeitpunkt und Darstellung, `ai::apply` führt die regulären Engine-Aktionen aus.
+
+| Stufe | Strategie-ID | Verfahren |
+|---|---|---|
+| Einfach | `first_legal` | Tauscht und sagt wie bisher an. Ergreift einen unmittelbar gewinnenden Antwortstich für 66 Augen. Sonst bleibt die bisherige Reihenfolge legaler Karten maßgeblich. |
+| Mittel | `tactical` | Bewertet Stichwert, Zugrecht, 66-Augen-Chancen, Kartenverbrauch, Trumpf und Ansagepaare. Spart hohe Trümpfe, wenn eine günstigere Antwort genügt. |
+| Schwer | `foresight` | Bewertet Stichfolgen auf bis zu zwölf mit der Beobachtung vereinbaren hypothetischen Gegnerhänden. Nutzt ein begrenztes Minimax mit Alpha-Beta-Pruning und berücksichtigt Hand- und Partiewertung. |
+
+Schwer prüft bei legalem Zudrehen die gesperrte Fortsetzung bis zum Handende oder zum Suchbudget. Das Zudrehen kommt nur infrage, wenn die untersuchten Szenarien einen Gewinn prognostizieren und der erwartete Wert den besten offenen Zug mit Sicherheitsabstand übertrifft. Die Stichentscheidung und der Bedienzwang in der Suche stammen aus den Engine-Regeln. Die Stufen Einfach und Mittel lassen den Talon offen.
+
+Die Suche hat feste Grenzen für Stichzahl und Knoten und ist reproduzierbar. Bei offenem Talon mit mehr als zwei Karten bewertet Schwer den nächsten Stich. Beim letzten Ziehen und leerem Talon werden bis zu drei Stiche betrachtet. Für Abschlussprognosen bei zugedrehtem Talon stehen je Aktion und Szenario höchstens 256 Suchknoten zur Verfügung. Spätere Ansagen werden heuristisch bewertet. Die Ergebnisse bleiben Näherungen für die verfügbaren Beobachtungen.
+
+Im Menü **Partie** wird die Spielstärke für die nächste Partie gewählt und sprachunabhängig in GSettings gespeichert. **Nächste Hand** behält die aktive Strategie. **Neue Partie** übernimmt die Vorgabe. Die aktive Spielstärke steht im Fenstertitel.
+
+Der GTK-freie Release-Vergleich läuft mit `cargo run --release --bin compare_strategies -- 64 1`. Er verwendet beide Profile, gleiche Austeilfolgen mit vertauschten Strategieplätzen, vollständige Partien und Kontrollpaarungen. Das Werkzeug meldet Siege, Punkte, Augen, Schneider, Zudrehen, ungültige Aktionen und Entscheidungszeiten als JSONL.
 
 ## 8. Einstellungen und Barrierefreiheit
 

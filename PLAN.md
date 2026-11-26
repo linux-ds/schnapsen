@@ -24,7 +24,7 @@
 - `src/core/game.rs` prüft Ausspielaktionen und löst vollständige Stiche auf. Eine Ansage prüft Ausspielrecht, Paar und Profil und spielt atomar eine Karte aus. Stichaugen und vorgemerkte oder wirksame Ansageaugen werden aus Stichpaaren und Ansageereignissen abgeleitet. Ab 66 wirksamen Augen beendet die Engine die Hand nach Stichauflösung oder Ansage automatisch. Der Abschlussgrund und die Spielpunkte stehen in `Finished`.
 - Der Trumpftausch ersetzt den Trumpf-Unter in der Hand durch die offene Trumpfkarte. Der Unter bleibt als letzte Karte des Talons liegen. Tausch und Zudrehen teilen dieselbe Hausregelprüfung. Sie verlangen einen abgeschlossenen ersten Stich, aktuelles Ausspielrecht vor Stichbeginn und mindestens vier Karten im offenen Talon einschließlich der Trumpfkarte. Die Engine prüft beim Tausch zusätzlich den Besitz des Trumpf-Unters.
 - Zudrehen sperrt den Stapel und speichert den wirksamen Augenstand und die Stichzahl des Gegners für die Wertung. Ab dann gelten dieselben Bedienpflichten wie bei einem regulär leeren Talon. Die gesperrten Karten bleiben erhalten.
-- `src/ai.rs` wählt deterministisch die erste zulässige Ansage oder die erste legale Karte. Die Auswahl erhält keine verdeckten Karten des anderen Spielers.
+- `src/ai.rs` registriert die drei getrennten Computerstrategien. `core::observation` liefert öffentliche Informationen und eigene Karten. Die Entscheidung für die nächste Partie kann im Menü vorgemerkt werden.
 - `src/core/rules.rs` definiert die unterstützte Spielvariante, die beiden Regelprofile und die feste Partiekonfiguration.
 - `src/core/match_play.rs` verwaltet die aktuelle Hand, Restpunkte, Handanzahl, Vorhand und Bummerl. Jede abgeschlossene Hand wird einmal angerechnet. Null Restpunkte beenden die Partie.
 - `src/ui/table.rs` hält die Partie sowie Auswahl und Fokus. Die Layout-Sicht erhält nur eigene und öffentliche Kartenwerte sowie Anzahlen für verdeckte Karten. Ein Handwechsel setzt die handbezogenen Bedienelemente zurück.
@@ -113,12 +113,12 @@ Die funktionale Spielentwicklung hat Vorrang. Die vorhandene Darstellung reicht 
 
 **Ergebnis:** Vollständige Partie über die Core-API simulierbar.
 
-### M3 – Einfacher Computergegner
+### M3 – Computergegner
 - [x] Legale Karten in beiden Spielabschnitten aus dem Regelzustand ableiten und deterministisch die erste wählen.
 - [x] Die Kartenfolge in automatisierten Testpartien bis zum zehnten Stich prüfen.
 - [x] Dieselbe automatische 66-Augen-Wertung für Computer und Mensch verwenden.
-- [ ] Einfaches heuristisches Verhalten implementieren.
-- [ ] Informationsgrenzen und reproduzierbare KI-Tests absichern.
+- [x] Taktische und vorausschauende Strategien ergänzen.
+- [x] Informationsgrenzen und reproduzierbare Strategietests absichern.
 - [x] Automatische Testpartien gegen den Computer durchführen.
 
 **Ergebnis:** Computer beendet regelkonforme Partien.
@@ -160,7 +160,7 @@ Die Tischdarstellung und die Hausregeln für Stichdarstellung und automatischen 
 
 ## Nächster Schritt
 
-Auftrag 25 behandelt Computerstrategien und Schwierigkeitsstufen. Die offenen manuellen Eingabeprüfungen bleiben Teil der Abnahme.
+Auftrag 26 baut die Spieltests, reproduzierbaren Spielsituationen und Simulationen weiter aus. Die offenen manuellen Eingabeprüfungen bleiben Teil der Abnahme.
 
 ## Build in GNOME Builder
 
@@ -190,8 +190,7 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 ## Bekannte Probleme / Risiken
 
 - Die Profile unterscheiden sich bei Ansagen und beim Stichzugriff. Für Talonaktionen gilt dieselbe Hausregel. Die Sticheinsicht ist implementiert. Ihr Zeitfenster und ihre Rollenbindung weichen je nach Regelquelle ab.
-- Der Computer wählt die erste legale Karte. Die Engine beendet seine Hand bei 66 wirksamen Augen automatisch wie beim Menschen.
-- Der Computer nutzt die gemeinsame Regelprüfung und Wertung. Automatisches Zudrehen bleibt ohne konservative Entscheidungsregel deaktiviert.
+- Schwer betrachtet bei offenem Talon meist nur einen Stich. Stichfolgen und Zudrehen beruhen auf einer begrenzten Auswahl möglicher Gegnerhände und vereinfachter Bewertung späterer Ansagen.
 - Der SDK-Build ist der vorgesehene Entwicklungsweg auf GNOME OS. Außerhalb des SDKs fehlen der Codex-Umgebung die GTK4- und libadwaita-Entwicklungsbibliotheken.
 - Für die Veröffentlichung fehlen Projektlizenz, Homepage, Entwicklerangaben und Release-Metadaten. Die App-ID ist vorläufig.
 
@@ -206,6 +205,23 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-26 – Auftrag 25
+
+- Drei Computerstrategien mit gemeinsamer öffentlicher Beobachtung und Engine-Aktionsprüfung ergänzt. Spielstärke und Strategie-ID liegen im Spielstand Version 2. Version 1 wird mit Einfach geladen. Die für eine laufende Partie gespeicherte Stufe hat Vorrang vor der GSettings-Vorgabe für die nächste Partie.
+- Vergleich im Release-Profil mit 128 SplitMix64-Seeds von 1 bis 128, je zwei gespiegelten Sitzzuordnungen, beiden Regelprofilen und sechs Paarungen pro Profil. Insgesamt 3.072 Partien, 18.663 Hände und 0 ungültige Aktionen. Alle Gleichstufen-Kontrollen endeten 128:128. Schwer gewann auch in der zweiten Seed-Hälfte in beiden Profilen jeweils 92:36 gegen Mittel.
+
+| Profil | Paarung | Partien | Hände | Spielpunkte | Ø Augen pro Hand | Schneiderpartien |
+|---|---|---:|---:|---:|---:|---:|
+| Weich | Einfach : Mittel | 7:249 | 374:974 | 459:1952 | 33,95:64,76 | 1:82 |
+| Weich | Einfach : Schwer | 2:254 | 210:900 | 274:1998 | 27,34:66,86 | 0:126 |
+| Weich | Mittel : Schwer | 54:202 | 627:1077 | 881:1692 | 47,35:59,27 | 1:37 |
+| Scharf | Einfach : Mittel | 5:251 | 371:984 | 443:1964 | 33,88:65,26 | 1:76 |
+| Scharf | Einfach : Schwer | 2:254 | 203:907 | 256:1999 | 26,91:67,36 | 0:126 |
+| Scharf | Mittel : Schwer | 52:204 | 616:1074 | 869:1704 | 47,06:59,26 | 2:41 |
+
+- Schwer drehte unter Einbeziehung der Spiegelpartien 1.553-mal erfolgreich und 39-mal erfolglos zu. Pro Beobachtung und Entscheidung gemessene Mittelwerte und Maxima im Release waren 1,69/230,34 µs für Einfach, 2,38/244,59 µs für Mittel und 121,52/1.375 µs für Schwer. Die Suchgrenzen und Einschränkungen stehen in [SPEC.md](SPEC.md).
+- Formatierung, Cargo-Check, alle 93 Tests, Clippy mit `-D warnings` sowie Flatpak-Release-Build einschließlich Tests im GNOME SDK 51 erfolgreich. Der Wayland-Prüflauf bestätigte für jede Stufe eine ausstehende Computeraktion nach dem Laden und die davon unabhängige Menüvorgabe. Eine manuelle Spielerprobung über längere Partien und die bisherigen physischen Touch- und HiDPI-Prüfungen bleiben offen.
 
 ### 2026-11-26 – Auftrag 24
 

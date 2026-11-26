@@ -323,29 +323,33 @@ impl Table {
     }
 
     pub fn play_opponent(&mut self) {
-        if let Ok(exchange) = self.session.hand().trump_exchange(Player::Opponent) {
-            if ai::wants_exchange(exchange) {
-                self.visible_exchange = Some(
-                    self.session
-                        .exchange_trump(Player::Opponent)
-                        .expect("AI chose a legal exchange"),
-                );
+        let player = Player::Opponent;
+        let difficulty = self.session.config().difficulty;
+        // Exchange and closure retain the lead. Re-evaluate from the new
+        // observation before playing, with at most two preparatory actions.
+        for _ in 0..3 {
+            let Some(action) = ai::decide(difficulty, &self.session.observation(player)) else {
+                break;
+            };
+            match ai::apply(&mut self.session, player, action) {
+                Ok(ai::ActionEvent::Played) => return,
+                Ok(ai::ActionEvent::Announced(event)) => {
+                    self.visible_announcement = Some(event);
+                    return;
+                }
+                Ok(ai::ActionEvent::Exchanged(event)) => self.visible_exchange = Some(event),
+                Ok(ai::ActionEvent::Closed) => {}
+                Err(error) => {
+                    eprintln!("Computer action was rejected: {error:?}");
+                    break;
+                }
             }
         }
-        if let Some(marriage) =
-            ai::choose_marriage(&self.session.hand().legal_marriages(Player::Opponent))
-        {
-            let event = self
-                .session
-                .announce_and_play(Player::Opponent, marriage.suit, marriage.king())
-                .expect("AI chose a legal marriage");
-            self.visible_announcement = Some(event);
-        } else if let Some(card) =
-            ai::choose_card(&self.session.hand().legal_cards(Player::Opponent))
-        {
+        // A strategy failure must not leave a turn queued indefinitely.
+        if let Some(card) = self.session.hand().legal_cards(player).first().copied() {
             self.session
-                .play_card(Player::Opponent, card)
-                .expect("AI chose a legal card");
+                .play_card(player, card)
+                .expect("fallback card is legal");
         }
     }
 

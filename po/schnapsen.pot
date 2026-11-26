@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Schnapsen\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-26 06:39+0100\n"
+"POT-Creation-Date: 2026-11-26 06:46+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -49,10 +49,14 @@ msgid "Show the opponent's card points"
 msgstr ""
 
 #: data/io.github.schnapsen.Schnapsen.gschema.xml:22
-msgid "Normal window width, height and maximized state"
+msgid "Difficulty for the next match"
 msgstr ""
 
 #: data/io.github.schnapsen.Schnapsen.gschema.xml:26
+msgid "Normal window width, height and maximized state"
+msgstr ""
+
+#: data/io.github.schnapsen.Schnapsen.gschema.xml:30
 msgid "Enable game sounds"
 msgstr ""
 
@@ -197,47 +201,72 @@ msgstr ""
 msgid "Sharp Schnapsen"
 msgstr ""
 
-#: src/ui/mod.rs:71
+#: src/ui/mod.rs:40
+#, rust-format
+msgid "Easy"
+msgstr ""
+
+#: src/ui/mod.rs:41
+#, rust-format
+msgid "Medium"
+msgstr ""
+
+#: src/ui/mod.rs:42
+#, rust-format
+msgid "Hard"
+msgstr ""
+
+#: src/ui/mod.rs:48
+#, rust-format
+msgid "{profile} · {difficulty}"
+msgstr ""
+
+#: src/ui/mod.rs:94
 #, rust-format
 msgid "For the next match"
 msgstr ""
 
-#: src/ui/mod.rs:84
+#: src/ui/mod.rs:107
 #, rust-format
 msgid "Rules profile"
 msgstr ""
 
-#: src/ui/mod.rs:86
+#: src/ui/mod.rs:109
 #, rust-format
 msgid "Count Schneider double"
 msgstr ""
 
-#: src/ui/mod.rs:90
+#: src/ui/mod.rs:112
+#, rust-format
+msgid "Computer difficulty"
+msgstr ""
+
+#: src/ui/mod.rs:134
 #, rust-format
 msgid "Reset Bummerl…"
 msgstr ""
 
-#: src/ui/mod.rs:95
+#: src/ui/mod.rs:139
 #, rust-format
 msgid "Match"
 msgstr ""
 
-#: src/ui/mod.rs:100 src/ui/preferences.rs:15
+#: src/ui/mod.rs:144 src/ui/preferences.rs:15
 #, rust-format
 msgid "Preferences"
 msgstr ""
 
-#: src/ui/mod.rs:101
+#: src/ui/mod.rs:145
 #, rust-format
 msgid "Quit"
 msgstr ""
 
-#: src/ui/mod.rs:105
+#: src/ui/mod.rs:149
 #, rust-format
 msgid "Open menu"
 msgstr ""
 
-#: src/ui/mod.rs:130
+#: src/ui/mod.rs:174
 #, rust-format
 msgid "Play card"
 msgstr ""

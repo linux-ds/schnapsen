@@ -6,6 +6,7 @@ use super::{
         Announcement, CloseError, Exchange, ExchangeError, Game, MarriageError, Outcome, Phase,
         PlayError, Player, ResolveError, Variant,
     },
+    observation::Observation,
     rules::MatchConfig,
 };
 
@@ -71,6 +72,11 @@ impl Match {
             bummerls: [0; 2],
             config,
         }
+    }
+
+    pub fn observation(&self, player: Player) -> Observation {
+        self.hand
+            .observation(player, self.forehand, self.remaining, self.config)
     }
 
     pub fn hand(&self) -> &Game {
@@ -330,13 +336,14 @@ mod tests {
 
     #[test]
     fn match_configuration_changes_only_after_the_match_finishes() {
-        use super::super::rules::RuleProfile;
+        use super::super::rules::{Difficulty, RuleProfile};
 
         let initial = MatchConfig::default();
         let mut selection = initial;
         let mut game = Match::with_config(Player::Local, selection, ordered);
         selection.profile = RuleProfile::Sharp;
         selection.schneider = SchneiderRule::Single;
+        selection.difficulty = Difficulty::Hard;
         assert_eq!(
             game.new_match_with_config(selection, ordered),
             Err(DealError::MatchInProgress)

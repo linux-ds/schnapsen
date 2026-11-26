@@ -7,8 +7,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Schnapsen\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-26 06:39+0100\n"
-"PO-Revision-Date: 2026-11-26 06:39+0100\n"
+"POT-Creation-Date: 2026-11-26 06:46+0100\n"
+"PO-Revision-Date: 2026-11-26 06:46+0100\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
 "Language: en\n"
@@ -48,10 +48,14 @@ msgid "Show the opponent's card points"
 msgstr "Show the opponent's card points"
 
 #: data/io.github.schnapsen.Schnapsen.gschema.xml:22
+msgid "Difficulty for the next match"
+msgstr "Difficulty for the next match"
+
+#: data/io.github.schnapsen.Schnapsen.gschema.xml:26
 msgid "Normal window width, height and maximized state"
 msgstr "Normal window width, height and maximized state"
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:26
+#: data/io.github.schnapsen.Schnapsen.gschema.xml:30
 msgid "Enable game sounds"
 msgstr "Enable game sounds"
 
@@ -196,47 +200,72 @@ msgstr "Soft Schnapsen"
 msgid "Sharp Schnapsen"
 msgstr "Sharp Schnapsen"
 
-#: src/ui/mod.rs:71
+#: src/ui/mod.rs:40
+#, rust-format
+msgid "Easy"
+msgstr "Easy"
+
+#: src/ui/mod.rs:41
+#, rust-format
+msgid "Medium"
+msgstr "Medium"
+
+#: src/ui/mod.rs:42
+#, rust-format
+msgid "Hard"
+msgstr "Hard"
+
+#: src/ui/mod.rs:48
+#, rust-format
+msgid "{profile} · {difficulty}"
+msgstr "{profile} · {difficulty}"
+
+#: src/ui/mod.rs:94
 #, rust-format
 msgid "For the next match"
 msgstr "For the next match"
 
-#: src/ui/mod.rs:84
+#: src/ui/mod.rs:107
 #, rust-format
 msgid "Rules profile"
 msgstr "Rules profile"
 
-#: src/ui/mod.rs:86
+#: src/ui/mod.rs:109
 #, rust-format
 msgid "Count Schneider double"
 msgstr "Count Schneider double"
 
-#: src/ui/mod.rs:90
+#: src/ui/mod.rs:112
+#, rust-format
+msgid "Computer difficulty"
+msgstr "Computer difficulty"
+
+#: src/ui/mod.rs:134
 #, rust-format
 msgid "Reset Bummerl…"
 msgstr "Reset Bummerl…"
 
-#: src/ui/mod.rs:95
+#: src/ui/mod.rs:139
 #, rust-format
 msgid "Match"
 msgstr "Match"
 
-#: src/ui/mod.rs:100 src/ui/preferences.rs:15
+#: src/ui/mod.rs:144 src/ui/preferences.rs:15
 #, rust-format
 msgid "Preferences"
 msgstr "Preferences"
 
-#: src/ui/mod.rs:101
+#: src/ui/mod.rs:145
 #, rust-format
 msgid "Quit"
 msgstr "Quit"
 
-#: src/ui/mod.rs:105
+#: src/ui/mod.rs:149
 #, rust-format
 msgid "Open menu"
 msgstr "Open menu"
 
-#: src/ui/mod.rs:130
+#: src/ui/mod.rs:174
 #, rust-format
 msgid "Play card"
 msgstr "Play card"

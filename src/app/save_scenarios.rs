@@ -8,7 +8,7 @@ use std::{
 use schnapsen::core::{
     game::{Phase, Player},
     match_play::Match,
-    rules::{RuleProfile, SchneiderRule},
+    rules::{Difficulty, MatchConfig, RuleProfile, SchneiderRule},
 };
 
 use super::save::SaveStore;
@@ -156,12 +156,17 @@ fn saves_a_selected_card_across_de_and_en_processes() {
     const PATH: &str = "SCHNAPSEN_SAVE_TEST_PATH";
     const MODE: &str = "SCHNAPSEN_SAVE_TEST_MODE";
     let fixture = || {
-        Match::new(
+        let mut game = Match::with_config(
             Player::Local,
-            RuleProfile::Soft,
-            SchneiderRule::Double,
+            MatchConfig {
+                difficulty: Difficulty::Hard,
+                ..MatchConfig::default()
+            },
             shuffle(99),
-        )
+        );
+        let lead = game.hand().legal_cards(Player::Local)[0];
+        game.play_card(Player::Local, lead).unwrap();
+        game
     };
     match env::var(MODE).as_deref() {
         Ok(mode) => {
