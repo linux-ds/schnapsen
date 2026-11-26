@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Schnapsen\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-26 06:46+0100\n"
+"POT-Creation-Date: 2026-11-26 16:16+0100\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,45 +18,49 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 
-#: data/io.github.schnapsen.Schnapsen.desktop.in:3
-#: data/io.github.schnapsen.Schnapsen.metainfo.xml.in:5
+#: data/org.linuxds.Schnapsen.desktop.in:3
+#: data/org.linuxds.Schnapsen.metainfo.xml.in:6
 msgid "Schnapsen"
 msgstr ""
 
-#: data/io.github.schnapsen.Schnapsen.desktop.in:4
-#: data/io.github.schnapsen.Schnapsen.metainfo.xml.in:6
+#: data/org.linuxds.Schnapsen.desktop.in:4
+#: data/org.linuxds.Schnapsen.metainfo.xml.in:7
 msgid "A card game for GNOME"
 msgstr ""
 
-#: data/io.github.schnapsen.Schnapsen.metainfo.xml.in:8
+#: data/org.linuxds.Schnapsen.metainfo.xml.in:9
 msgid "Schnapsen is a native GNOME application for the Austrian card game. Play a hand against the computer and win by reaching 66 card points or taking the last trick."
 msgstr ""
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:6
+#: data/org.linuxds.Schnapsen.metainfo.xml.in:12
+msgid "Linux DS Team"
+msgstr ""
+
+#: data/org.linuxds.Schnapsen.gschema.xml:6
 msgid "Card front design ID"
 msgstr ""
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:10
+#: data/org.linuxds.Schnapsen.gschema.xml:10
 msgid "Card back design ID"
 msgstr ""
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:14
+#: data/org.linuxds.Schnapsen.gschema.xml:14
 msgid "Highlight legal cards"
 msgstr ""
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:18
+#: data/org.linuxds.Schnapsen.gschema.xml:18
 msgid "Show the opponent's card points"
 msgstr ""
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:22
+#: data/org.linuxds.Schnapsen.gschema.xml:22
 msgid "Difficulty for the next match"
 msgstr ""
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:26
+#: data/org.linuxds.Schnapsen.gschema.xml:26
 msgid "Normal window width, height and maximized state"
 msgstr ""
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:30
+#: data/org.linuxds.Schnapsen.gschema.xml:30
 msgid "Enable game sounds"
 msgstr ""
 

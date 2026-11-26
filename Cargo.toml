@@ -3,6 +3,9 @@ name = "schnapsen"
 version = "0.1.0"
 edition = "2021"
 license = "GPL-3.0-or-later"
+authors = ["Linux DS Team"]
+homepage = "https://linux-ds.org/"
+repository = "https://github.com/linux-ds/schnapsen"
 default-run = "schnapsen"
 
 [dependencies]

@@ -1,6 +1,6 @@
-data/io.github.schnapsen.Schnapsen.desktop.in
-data/io.github.schnapsen.Schnapsen.metainfo.xml.in
-data/io.github.schnapsen.Schnapsen.gschema.xml
+data/org.linuxds.Schnapsen.desktop.in
+data/org.linuxds.Schnapsen.metainfo.xml.in
+data/org.linuxds.Schnapsen.gschema.xml
 src/ui/design/backs.rs
 src/ui/design/fronts.rs
 src/ui/design/mod.rs

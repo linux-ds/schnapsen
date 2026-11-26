@@ -52,7 +52,7 @@ Die funktionale Entwicklung bis zur Beta-Abnahme hat Vorrang. Historische Grafik
 - **Rust** als Programmiersprache.
 - **GTK4** für Eingaben, Darstellung und Fensterintegration.
 - **libadwaita** für GNOME-konforme Anwendungselemente, Einstellungen und Dialoge.
-- **Flatpak** als Distributionsformat.
+- **Flatpak** als Distributionsformat. Anwendungs-ID `org.linuxds.Schnapsen`, Herausgeber Linux DS Team.
 - Keine klassische Game-Engine.
 
 ### Logische Module
@@ -156,7 +156,7 @@ Der Zustand enthält mindestens:
 
 ### Automatischer Spielstand
 
-`app::save` verwaltet einen automatischen Speicherplatz in `$XDG_DATA_HOME/schnapsen/save.json`. Ohne gesetztes `XDG_DATA_HOME` verwendet GLib das XDG-Standardverzeichnis unter `~/.local/share`. Im Flatpak liegt die Datei im app-eigenen Datenverzeichnis unter `~/.var/app/io.github.schnapsen.Schnapsen/data/schnapsen/`. Persönliche Einstellungen und Fensterzustand verbleiben in GSettings.
+`app::save` verwaltet einen automatischen Speicherplatz in `$XDG_DATA_HOME/schnapsen/save.json`. Ohne gesetztes `XDG_DATA_HOME` verwendet GLib das XDG-Standardverzeichnis unter `~/.local/share`. Im Flatpak liegt die Datei im app-eigenen Datenverzeichnis unter `~/.var/app/org.linuxds.Schnapsen/data/schnapsen/`. Persönliche Einstellungen und Fensterzustand liegen im GSettings-Schema `org.linuxds.Schnapsen`. Daten früherer Flatpak-Installationen bleiben erhalten. Die manuelle Übernahme ist in [README.md](README.md#data-from-an-earlier-flatpak-installation) beschrieben.
 
 Die JSON-Datei verwendet ein Serde-Schema mit numerischem Versionsfeld `version` (aktuell `3`). `snapshot.session` enthält den vollständigen fachlichen Partiezustand mit festgeschriebener Konfiguration, geordneten Karten, Zugfolge, Wertung und Ergebnissen. `snapshot.selection` enthält bis zu zwei ausgewählte Handkarten. Karten, Varianten und Regelprofile verwenden sprachunabhängige IDs. Augen und vorgemerkte Ansagen ergeben sich aus gespeicherten Stichen und Ansageereignissen. Die Engine leitet offene Trumpfkarte, Geber und ausstehende Aktionen aus den gespeicherten Daten ab. Beim Fortsetzen der aktuellen Hand wird kein Zufall benötigt. Erst die nächste Verteilung verwendet wieder den Zufallsgenerator.
 

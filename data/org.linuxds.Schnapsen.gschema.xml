@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist gettext-domain="schnapsen">
-  <schema id="io.github.schnapsen.Schnapsen" path="/io/github/schnapsen/Schnapsen/">
+  <schema id="org.linuxds.Schnapsen" path="/org/linuxds/Schnapsen/">
     <key name="card-front" type="s">
       <default>'double-german'</default>
       <summary>Card front design ID</summary>

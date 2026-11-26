@@ -5,7 +5,7 @@ fn main() {
         return;
     }
 
-    println!("cargo:rerun-if-changed=data/io.github.schnapsen.Schnapsen.gschema.xml");
+    println!("cargo:rerun-if-changed=data/org.linuxds.Schnapsen.gschema.xml");
     let output = PathBuf::from(env::var_os("OUT_DIR").expect("Cargo must set OUT_DIR"));
     let status = Command::new("glib-compile-schemas")
         .arg("--strict")

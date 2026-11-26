@@ -38,8 +38,8 @@
 - Die abschaltbare **Spielhilfe** markiert die legalen Karten. Über den Stichstapeln stehen die wirksamen eigenen Augen als Zahl und optional die gegnerischen Augen über eine separate Lernhilfe. Links stehen die Restpunkte und Bummerl beider Seiten sowie die Zahl abgeschlossener Hände. Kontextaktionen liegen in der Tischmitte. `src/ui/result.rs` zeigt den Handabschluss mit Augen und Spielpunkten. Beim Partieende kommen Bummerl und Reststand hinzu. Ausschließlich **Nächste Hand** oder **Neue Partie** schließen den Ergebnisdialog und setzen das Spiel fort.
 - Das Menü **Partie** zeigt österreichisches Zweierschnapsen und konfiguriert Regelprofil und Schneiderwertung für die nächste Partie. Die erste Partie startet weich mit doppelter Schneiderwertung. Bummerl lassen sich über eine getrennte Aktion mit Bestätigung zurücksetzen.
 - `src/lib.rs` exportiert `core::cards` mit Kartenidentität, Augenwert und vollständigem 20er-Kartensatz. Das Modul verwendet nur die Rust-Standardbibliothek.
-- `Cargo.toml` und `Cargo.lock` definieren die Anwendung und ihre Abhängigkeiten. GTK4 wird über libadwaita eingebunden. Die App-ID `io.github.schnapsen.Schnapsen` ist vorläufig.
-- `io.github.schnapsen.Schnapsen.json` ist die Build-Konfiguration für GNOME Builder und Flatpak. `meson.build` startet Cargo und installiert Programm, Desktop-Datei, AppStream-Metadaten und Icon.
+- `Cargo.toml` und `Cargo.lock` definieren die Anwendung und ihre Abhängigkeiten. GTK4 wird über libadwaita eingebunden. Die App-ID ist `org.linuxds.Schnapsen`.
+- `org.linuxds.Schnapsen.json` ist die Build-Konfiguration für GNOME Builder und Flatpak. `meson.build` startet Cargo und installiert Programm, Desktop-Datei, AppStream-Metadaten und Icon.
 - `cargo-sources.json` enthält die Crate-Archive und Prüfsummen aus `Cargo.lock`. Flatpak lädt die Archive vor dem Build. Das Modul `cargo-dependencies` stellt sie auch der separaten Meson-Pipeline in Builder bereit. Cargo baut mit `--locked --offline`. Flatpak entfernt die vorbereiteten Quellen beim Paketabschluss.
 
 ## Roadmap ab Auftrag 23
@@ -164,7 +164,7 @@ Auftrag 27 behandelt weitere regionale Regelprofile und kann die Testmatrix und 
 
 ## Build in GNOME Builder
 
-1. In GNOME Builder den Projektordner öffnen. In den Build-Einstellungen `io.github.schnapsen.Schnapsen.json` als aktive Konfiguration auswählen.
+1. In GNOME Builder den Projektordner öffnen. In den Build-Einstellungen `org.linuxds.Schnapsen.json` als aktive Konfiguration auswählen.
 2. Falls Builder nach Runtimes fragt, `org.gnome.Platform//51`, `org.gnome.Sdk//51` und `org.freedesktop.Sdk.Extension.rust-stable//26.08` aus Flathub bereitstellen. Die erste Vorbereitung benötigt Zugriff auf Flathub und `static.crates.io`.
 3. **Bauen** wählen und in der Build-Ausgabe das Modul `cargo-dependencies` beziehungsweise dessen Cache-Treffer sowie den Cargo-Release-Build prüfen.
 4. **Ausführen** wählen. Erwartet wird ein Fenster „Schnapsen“ mit gemischter Anfangsverteilung und Reststand 7:7.
@@ -174,8 +174,8 @@ Für einen Build vom Terminal lässt sich das in GNOME Builder mitgelieferte `fl
 ```sh
 flatpak run --command=sh org.gnome.Builder -c '
   export XDG_DATA_HOME="$HOME/.local/share"
-  flatpak-builder .flatpak-build io.github.schnapsen.Schnapsen.json &&
-    flatpak-builder --run .flatpak-build io.github.schnapsen.Schnapsen.json /app/bin/schnapsen
+  flatpak-builder .flatpak-build org.linuxds.Schnapsen.json &&
+    flatpak-builder --run .flatpak-build org.linuxds.Schnapsen.json /app/bin/schnapsen
 '
 ```
 
@@ -192,7 +192,7 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 - Die Profile unterscheiden sich bei Ansagen und beim Stichzugriff. Für Talonaktionen gilt dieselbe Hausregel. Die Sticheinsicht ist implementiert. Ihr Zeitfenster und ihre Rollenbindung weichen je nach Regelquelle ab.
 - Schwer betrachtet bei offenem Talon meist nur einen Stich. Stichfolgen und Zudrehen beruhen auf einer begrenzten Auswahl möglicher Gegnerhände und vereinfachter Bewertung späterer Ansagen.
 - Der SDK-Build ist der vorgesehene Entwicklungsweg auf GNOME OS. Außerhalb des SDKs fehlen der Codex-Umgebung die GTK4- und libadwaita-Entwicklungsbibliotheken.
-- Für die Veröffentlichung auf Flathub fehlen Homepage, Entwicklerangaben und Release-Metadaten. Die App-ID ist vorläufig.
+- Für die Veröffentlichung auf Flathub fehlen Release-Metadaten.
 
 ## Entscheidungen
 
@@ -205,6 +205,11 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-26 – Auftrag 26d
+
+- Identität auf `org.linuxds.Schnapsen` umgestellt. Manifest, Desktop, AppStream, Icon und GSettings verwenden die neue ID. Herausgeber ist das Linux DS Team. Repository und Fehlertracker verweisen auf das Schnapsen-Projekt.
+- Flatpak-Release-Build mit SDK 51, isolierte Bundle-Installation und Wayland-Fensterstart geprüft. Die installierte Anwendung las die neue GSettings-Gruppe und legte im isolierten XDG-Pfad einen Spielstand an. Frühere Datenverzeichnisse können manuell übernommen werden.
 
 ### 2026-11-26 – Auftrag 26c
 

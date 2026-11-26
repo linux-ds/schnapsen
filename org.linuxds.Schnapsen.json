@@ -1,5 +1,5 @@
 {
-    "id": "io.github.schnapsen.Schnapsen",
+    "id": "org.linuxds.Schnapsen",
     "runtime": "org.gnome.Platform",
     "runtime-version": "51",
     "sdk": "org.gnome.Sdk",

@@ -1,6 +1,6 @@
 project('schnapsen', version: '0.1.0')
 
-app_id = 'io.github.schnapsen.Schnapsen'
+app_id = 'org.linuxds.Schnapsen'
 cargo = find_program('cargo')
 fs = import('fs')
 i18n = import('i18n')

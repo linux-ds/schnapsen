@@ -3,6 +3,6 @@ Type=Application
 Name=Schnapsen
 Comment=A card game for GNOME
 Exec=schnapsen
-Icon=io.github.schnapsen.Schnapsen
+Icon=org.linuxds.Schnapsen
 Terminal=false
 Categories=Game;CardGame;

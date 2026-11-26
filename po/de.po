@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Schnapsen 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-26 06:46+0100\n"
+"POT-Creation-Date: 2026-11-26 16:16+0100\n"
 "PO-Revision-Date: 2026-11-25 00:00+0100\n"
 "Last-Translator: Schnapsen contributors\n"
 "Language-Team: German\n"
@@ -13,45 +13,49 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: data/io.github.schnapsen.Schnapsen.desktop.in:3
-#: data/io.github.schnapsen.Schnapsen.metainfo.xml.in:5
+#: data/org.linuxds.Schnapsen.desktop.in:3
+#: data/org.linuxds.Schnapsen.metainfo.xml.in:6
 msgid "Schnapsen"
 msgstr "Schnapsen"
 
-#: data/io.github.schnapsen.Schnapsen.desktop.in:4
-#: data/io.github.schnapsen.Schnapsen.metainfo.xml.in:6
+#: data/org.linuxds.Schnapsen.desktop.in:4
+#: data/org.linuxds.Schnapsen.metainfo.xml.in:7
 msgid "A card game for GNOME"
 msgstr "Ein Kartenspiel für GNOME"
 
-#: data/io.github.schnapsen.Schnapsen.metainfo.xml.in:8
+#: data/org.linuxds.Schnapsen.metainfo.xml.in:9
 msgid "Schnapsen is a native GNOME application for the Austrian card game. Play a hand against the computer and win by reaching 66 card points or taking the last trick."
 msgstr "Schnapsen ist eine native GNOME-Anwendung für das österreichische Kartenspiel. Spiele eine Hand gegen den Computer und gewinne mit mindestens 66 Augen oder durch den letzten Stich."
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:6
+#: data/org.linuxds.Schnapsen.metainfo.xml.in:12
+msgid "Linux DS Team"
+msgstr "Linux DS Team"
+
+#: data/org.linuxds.Schnapsen.gschema.xml:6
 msgid "Card front design ID"
 msgstr "ID des Kartenthemas"
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:10
+#: data/org.linuxds.Schnapsen.gschema.xml:10
 msgid "Card back design ID"
 msgstr "ID des Kartenrückens"
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:14
+#: data/org.linuxds.Schnapsen.gschema.xml:14
 msgid "Highlight legal cards"
 msgstr "Zulässige Karten hervorheben"
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:18
+#: data/org.linuxds.Schnapsen.gschema.xml:18
 msgid "Show the opponent's card points"
 msgstr "Gegnerische Augen anzeigen"
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:22
+#: data/org.linuxds.Schnapsen.gschema.xml:22
 msgid "Difficulty for the next match"
 msgstr "Spielstärke für die nächste Partie"
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:26
+#: data/org.linuxds.Schnapsen.gschema.xml:26
 msgid "Normal window width, height and maximized state"
 msgstr "Normale Fensterbreite und -höhe sowie Maximierungszustand"
 
-#: data/io.github.schnapsen.Schnapsen.gschema.xml:30
+#: data/org.linuxds.Schnapsen.gschema.xml:30
 msgid "Enable game sounds"
 msgstr "Spielgeräusche einschalten"
 
