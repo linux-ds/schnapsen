@@ -156,7 +156,12 @@ Der Zustand enthält mindestens:
 
 ### Automatischer Spielstand
 
-`app::save` verwaltet einen automatischen Speicherplatz in `$XDG_DATA_HOME/schnapsen/save.json`. Ohne gesetztes `XDG_DATA_HOME` verwendet GLib das XDG-Standardverzeichnis unter `~/.local/share`. Im Flatpak liegt die Datei im app-eigenen Datenverzeichnis unter `~/.var/app/org.linuxds.Schnapsen/data/schnapsen/`. Persönliche Einstellungen und Fensterzustand liegen im GSettings-Schema `org.linuxds.Schnapsen`. Daten früherer Flatpak-Installationen bleiben erhalten. Die manuelle Übernahme ist in [README.md](README.md#data-from-an-earlier-flatpak-installation) beschrieben.
+`app::save` verwaltet einen automatischen Speicherplatz in `$XDG_DATA_HOME/schnapsen/save.json`. Ohne gesetztes `XDG_DATA_HOME` verwendet GLib das XDG-Standardverzeichnis unter `~/.local/share`. Im Flatpak liegt die Datei im app-eigenen Datenverzeichnis unter `~/.var/app/org.linuxds.Schnapsen/data/schnapsen/`. Persönliche Einstellungen und Fensterzustand liegen im GSettings-Schema `org.linuxds.Schnapsen`.
+
+#### Migration interner Flatpak-Installationen
+
+- Bei einem internen Bundle mit derselben App-ID Schnapsen beenden und `~/.var/app/org.linuxds.Schnapsen/` sichern. Den Linux-DS-Remote im bisherigen Installationsbereich hinzufügen und nach Freigabe mit `flatpak install --user --reinstall linux-ds org.linuxds.Schnapsen//master` umstellen. Für Systeminstallationen `--system` verwenden. Das Datenverzeichnis bleibt erhalten. Den neuen Origin mit `flatpak info --show-origin org.linuxds.Schnapsen//master` prüfen.
+- Bei einer früheren App-ID beide Versionen beenden. Spielstände aus `data/schnapsen/` und Einstellungen aus `config/glib-2.0/settings/keyfile` in die entsprechenden Pfade unter der neuen App-ID übernehmen, soweit dort keine Daten vorhanden sind. Im übernommenen Keyfile die Schnapsen-Gruppe in `[org/linuxds/Schnapsen]` umbenennen.
 
 Die JSON-Datei verwendet ein Serde-Schema mit numerischem Versionsfeld `version` (aktuell `4`). `snapshot.session` enthält den vollständigen fachlichen Partiezustand mit festgeschriebener Konfiguration, geordneten Karten, Zugfolge, Wertung und Ergebnissen. `snapshot.selection` enthält bis zu zwei ausgewählte Handkarten. Karten, Varianten und Regelprofile verwenden sprachunabhängige IDs. Augen und vorgemerkte Ansagen ergeben sich aus gespeicherten Stichen und Ansageereignissen. Die Engine leitet offene Trumpfkarte, Geber und ausstehende Aktionen aus den gespeicherten Daten ab. Beim Fortsetzen der aktuellen Hand wird kein Zufall benötigt. Erst die nächste Verteilung verwendet wieder den Zufallsgenerator.
 
@@ -349,3 +354,23 @@ Ein Prototyp ist erst dann spielbar, wenn eine vollständige Partie gegen den Co
 3. Konkrete App-ID, Anzeigename und Lizenz des Quellcodes.
 
 Diese Punkte blockieren nicht den Beginn der Regel-Engine, müssen aber vor dem entsprechenden Implementierungsschritt entschieden werden.
+
+## Flatpak-Release für Linux DS
+
+Der Release-Ref lautet `app/org.linuxds.Schnapsen/x86_64/master`. Die App-Updates kommen aus `https://update.linux-ds.org/flatpak/`, die GNOME-Laufzeitumgebung von Flathub.
+
+Die App auf dem Host mit dem Flatpak-Manifest bauen und in eine lokale Staging-Kopie des Linux-DS-Repositories exportieren. Für die Signierung dieselbe Konfiguration wie Monthly verwenden. Der öffentliche Schlüsselfingerprint lautet `E4C9EF78D422A21FA20DB7A7BBFF7B34B6DF591B`.
+
+```sh
+flatpak build-export --arch=x86_64 --no-update-summary \
+    --gpg-sign=E4C9EF78D422A21FA20DB7A7BBFF7B34B6DF591B \
+    /path/to/staging-repo .flatpak-build master
+flatpak build-update-repo --generate-static-deltas \
+    --gpg-sign=E4C9EF78D422A21FA20DB7A7BBFF7B34B6DF591B /path/to/staging-repo
+sh build-aux/build-flatpak-bundle.sh /path/to/staging-repo \
+    org.linuxds.Schnapsen-x86_64-master.flatpak
+```
+
+Das Bundle enthält Repository-URL, öffentlichen Schlüssel und Flathub als Laufzeitquelle. Für eine lokale Metadatenprüfung genügt ein unsignierter Export in ein temporäres Repository. Zur Weitergabe das Bundle aus einem signierten Export erzeugen.
+
+Für Updates den neuen Ref, den signierten Commit, die AppStream-Daten und die signierte Summary über den bestehenden Linux-DS-Deployment-Prozess veröffentlichen. Die vorhandenen Refs einschließlich Monthly erhalten und den neuen Ref mit `flatpak remote-info linux-ds org.linuxds.Schnapsen//master` prüfen.

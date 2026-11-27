@@ -8,6 +8,17 @@ Schnapsen is a native GNOME implementation of the Austrian two-player card game.
 
 Each version has a features section and a known limitations section in both languages. [English changelog](CHANGELOG.md) · [Deutsches Änderungsprotokoll](CHANGELOG.de.md)
 
+## Install and update
+
+Once the release is available, download the Linux DS repository file and run the commands below from the download folder. [linux-ds.flatpakrepo](build-aux/linux-ds.flatpakrepo)
+
+```sh
+flatpak remote-add --user --if-not-exists linux-ds ./linux-ds.flatpakrepo
+flatpak install --user linux-ds org.linuxds.Schnapsen
+```
+
+Update an installed copy through your software center or with `flatpak update org.linuxds.Schnapsen`.
+
 ## Build and run
 
 The supported build environment is **GNOME SDK 51** with the stable Rust extension and the matching GNOME Platform runtime.
@@ -21,68 +32,6 @@ The supported build environment is **GNOME SDK 51** with the stable Rust extensi
   ```
 
 The Flatpak build runs the Cargo test suite through Meson. See the [development plan](PLAN.md) for the Builder-based terminal workflow and the roadmap.
-
-## Linux DS Flatpak releases and updates
-
-The release ref is `app/org.linuxds.Schnapsen/x86_64/master`, following
-Monthly's `x86_64/master` convention. App updates come from
-`https://update.linux-ds.org/flatpak/`. Flathub supplies the GNOME 51 runtime.
-
-From the host, build the app with the manifest above, then export the finished
-build to a **local staging copy of the existing Linux DS repository**. On the
-authorized release machine, use the same signing setup as Monthly. The public
-repository key fingerprint is `E4C9EF78D422A21FA20DB7A7BBFF7B34B6DF591B`.
-
-```sh
-flatpak build-export --arch=x86_64 --no-update-summary \
-    --gpg-sign=E4C9EF78D422A21FA20DB7A7BBFF7B34B6DF591B \
-    /path/to/staging-repo .flatpak-build master
-flatpak build-update-repo --generate-static-deltas \
-    --gpg-sign=E4C9EF78D422A21FA20DB7A7BBFF7B34B6DF591B /path/to/staging-repo
-sh build-aux/build-flatpak-bundle.sh /path/to/staging-repo \
-    org.linuxds.Schnapsen-x86_64-master.flatpak
-```
-
-The bundle embeds the app repository URL, its public key, and the Flathub
-runtime source. For a metadata-only local check, export to a scratch repository
-without signing. Distribute bundles only from a signed release export.
-
-To enable updates, publish the new ref, its signed commit, and the refreshed
-AppStream and signed summary through the existing Linux DS repository deployment.
-Keep the existing refs, including Monthly. Verify the published ref with
-`flatpak remote-info linux-ds org.linuxds.Schnapsen//master`. A standalone
-bundle download alone does not publish the ref.
-
-### Switch an older bundle with the same app ID to Linux DS
-
-After the release is available, quit Schnapsen and back up
-`~/.var/app/org.linuxds.Schnapsen/`. Use the same Flatpak installation scope as
-the current bundle. For a user installation, run these commands from this
-checkout. For a system installation, replace `--user` with `--system`.
-
-```sh
-flatpak remote-add --user --if-not-exists linux-ds build-aux/linux-ds.flatpakrepo
-flatpak remote-info --user linux-ds org.linuxds.Schnapsen//master
-flatpak install --user --reinstall linux-ds org.linuxds.Schnapsen//master
-flatpak info --user --show-origin org.linuxds.Schnapsen//master
-```
-
-The last command should show `linux-ds`. Reinstalling this same app ID preserves
-the app data directory, including saves and settings. Leave that directory in
-place and avoid `flatpak uninstall --delete-data`. Future updates use
-`flatpak update org.linuxds.Schnapsen` in the same installation scope.
-
-## Data from an earlier Flatpak installation
-
-The Linux DS app ID gives the Flatpak its own data directory under
-`~/.var/app/org.linuxds.Schnapsen/`. The previous installation keeps its files.
-For a manual transfer, quit both versions and create the new destination directories as needed. Copy the former sandbox's
-`data/schnapsen/` directory into the new sandbox's `data/` directory if the
-destination is empty. To transfer settings, copy the old app's
-`config/glib-2.0/settings/keyfile` to the same relative location in the new sandbox
-and change its Schnapsen section header to `[org/linuxds/Schnapsen]`. Preserve any
-settings or save files already created in the new sandbox. For a native build,
-the XDG save path stays the same and the GSettings schema path changes.
 
 ## Tests
 

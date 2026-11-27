@@ -218,7 +218,7 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 
 ### 2026-11-27 – Auftrag 27a
 
-- Der Bundle-Export übernimmt den Linux-DS-Remote von Monthly, den öffentlichen GPG-Schlüssel und `x86_64/master`. Die [README](README.md#linux-ds-flatpak-releases-and-updates) dokumentiert Signierung, Veröffentlichung und Migration älterer Bundles.
+- Der Bundle-Export übernimmt den Linux-DS-Remote von Monthly, den öffentlichen GPG-Schlüssel und `x86_64/master`. Die [SPEC.md](SPEC.md#flatpak-release-für-linux-ds) dokumentiert Signierung und Veröffentlichung sowie die [Migration interner Bundles](SPEC.md#migration-interner-flatpak-installationen).
 - Neues Bundle aus dem vorhandenen SDK-Build exportiert. Ref, App- und Runtime-URL, Schlüssel, OSTree-Import und Commit-Gleichheit geprüft. In isolierter Installation wechselte das alte Bundle den Origin und erhielt ein reguläres Update. Spielstand- und Einstellungsdateien blieben erhalten.
 - Serverstand geprüft. Der Schnapsen-Ref fehlt. Für die Freigabe den signierten Ref mit AppStream und signierter Summary über den bestehenden Deployment-Prozess veröffentlichen. Produktionssignierung, Veröffentlichung und Spieltests waren nicht Teil dieses Laufs.
 
