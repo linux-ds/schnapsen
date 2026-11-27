@@ -203,6 +203,8 @@ fn acorn(cr: &Context) -> Result<(), Error> {
 }
 
 fn draw(cr: &Context, card: Card, theme: &FrontTheme) -> Result<(), Error> {
+    const SYMBOL_SIZE: f64 = 0.25;
+
     let value = theme.rank(card.rank).0;
     let (r, g, b) = theme.suit(card.suit).1;
     let center = ASPECT / 2.0;
@@ -213,19 +215,18 @@ fn draw(cr: &Context, card: Card, theme: &FrontTheme) -> Result<(), Error> {
         cr.translate(x, y);
         cr.rotate(angle);
         match card.rank {
-            Rank::King => theme.draw_symbol(cr, card.suit, 0.24, 0.26, 0.30)?,
+            Rank::King => theme.draw_symbol(cr, card.suit, 0.24, 0.26, SYMBOL_SIZE)?,
             Rank::Ober => {
-                let size = 0.30;
                 let top = ASPECT * 0.10;
-                theme.draw_symbol(cr, card.suit, 0.24, top + size / 2.0, size)?;
+                theme.draw_symbol(cr, card.suit, 0.24, top + SYMBOL_SIZE / 2.0, SYMBOL_SIZE)?;
             }
-            Rank::Unter => theme.draw_symbol(cr, card.suit, 0.19, ASPECT / 3.0, 0.25)?,
+            Rank::Unter => theme.draw_symbol(cr, card.suit, 0.19, ASPECT / 3.0, SYMBOL_SIZE)?,
             Rank::Ace => {
                 for (x, tilt) in [(0.21, -FRAC_PI_4), (0.79, FRAC_PI_4)] {
                     cr.save()?;
                     cr.translate(x, 0.21);
                     cr.rotate(tilt);
-                    theme.draw_symbol(cr, card.suit, 0.0, 0.0, 0.28)?;
+                    theme.draw_symbol(cr, card.suit, 0.0, 0.0, SYMBOL_SIZE)?;
                     cr.restore()?;
                 }
             }
@@ -234,22 +235,22 @@ fn draw(cr: &Context, card: Card, theme: &FrontTheme) -> Result<(), Error> {
                 draw_index(cr, value, 0.50, 0.12, 0.21)?;
                 match card.suit {
                     Suit::Hearts | Suit::Bells => {
-                        for x in [0.24, 0.76] {
-                            for y in [0.28, 0.36, 0.44, 0.52] {
-                                theme.draw_symbol(cr, card.suit, x, y, 0.19)?;
+                        for x in [0.21, 0.79] {
+                            for y in [0.27, 0.36, 0.45, 0.54] {
+                                theme.draw_symbol(cr, card.suit, x, y, SYMBOL_SIZE)?;
                             }
                         }
-                        for y in [0.36, 0.47] {
-                            theme.draw_symbol(cr, card.suit, 0.50, y, 0.19)?;
+                        for y in [0.34, 0.48] {
+                            theme.draw_symbol(cr, card.suit, 0.50, y, SYMBOL_SIZE)?;
                         }
                     }
                     Suit::Leaves | Suit::Acorns => {
-                        for (x, angle) in [(0.24, -FRAC_PI_2), (0.76, FRAC_PI_2)] {
-                            for y in [0.26, 0.33, 0.40, 0.47, 0.54] {
+                        for (x, angle) in [(0.21, -FRAC_PI_2), (0.79, FRAC_PI_2)] {
+                            for y in [0.25, 0.325, 0.40, 0.475, 0.55] {
                                 cr.save()?;
                                 cr.translate(x, y);
                                 cr.rotate(angle);
-                                theme.draw_symbol(cr, card.suit, 0.0, 0.0, 0.19)?;
+                                theme.draw_symbol(cr, card.suit, 0.0, 0.0, SYMBOL_SIZE)?;
                                 cr.restore()?;
                             }
                         }

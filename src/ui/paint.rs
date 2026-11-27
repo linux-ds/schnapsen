@@ -377,8 +377,8 @@ mod tests {
             card(&cr, face, false, false, false, design).unwrap();
             drop(cr);
             let columns: &[_] = match suit {
-                Suit::Hearts | Suit::Bells => &[0.24, 0.50, 0.76],
-                Suit::Leaves | Suit::Acorns => &[0.24, 0.76],
+                Suit::Hearts | Suit::Bells => &[0.21, 0.50, 0.79],
+                Suit::Leaves | Suit::Acorns => &[0.21, 0.79],
             };
             for &x in columns {
                 assert_test_symbol_colors(
@@ -386,7 +386,7 @@ mod tests {
                     suit,
                     x * scale,
                     0.40 * scale,
-                    [0.11 * scale, 0.23 * scale],
+                    [0.13 * scale, 0.25 * scale],
                 );
             }
 
