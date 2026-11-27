@@ -7,7 +7,7 @@ pub(crate) mod save;
 mod save_scenarios;
 pub(crate) mod settings;
 
-const APP_ID: &str = "org.linuxds.Schnapsen";
+pub(crate) const APP_ID: &str = "org.linuxds.Schnapsen";
 
 pub fn run() -> adw::glib::ExitCode {
     let app = adw::Application::builder().application_id(APP_ID).build();

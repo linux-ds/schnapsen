@@ -123,10 +123,11 @@ mod tests {
         match env::var(MODE).as_deref() {
             Ok(language) => {
                 init();
-                let (preferences, card_theme, feedback, numbers) = if language == "de" {
+                let (preferences, card_theme, about, feedback, numbers) = if language == "de" {
                     (
                         "Einstellungen",
                         "Doppeldeutsch",
+                        "Über Schnapsen",
                         "Du musst Karo bedienen.",
                         ["0 Spielpunkte", "1 Spielpunkt", "2 Spielpunkte"],
                     )
@@ -134,12 +135,14 @@ mod tests {
                     (
                         "Preferences",
                         "Double German",
+                        "About Schnapsen",
                         "You must follow suit: Diamonds.",
                         ["0 game points", "1 game point", "2 game points"],
                     )
                 };
                 assert_eq!(tr!("Preferences"), preferences);
                 assert_eq!(tr!("Double German"), card_theme);
+                assert_eq!(tr!("About Schnapsen"), about);
                 assert_eq!(
                     tr!("You must follow suit: {suit}.", suit = tr!("Diamonds")),
                     feedback,

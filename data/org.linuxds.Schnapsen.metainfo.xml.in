@@ -16,5 +16,12 @@
   <url type="bugtracker">https://github.com/linux-ds/schnapsen/issues</url>
   <translation type="gettext">schnapsen</translation>
   <launchable type="desktop-id">org.linuxds.Schnapsen.desktop</launchable>
+  <releases>
+    <release version="0.5.0" date="2026-11-27">
+      <description>
+        <p>Introduces the new Double German card design as the default and adds an About dialog.</p>
+      </description>
+    </release>
+  </releases>
   <content_rating type="oars-1.1"/>
 </component>

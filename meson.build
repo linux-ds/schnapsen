@@ -1,4 +1,4 @@
-project('schnapsen', version: '0.1.0')
+project('schnapsen', version: '0.5.0')
 
 app_id = 'org.linuxds.Schnapsen'
 cargo = find_program('cargo')

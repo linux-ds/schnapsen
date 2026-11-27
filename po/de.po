@@ -1,9 +1,9 @@
 # Deutsche Übersetzung für Schnapsen.
 msgid ""
 msgstr ""
-"Project-Id-Version: Schnapsen 0.1.0\n"
+"Project-Id-Version: Schnapsen 0.5.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-27 08:51+0100\n"
+"POT-Creation-Date: 2026-11-27 08:56+0100\n"
 "PO-Revision-Date: 2026-11-25 00:00+0100\n"
 "Last-Translator: Schnapsen contributors\n"
 "Language-Team: German\n"
@@ -36,6 +36,12 @@ msgstr ""
 #: data/org.linuxds.Schnapsen.metainfo.xml.in:12
 msgid "Linux DS Team"
 msgstr "Linux DS Team"
+
+#: data/org.linuxds.Schnapsen.metainfo.xml.in:22
+msgid ""
+"Introduces the new Double German card design as the default and adds an "
+"About dialog."
+msgstr "Das neue doppeldeutsche Kartendesign ist jetzt Standard. Dazu kommt der Dialog „Über Schnapsen“."
 
 #: data/org.linuxds.Schnapsen.gschema.xml:6
 msgid "Card front design ID"
@@ -332,28 +338,43 @@ msgstr "Einstellungen"
 
 #: src/ui/mod.rs:197
 #, rust-format
+msgid "About Schnapsen"
+msgstr "Über Schnapsen"
+
+#: src/ui/mod.rs:198
+#, rust-format
 msgid "Quit"
 msgstr "Beenden"
 
-#: src/ui/mod.rs:201
+#: src/ui/mod.rs:202
 #, rust-format
 msgid "Open menu"
 msgstr "Menü öffnen"
 
-#: src/ui/mod.rs:226
+#: src/ui/mod.rs:227
 #, rust-format
 msgid "Play card"
 msgstr "Ausspielen"
 
-#: src/ui/mod.rs:229
+#: src/ui/mod.rs:230
 #, rust-format
 msgid "Claim 66"
 msgstr "Ausmelden"
 
-#: src/ui/mod.rs:230
+#: src/ui/mod.rs:231
 #, rust-format
 msgid "Continue"
 msgstr "Weiterspielen"
+
+#: src/ui/mod.rs:418
+#, rust-format
+msgid "Play the Austrian two-player card game against the computer."
+msgstr "Spiele das österreichische Kartenspiel für zwei Personen gegen den Computer."
+
+#: src/ui/mod.rs:425
+#, rust-format
+msgid "Card artwork and application icon"
+msgstr "Kartengrafiken und Anwendungssymbol"
 
 #: src/ui/paint.rs:100
 #, rust-format
@@ -815,10 +836,6 @@ msgstr "Diese Karte ist nicht mehr auf deiner Hand."
 #, rust-format
 msgid "The hand is already over."
 msgstr "Die Hand ist bereits beendet."
-
-#, rust-format
-#~ msgid "Soft Schnapsen"
-#~ msgstr "Weiches Schnapsen"
 
 #, rust-format
 #~ msgid "Sharp Schnapsen"

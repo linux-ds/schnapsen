@@ -2,7 +2,7 @@
 
 Schnapsen is a native GNOME implementation of the Austrian two-player card game. It uses Rust, GTK 4, and libadwaita. It is maintained by the [Linux DS Team](https://linux-ds.org/). Source code and issues are hosted on [GitHub](https://github.com/linux-ds/schnapsen).
 
-**Status:** Playable prototype in active development. The game includes soft and sharp Schnapsen with [documented house rules](RULE_AUDIT.md), three computer difficulties, automatic save and resume, and German and English localization. It supports mouse, keyboard, and touch input. Double German is the default card face. French faces and card backs can be selected independently.
+**Status (0.5.0):** Playable prototype in active development. The game includes soft and sharp Schnapsen with [documented house rules](RULE_AUDIT.md), three computer difficulties, automatic save and resume, and German and English localization. It supports mouse, keyboard, and touch input. Double German is the default card face. French faces and card backs can be selected independently.
 
 ## Build and run
 

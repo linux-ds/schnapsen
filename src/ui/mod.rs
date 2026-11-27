@@ -194,6 +194,7 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
     header.pack_start(&match_menu);
     let app_menu = gio::Menu::new();
     app_menu.append(Some(&tr!("Preferences")), Some("win.preferences"));
+    app_menu.append(Some(&tr!("About Schnapsen")), Some("win.about"));
     app_menu.append(Some(&tr!("Quit")), Some("win.quit"));
     app.set_accels_for_action("win.quit", &["<Primary>q"]);
     let app_menu = gtk::MenuButton::builder()
@@ -394,6 +395,37 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
         }
     });
     window.add_action(&preferences_action);
+
+    let about_action = gio::SimpleAction::new("about", None);
+    let parent = window.downgrade();
+    about_action.connect_activate(move |_, _| {
+        if let Some(parent) = parent.upgrade() {
+            show_about(&parent);
+        }
+    });
+    window.add_action(&about_action);
     GtkWindowExt::set_focus(&window, Some(&table));
     window
+}
+
+fn show_about(parent: &adw::ApplicationWindow) {
+    let dialog = adw::AboutDialog::builder()
+        .application_icon(crate::app::APP_ID)
+        .application_name("Schnapsen")
+        .version(env!("CARGO_PKG_VERSION"))
+        .developer_name("Linux DS Team")
+        .comments(tr!(
+            "Play the Austrian two-player card game against the computer."
+        ))
+        .website(env!("CARGO_PKG_REPOSITORY"))
+        .issue_url(concat!(env!("CARGO_PKG_REPOSITORY"), "/issues"))
+        .license_type(gtk::License::Gpl30)
+        .build();
+    dialog.add_legal_section(
+        &tr!("Card artwork and application icon"),
+        Some("© Schnapsen contributors"),
+        gtk::License::Custom,
+        Some("CC BY-SA 4.0\nhttps://creativecommons.org/licenses/by-sa/4.0/"),
+    );
+    dialog.present(Some(parent));
 }

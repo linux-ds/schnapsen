@@ -34,7 +34,7 @@
 - Klick oder Tippen auf den verdeckten Stapel und **Z** starten die Bestätigung zum Zudrehen. Die bisher offene Trumpfkarte erscheint danach verdeckt quer auf dem Stapel.
 - `src/ui/turn.rs` steuert Computerzug und Stichauflösung mit GLib-Timern. Der Computer beginnt auch als Vorhand. Beim Hand- oder Partiewechsel werden alte Timer entfernt.
 - `src/ui/review.rs` zeigt die erlaubten Stichpaare in einem abgedunkelten GTK-Overlay mit anpassbarer Spaltenzahl und vertikalem Scrollen. Die Kartenzeichnung stammt vom Kartentisch. Klick oder Tippen außerhalb, Escape und „Schließen“ beenden die Übersicht mit Fokusrückgabe.
-- `src/ui/paint.rs` zeichnet Kartenfronten, einheitliche Rückseiten, Rahmen und Schatten mit Cairo. Ausgewählte Karten erhalten einen goldenen Rand, der sichtbare Tastaturfokus eine gestrichelte Innenlinie. Doppeldeutsch ist die Standardfront. Eine gespeicherte französische Auswahl bleibt gültig.
+- `src/ui/paint.rs` zeichnet Kartenfronten, einheitliche Rückseiten, Rahmen und Schatten mit Cairo. Ausgewählte Karten erhalten einen goldenen Rand, der sichtbare Tastaturfokus eine gestrichelte Innenlinie. Doppeldeutsch ist die Standardfront. Eine gespeicherte französische Auswahl bleibt gültig. Das Hauptmenü enthält einen nativen Infodialog für Version 0.5.0.
 - Die abschaltbare **Spielhilfe** markiert die legalen Karten. Über den Stichstapeln stehen die wirksamen eigenen Augen als Zahl und optional die gegnerischen Augen über eine separate Lernhilfe. Links stehen die Restpunkte und Bummerl beider Seiten sowie die Zahl abgeschlossener Hände. Kontextaktionen liegen in der Tischmitte. `src/ui/result.rs` zeigt den Handabschluss mit Augen und Spielpunkten. Beim Partieende kommen Bummerl und Reststand hinzu. Ausschließlich **Nächste Hand** oder **Neue Partie** schließen den Ergebnisdialog und setzen das Spiel fort.
 - Das Menü **Partie** zeigt österreichisches Zweierschnapsen und konfiguriert Regelprofil und Schneiderwertung für die nächste Partie. Die erste Partie startet weich mit doppelter Schneiderwertung. Bummerl lassen sich über eine getrennte Aktion mit Bestätigung zurücksetzen.
 - `src/lib.rs` exportiert `core::cards` mit Kartenidentität, Augenwert und vollständigem 20er-Kartensatz. Das Modul verwendet nur die Rust-Standardbibliothek.
@@ -192,7 +192,7 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 - Die Profile unterscheiden sich bei Ansagen und beim Stichzugriff. Für Talonaktionen gilt dieselbe Hausregel. Die Sticheinsicht ist implementiert. Ihr Zeitfenster und ihre Rollenbindung weichen je nach Regelquelle ab.
 - Schwer betrachtet bei offenem Talon meist nur einen Stich. Stichfolgen und Zudrehen beruhen auf einer begrenzten Auswahl möglicher Gegnerhände und vereinfachter Bewertung späterer Ansagen.
 - Der SDK-Build ist der vorgesehene Entwicklungsweg auf GNOME OS. Außerhalb des SDKs fehlen der Codex-Umgebung die GTK4- und libadwaita-Entwicklungsbibliotheken.
-- Für die Veröffentlichung auf Flathub fehlen Release-Metadaten.
+- AppStream enthält die Release-Metadaten für 0.5.0. Die Veröffentlichung steht aus.
 
 ## Entscheidungen
 
@@ -205,6 +205,11 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-27 – Infodialog und Version 0.5.0
+
+- „Über Schnapsen“ zeigt Anwendungssymbol, Version, Projektlinks und die getrennten Lizenzen für Code und Grafiken. Cargo, Meson und AppStream führen Version 0.5.0.
+- Zwei gezielte Sprachtests bestanden. Beide Kataloge und die lokalisierten AppStream-Metadaten validiert. Keine Veröffentlichung.
 
 ### 2026-11-27 – Doppeldeutsches Standardthema
 
