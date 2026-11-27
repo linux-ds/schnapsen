@@ -41,3 +41,32 @@ T · [TS Spielkarten, Schnapsen Spielregeln](https://ts-spielkarten.de/spielrege
 - Eine GTK-Testpartie über fünf Hände endete mit einem Schneiderbummerl. Der Computer eröffnete seine Hände. Die neue Partie begann bei 7:7 und übernahm die zwei Bummerl.
 - GTK unter Wayland bei 626 und 920 logischen Pixeln Fensterbreite geprüft. Eigene Einsicht und genau ein gegnerisches Paar waren bei weich verfügbar. Scharf verweigerte die Einsicht. Synthetische Tastatursignale prüften Escape, Fokus, erhaltene Auswahl und gesperrtes Ausspielen.
 - Offen bleiben physischer Touchscreen, Klick und Tippen auf beide Stichstapel, Scrollen, HiDPI sowie Einsicht und Handwechsel in zeitlicher Nähe zu einem Computerzug in einer manuellen Sitzung.
+
+## Profilmatrix für Auftrag 27
+
+Quellenabgleich am 26. November 2026. Die beiden Pagat-Seiten sind Sprachfassungen derselben Quelle. Die neuen Kombinationen übernehmen jeweils ausgewählte Regeln. Die Bezeichnung „Turnierregeln“ bezeichnet die hier dokumentierte Kombination aus klassischer Spielweise und Turnier-Zudrehwertung.
+
+| Merkmal | Hausregeln – Weich / Scharf | Klassisch – Weich | Klassisch – Scharf | Turnier – Weich / Scharf |
+|---|---|---|---|---|
+| Technische IDs | `soft` / `sharp` | `classic_soft` | `classic_sharp` | `tournament_soft` / `tournament_sharp` |
+| Ausmeldung | Automatisch ab 66 | Manuell | Manuell | Manuell |
+| Ausmeldefenster | Entfällt | Stichgewinner vor Nachziehen; Ansagender vor gegnerischer Antwort | Wie weich | Wie klassisch |
+| Verzicht | Entfällt | Weiter schließt das Fenster und setzt Spiel oder Letztstichwertung fort | Wie weich | Wie klassisch |
+| Falsche Ausmeldung ohne Sperre | Entfällt | Gegner erhält 3 falls aktuell stichlos, sonst 2 | Wie weich | Wie klassisch |
+| Falsche Ausmeldung mit Sperre | Entfällt | Gegner erhält den höheren Wert aus normaler Falschmeldung und Sperrwert: 3 bei stichlosem Nichtzudreher zum Sperrzeitpunkt, sonst 2 | Wie weich | Wie klassisch |
+| Ansage und Gutschrift | Weich König oder Ober, auch ohne eigenen Stich; Augen ab erstem eigenen Stich. Scharf König und eigener Stich. | Weich wie Hausregel | Scharf wie Hausregel | Jeweils wie klassisch |
+| Tausch bei offenem Talon, vor Ausspiel, mit Trumpf-Unter | Ab erstem abgeschlossenen Stich, mindestens 4 Karten insgesamt | Ab Spielbeginn, mindestens 2 insgesamt | Nach erstem abgeschlossenen Stich, mindestens 4 insgesamt | Jeweils wie klassisch |
+| Zudrehen bei offenem Talon vor Ausspiel | Nach erstem abgeschlossenen Stich, mindestens 4 insgesamt | Ab Spielbeginn, mindestens 4 insgesamt | Ab Spielbeginn, mindestens 4 insgesamt | Jeweils wie klassisch |
+| Erfolgreiches Zudrehen | Gegnerstand beim Zudrehen | Gegnerstand beim Zudrehen | Gegnerstand beim Zudrehen | Gegnerstand am Handende |
+| Fehlschlag oder zuerst gültige gegnerische Ausmeldung | Für Nichtzudreher 3 falls beim Zudrehen stichlos, sonst 2 | Wie Hausregel | Wie Hausregel | Wie Hausregel |
+| Handende ohne Ausmeldung | Bestehende automatische Prüfung, danach letzter Stich für 1 oder Verlust des Zudrehers | Letzter Stich für 1; bei Sperre Verlust des Zudrehers | Wie weich | Wie klassisch |
+| Sticheinsicht während der Hand | Weich eigene und erster Gegnerstich; scharf gesperrt | Eigene Stiche | Gesperrt | Jeweils wie klassisch |
+| Sticheinsicht nach der Hand | Unverändert weich wie während der Hand, scharf gesperrt | Beide Stapel | Beide Stapel | Beide Stapel |
+| Erster Gegnerstich offen | Nur weich | Nein | Nein | Nein |
+| Laufende Augenanzeigen | Eigene sichtbar, gegnerische als Lernhilfe | Aus | Aus | Aus |
+| Legale Karten hervorheben | Option wie bisher | Gesperrt | Gesperrt | Gesperrt |
+| Partie und Schneider | Sieben Punkte, Schneider-Doppelwertung wählbar | Wie Hausregel | Wie Hausregel | Sieben Punkte, Schneider-Doppelwertung fest aus |
+
+- **Belegt:** TS beschreibt den weichen Tausch zu Beginn und bei zwei Talonkarten sowie das Sperrverbot bei zwei Karten. Pagat und Bummerl schränken den scharfen Tausch und die Ansage ein. TS, Pagat und schnapsen.at dokumentieren Varianten der Erfolgswertung beim Zudrehen. TS nennt einfache Bummerl im Turnier. Zwei Talonkarten bedeuten eine verdeckte und eine offene Karte. [TS](https://ts-spielkarten.de/spielregeln-kartenspiele/schnapsen-spielregeln/) · [Pagat DE](https://www.pagat.com/de/marriage/schnaps.html) · [Pagat EN](https://www.pagat.com/marriage/schnaps.html) · [schnapsen.at](https://schnapsen.at/spielregeln) · [Bummerl](https://www.bummerl.at/hilfe/)
+- **Quellenkonflikte:** Pagat verlangt beim Zudrehen volle Hände und illustriert auch ein Zudrehen zu Beginn. schnapsen.at dokumentiert automatische Ausmeldung und eine andere Geberfolge. Die Beschreibung des Wiener Zudrehens dort sieht den Gegnergewinn anders als Pagat. TS und Pagat behandeln falsche Ausmeldungen unterschiedlich. Die Matrix nutzt das Mindeststrafmaß nach Pagat EN und lässt den Nichtzudreher ausmelden. [Pagat EN](https://www.pagat.com/marriage/schnaps.html) · [TS](https://ts-spielkarten.de/spielregeln-kartenspiele/schnapsen-spielregeln/) · [schnapsen.at](https://schnapsen.at/spielregeln)
+- **Digitale Festlegung:** Beide klassischen und beide Turnierprofile erlauben Zudrehen zu Beginn. Scharfer Tausch ist ab dem ersten vollständig abgeschlossenen Stich möglich; in einer Zweierhand ist dessen Gewinner dann am Ausspiel. Falschmeldungen bei Sperre nutzen das Maximum beider Strafgrenzen. Ausmeldefenster sind ohne Kenntnis des Augenstands sichtbar, auch nach einer vorgemerkten Ansage und vor der Letztstichwertung. Die Sticheinsicht in weichen neuen Profilen ist während der Hand auf eigene Stiche beschränkt, nach der Hand werden beide Stapel freigegeben. Die sieben Punkte, Austeilfolge und der Geberwechsel bleiben die vorhandene Projektregel. Turnierverwaltung und Begegnungen über mehrere Bummerl bleiben künftiger Arbeit vorbehalten.

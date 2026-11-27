@@ -71,6 +71,7 @@ pub struct Observation {
     pub legal_marriages: Vec<Marriage>,
     pub exchange: Option<Exchange>,
     pub can_close: bool,
+    pub claim_player: Option<Player>,
 }
 
 impl Observation {
@@ -112,7 +113,7 @@ impl Observation {
     }
 
     pub fn target_eyes(&self) -> u8 {
-        self.profile.rules().automatic_finish_eyes
+        self.profile.rules().target_eyes
     }
 
     pub fn last_trick_points(&self) -> u8 {
@@ -134,13 +135,17 @@ impl Observation {
     }
 
     pub fn closure_points(&self, opponent: Score) -> (u8, u8) {
+        self.closure_points_at_end(opponent, opponent)
+    }
+
+    pub fn closure_points_at_end(&self, at_closing: Score, at_end: Score) -> (u8, u8) {
         let closure = TalonClosure {
             closer: self.player,
-            opponent_at_closing: opponent,
+            opponent_at_closing: at_closing,
         };
         let rules = self.profile.rules();
         (
-            rules.successful_closure_points(closure),
+            rules.successful_closure_points(closure, at_end),
             rules.failed_closure_points(closure),
         )
     }

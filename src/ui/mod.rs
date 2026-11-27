@@ -4,7 +4,10 @@ use schnapsen::core::{
     match_play::Match,
     rules::{Difficulty, GameVariant, MatchConfig, RuleProfile, SchneiderRule},
 };
-use std::{cell::RefCell, rc::Rc};
+use std::{
+    cell::{Cell, RefCell},
+    rc::Rc,
+};
 
 use crate::app::{
     save::{self, Snapshot},
@@ -30,8 +33,12 @@ fn variant_label(variant: GameVariant) -> String {
 
 fn profile_label(profile: RuleProfile) -> String {
     match profile {
-        RuleProfile::Soft => tr!("Soft Schnapsen"),
-        RuleProfile::Sharp => tr!("Sharp Schnapsen"),
+        RuleProfile::Soft => tr!("House rules · Soft"),
+        RuleProfile::Sharp => tr!("House rules · Sharp"),
+        RuleProfile::ClassicSoft => tr!("Classic · Soft"),
+        RuleProfile::ClassicSharp => tr!("Classic · Sharp"),
+        RuleProfile::TournamentSoft => tr!("Tournament rules · Soft"),
+        RuleProfile::TournamentSharp => tr!("Tournament rules · Sharp"),
     }
 }
 
@@ -95,19 +102,64 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
     let game_variant = initial_config.variant;
     options.append(&gtk::Label::new(Some(&variant_label(game_variant))));
     let profiles = game_variant.profiles();
-    let labels: Vec<_> = profiles.iter().copied().map(profile_label).collect();
-    let labels: Vec<_> = labels.iter().map(String::as_str).collect();
-    let profile = gtk::DropDown::from_strings(&labels);
-    profile.set_selected(
-        profiles
-            .iter()
-            .position(|&profile| profile == initial_config.profile)
-            .expect("the active profile belongs to the game variant") as u32,
-    );
-    profile.update_property(&[gtk::accessible::Property::Label(&tr!("Rules profile"))]);
-    options.append(&profile);
+    let families = [tr!("House rules"), tr!("Classic"), tr!("Tournament rules")];
+    let styles = [tr!("Soft"), tr!("Sharp")];
+    let family = gtk::DropDown::from_strings(&families.each_ref().map(String::as_str));
+    let style = gtk::DropDown::from_strings(&styles.each_ref().map(String::as_str));
+    let initial = profiles
+        .iter()
+        .position(|&p| p == initial_config.profile)
+        .unwrap();
+    family.set_selected((initial / 2) as u32);
+    style.set_selected((initial % 2) as u32);
+    family.update_property(&[gtk::accessible::Property::Label(&tr!("Rules profile"))]);
+    style.update_property(&[gtk::accessible::Property::Label(&tr!("Playing style"))]);
+    options.append(&family);
+    options.append(&style);
+    let description = gtk::Label::new(None);
+    description.set_wrap(true);
+    description.set_max_width_chars(30);
+    description.set_xalign(0.0);
+    options.append(&description);
     let schneider = gtk::CheckButton::with_label(&tr!("Count Schneider double"));
     schneider.set_active(initial_config.schneider == SchneiderRule::Double);
+    let draft_schneider = Rc::new(Cell::new(schneider.is_active()));
+    let saved_draft = draft_schneider.clone();
+    schneider.connect_toggled(move |button| {
+        if button.is_sensitive() {
+            saved_draft.set(button.is_active());
+        }
+    });
+    let update_family = {
+        let description = description.downgrade();
+        let schneider = schneider.downgrade();
+        move |family: &gtk::DropDown| {
+            if let (Some(description), Some(schneider)) =
+                (description.upgrade(), schneider.upgrade())
+            {
+                let profile = profiles[family.selected() as usize * 2];
+                let text = if !profile.manual_claim() {
+                    tr!("Automatic finish at 66. Playing aids available.")
+                } else if profile.allows_double_schneider() {
+                    tr!("Manual claims. Stock closing is scored at the time of closing.")
+                } else {
+                    tr!("Manual claims. Successful stock closing is scored at the end of the hand.")
+                };
+                description.set_text(&text);
+                let allowed = profile.allows_double_schneider();
+                schneider.set_sensitive(false);
+                schneider.set_active(allowed && draft_schneider.get());
+                schneider.set_sensitive(allowed);
+                schneider.set_tooltip_text(
+                    (!allowed)
+                        .then(|| tr!("Tournament rules count Schneider once."))
+                        .as_deref(),
+                );
+            }
+        }
+    };
+    update_family(&family);
+    family.connect_selected_notify(update_family);
     options.append(&schneider);
     let difficulty_caption = tr!("Computer difficulty");
     let difficulty_label_widget = gtk::Label::new(Some(&difficulty_caption));
@@ -174,6 +226,8 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
     let play = gtk::Button::with_label(&tr!("Play card"));
     let king = gtk::Button::new();
     let ober = gtk::Button::new();
+    let claim = gtk::Button::with_label(&tr!("Claim 66"));
+    let continue_claim = gtk::Button::with_label(&tr!("Continue"));
     let announcement = gtk::Label::new(None);
     announcement.add_css_class("title-3");
     // Match the dark table background in both system color schemes.
@@ -182,7 +236,7 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
         0xffff, 0xffff, 0xf000,
     ));
     announcement.set_attributes(Some(&announcement_attributes));
-    for button in [&play, &king, &ober] {
+    for button in [&play, &king, &ober, &claim, &continue_claim] {
         button.set_visible(false);
         button.set_height_request(44);
         button.set_valign(gtk::Align::Center);
@@ -200,6 +254,8 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
         king: king.downgrade(),
         ober: ober.downgrade(),
         announcement: announcement.downgrade(),
+        claim: claim.downgrade(),
+        continue_claim: continue_claim.downgrade(),
     };
     let timers = turn::TurnTimers::new(&state, &table, &overlay, &modal_layer, controls, store);
     let touch = input::attach(&table, &state, &timers);
@@ -209,6 +265,22 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
         let area = table.downgrade();
         button.connect_clicked(move |_| {
             if !turns.input_blocked() && model.borrow_mut().announce_selected(play_ober) {
+                if let Some(area) = area.upgrade() {
+                    area.grab_focus();
+                }
+                turns.refresh();
+            }
+        });
+    }
+    for (button, claim) in [(&claim, true), (&continue_claim, false)] {
+        let model = state.clone();
+        let turns = timers.clone();
+        let area = table.downgrade();
+        button.connect_clicked(move |_| {
+            if !turns.input_blocked()
+                && model.borrow().session().claim_player() == Some(Player::Local)
+            {
+                model.borrow_mut().decide_claim(claim);
                 if let Some(area) = area.upgrade() {
                     area.grab_focus();
                 }
@@ -250,11 +322,12 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
     let touch = touch.downgrade();
     timers.set_advance(move |model| {
         if model.session().result().is_some() {
+            let profile = profiles[family.selected() as usize * 2 + style.selected() as usize];
             let config = MatchConfig {
                 variant: game_variant,
                 difficulty: Difficulty::ALL[difficulty.selected() as usize],
-                profile: profiles[profile.selected() as usize],
-                schneider: if schneider.is_active() {
+                profile,
+                schneider: if profile.allows_double_schneider() && schneider.is_active() {
                     SchneiderRule::Double
                 } else {
                     SchneiderRule::Single
@@ -270,18 +343,21 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
         }
         Ok(())
     });
+    let preferences_model = Rc::downgrade(&state);
     table.set_draw_func(move |area, cr, width, height| {
         let state = state.borrow();
         let placements = layout::arrange(&state, width.into(), height.into());
         let focus = state.focus().filter(|_| area.has_visible_focus());
         if let Err(error) = paint::table(cr, &placements, focus, state.design()).and_then(|()| {
-            paint::eyes(
-                cr,
-                width.into(),
-                height.into(),
-                state.local_eyes(),
-                state.opponent_eyes(),
-            )?;
+            if state.session().config().profile.allows_own_eyes() {
+                paint::eyes(
+                    cr,
+                    width.into(),
+                    height.into(),
+                    state.local_eyes(),
+                    state.opponent_eyes(),
+                )?;
+            }
             paint::match_status(cr, width.into(), height.into(), state.session())?;
             if let Some(suit) = state.trump_indicator() {
                 paint::trump(cr, width.into(), height.into(), suit, state.design().front)?;
@@ -309,8 +385,11 @@ pub fn build_window(app: &adw::Application, preferences: &Preferences) -> adw::A
     preferences_action.connect_activate(move |_, _| {
         if let Some(parent) = parent.upgrade() {
             if !settings_timers.input_blocked() && presented.upgrade().is_none() {
-                let dialog = preferences::present(&preferences, &parent);
-                presented.set(Some(&dialog));
+                if let Some(model) = preferences_model.upgrade() {
+                    let profile = model.borrow().session().config().profile;
+                    let dialog = preferences::present(&preferences, &parent, profile);
+                    presented.set(Some(&dialog));
+                }
             }
         }
     });

@@ -27,6 +27,9 @@ pub struct Scores {
     pub closures_won: u64,
     pub closures_lost: u64,
     pub announcements: u64,
+    pub correct_claims: u64,
+    pub false_claims: u64,
+    pub missed_claims: u64,
     pub exchanges: u64,
     pub decisions: u64,
     pub invalid_actions: u64,
@@ -48,6 +51,8 @@ pub struct SideReport {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize)]
 pub struct FinishCounts {
     pub reached_66: u64,
+    pub claimed_66: u64,
+    pub false_claim: u64,
     pub last_trick: u64,
     pub successful_closure: u64,
     pub failed_closure: u64,
@@ -78,10 +83,15 @@ impl Report {
     /// Keep the Auftrag 25 JSONL entry contract for existing consumers.
     pub fn legacy_json(&self) -> serde_json::Value {
         let side = |side: &SideReport| {
+            let mut counts = serde_json::to_value(side.counts).expect("counts serialize");
+            let counts = counts.as_object_mut().expect("counts form an object");
+            for key in ["correct_claims", "false_claims", "missed_claims"] {
+                counts.remove(key);
+            }
             serde_json::json!({
                 "difficulty": side.difficulty,
                 "stats": {
-                    "counts": side.counts,
+                    "counts": counts,
                     "mean_card_points": side.mean_card_points,
                     "mean_decision_us": side.mean_decision_us,
                     "max_decision_us": side.max_decision_us,
@@ -115,8 +125,10 @@ impl fmt::Display for Report {
         )?;
         writeln!(
             f,
-            "Finish reasons: 66={}, last trick={}, successful closure={}, failed closure={}",
+            "Finish reasons: automatic 66={}, claimed 66={}, false claim={}, last trick={}, successful closure={}, failed closure={}",
             self.finish_reasons.reached_66,
+            self.finish_reasons.claimed_66,
+            self.finish_reasons.false_claim,
             self.finish_reasons.last_trick,
             self.finish_reasons.successful_closure,
             self.finish_reasons.failed_closure,
@@ -149,6 +161,11 @@ impl fmt::Display for Report {
                 score.exchanges,
                 score.closures_won,
                 score.closures_lost,
+            )?;
+            writeln!(
+                f,
+                "  {} correct claims, {} false claims, {} missed eligible claims",
+                score.correct_claims, score.false_claims, score.missed_claims,
             )?;
             writeln!(
                 f,
@@ -228,6 +245,8 @@ impl Totals {
         let outcome = result.outcome;
         let finish = match outcome.reason {
             FinishReason::Reached66 => &mut self.finish_reasons.reached_66,
+            FinishReason::Claimed66 => &mut self.finish_reasons.claimed_66,
+            FinishReason::FalseClaim => &mut self.finish_reasons.false_claim,
             FinishReason::LastTrick => &mut self.finish_reasons.last_trick,
             FinishReason::SuccessfulClosure => &mut self.finish_reasons.successful_closure,
             FinishReason::FailedClosure => &mut self.finish_reasons.failed_closure,
@@ -245,7 +264,7 @@ impl Totals {
         }
         if let Some(closure) = outcome.closure {
             let closer = &mut self.sides[seats[closure.closer as usize]].scores;
-            if outcome.reason == FinishReason::SuccessfulClosure {
+            if closure.closer == outcome.winner {
                 closer.closures_won += 1;
             } else {
                 closer.closures_lost += 1;

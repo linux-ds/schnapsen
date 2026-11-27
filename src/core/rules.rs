@@ -25,7 +25,14 @@ impl GameVariant {
 
     pub const fn profiles(self) -> &'static [RuleProfile] {
         match self {
-            Self::AustrianSchnapsen => &[RuleProfile::Soft, RuleProfile::Sharp],
+            Self::AustrianSchnapsen => &[
+                RuleProfile::Soft,
+                RuleProfile::Sharp,
+                RuleProfile::ClassicSoft,
+                RuleProfile::ClassicSharp,
+                RuleProfile::TournamentSoft,
+                RuleProfile::TournamentSharp,
+            ],
         }
     }
 
@@ -158,15 +165,42 @@ pub enum RuleProfile {
     #[default]
     Soft,
     Sharp,
+    ClassicSoft,
+    ClassicSharp,
+    TournamentSoft,
+    TournamentSharp,
+}
+
+#[derive(Clone, Copy)]
+pub(super) struct TalonActionRule {
+    pub after_tricks: usize,
+    pub minimum_cards: usize,
+}
+
+#[derive(Clone, Copy)]
+enum GoingOut {
+    Automatic,
+    Manual,
+}
+
+#[derive(Clone, Copy)]
+enum ClosingScore {
+    AtClosing,
+    AtEnd,
 }
 
 pub(super) struct ProfileRules {
     pub allow_ober_marriage: bool,
     pub require_trick_to_announce: bool,
     pub require_trick_for_announcement_eyes: bool,
-    pub minimum_completed_tricks_for_talon_action: usize,
-    pub minimum_talon_cards_for_action: usize,
-    pub automatic_finish_eyes: u8,
+    pub exchange: TalonActionRule,
+    pub close: TalonActionRule,
+    pub target_eyes: u8,
+    going_out: GoingOut,
+    closing_score: ClosingScore,
+    allow_double_schneider: bool,
+    review_after_finish: bool,
+    show_own_eyes: bool,
     pub open_first_opponent_trick: bool,
     own_trick_review_limit: usize,
     opponent_trick_review_limit: usize,
@@ -174,13 +208,26 @@ pub(super) struct ProfileRules {
     allow_opponent_eyes_help: bool,
 }
 
+const HOUSE_TALON_ACTION: TalonActionRule = TalonActionRule {
+    after_tricks: 1,
+    minimum_cards: 4,
+};
+const CLASSIC_CLOSE: TalonActionRule = TalonActionRule {
+    after_tricks: 0,
+    minimum_cards: 4,
+};
 const SOFT: ProfileRules = ProfileRules {
     allow_ober_marriage: true,
     require_trick_to_announce: false,
     require_trick_for_announcement_eyes: true,
-    minimum_completed_tricks_for_talon_action: 1,
-    minimum_talon_cards_for_action: 4,
-    automatic_finish_eyes: 66,
+    exchange: HOUSE_TALON_ACTION,
+    close: HOUSE_TALON_ACTION,
+    target_eyes: 66,
+    going_out: GoingOut::Automatic,
+    closing_score: ClosingScore::AtClosing,
+    allow_double_schneider: true,
+    review_after_finish: false,
+    show_own_eyes: true,
     open_first_opponent_trick: true,
     own_trick_review_limit: usize::MAX,
     opponent_trick_review_limit: 1,
@@ -197,12 +244,72 @@ const SHARP: ProfileRules = ProfileRules {
     ..SOFT
 };
 
+const CLASSIC_SOFT: ProfileRules = ProfileRules {
+    exchange: TalonActionRule {
+        after_tricks: 0,
+        minimum_cards: 2,
+    },
+    close: CLASSIC_CLOSE,
+    going_out: GoingOut::Manual,
+    review_after_finish: true,
+    show_own_eyes: false,
+    open_first_opponent_trick: false,
+    opponent_trick_review_limit: 0,
+    allow_legal_card_help: false,
+    allow_opponent_eyes_help: false,
+    ..SOFT
+};
+
+const CLASSIC_SHARP: ProfileRules = ProfileRules {
+    exchange: HOUSE_TALON_ACTION,
+    allow_ober_marriage: false,
+    require_trick_to_announce: true,
+    own_trick_review_limit: 0,
+    ..CLASSIC_SOFT
+};
+
+const TOURNAMENT_SOFT: ProfileRules = ProfileRules {
+    closing_score: ClosingScore::AtEnd,
+    allow_double_schneider: false,
+    ..CLASSIC_SOFT
+};
+
+const TOURNAMENT_SHARP: ProfileRules = ProfileRules {
+    closing_score: ClosingScore::AtEnd,
+    allow_double_schneider: false,
+    ..CLASSIC_SHARP
+};
+
 impl RuleProfile {
     pub(super) const fn rules(self) -> &'static ProfileRules {
         match self {
             Self::Soft => &SOFT,
             Self::Sharp => &SHARP,
+            Self::ClassicSoft => &CLASSIC_SOFT,
+            Self::ClassicSharp => &CLASSIC_SHARP,
+            Self::TournamentSoft => &TOURNAMENT_SOFT,
+            Self::TournamentSharp => &TOURNAMENT_SHARP,
         }
+    }
+
+    pub const fn manual_claim(self) -> bool {
+        matches!(self.rules().going_out, GoingOut::Manual)
+    }
+
+    pub const fn allows_finished_trick_review(self) -> bool {
+        self.rules().review_after_finish
+    }
+
+    pub const fn allows_own_eyes(self) -> bool {
+        self.rules().show_own_eyes
+    }
+
+    pub const fn allows_double_schneider(self) -> bool {
+        self.rules().allow_double_schneider
+    }
+
+    pub const fn scores_closure_at_end(self) -> bool {
+        matches!(self.rules().closing_score, ClosingScore::AtEnd)
     }
 
     pub const fn allows_legal_card_help(self) -> bool {
@@ -215,7 +322,10 @@ impl RuleProfile {
 }
 
 impl ProfileRules {
-    pub(super) fn review_limit(&self, owner: Player) -> usize {
+    pub(super) fn review_limit(&self, owner: Player, finished: bool) -> usize {
+        if finished && self.review_after_finish {
+            return usize::MAX;
+        }
         match owner {
             Player::Local => self.own_trick_review_limit,
             Player::Opponent => self.opponent_trick_review_limit,
@@ -230,8 +340,16 @@ impl ProfileRules {
         }
     }
 
-    pub(super) fn successful_closure_points(&self, closure: TalonClosure) -> u8 {
-        self.winning_points(closure.opponent_at_closing)
+    pub(super) fn successful_closure_points(&self, closure: TalonClosure, at_end: Score) -> u8 {
+        self.winning_points(match self.closing_score {
+            ClosingScore::AtClosing => closure.opponent_at_closing,
+            ClosingScore::AtEnd => at_end,
+        })
+    }
+
+    pub(super) fn false_claim_points(&self, opponent: Score, closure: Option<TalonClosure>) -> u8 {
+        let penalty = if opponent.tricks == 0 { 3 } else { 2 };
+        penalty.max(closure.map_or(0, |closed| self.failed_closure_points(closed)))
     }
 
     pub(super) fn failed_closure_points(&self, closure: TalonClosure) -> u8 {
@@ -313,7 +431,14 @@ mod tests {
         assert_eq!(config.difficulty, Difficulty::Easy);
         assert_eq!(
             config.variant.profiles(),
-            [RuleProfile::Soft, RuleProfile::Sharp]
+            [
+                RuleProfile::Soft,
+                RuleProfile::Sharp,
+                RuleProfile::ClassicSoft,
+                RuleProfile::ClassicSharp,
+                RuleProfile::TournamentSoft,
+                RuleProfile::TournamentSharp
+            ]
         );
         assert_eq!(config.variant.deck(), full_deck());
         assert_eq!(config.variant.player_count(), 2);
@@ -323,21 +448,24 @@ mod tests {
 
     #[test]
     fn built_in_profiles_preserve_house_rules_and_visibility() {
-        for &profile in GameVariant::default().profiles() {
+        for profile in [RuleProfile::Soft, RuleProfile::Sharp] {
             let rules = profile.rules();
             let soft = profile == RuleProfile::Soft;
             assert_eq!(rules.allow_ober_marriage, soft);
             assert_eq!(rules.require_trick_to_announce, !soft);
             assert!(rules.require_trick_for_announcement_eyes);
-            assert_eq!(rules.minimum_completed_tricks_for_talon_action, 1);
-            assert_eq!(rules.minimum_talon_cards_for_action, 4);
-            assert_eq!(rules.automatic_finish_eyes, 66);
+            assert_eq!(rules.exchange.after_tricks, 1);
+            assert_eq!(rules.exchange.minimum_cards, 4);
+            assert_eq!(rules.target_eyes, 66);
             assert_eq!(rules.open_first_opponent_trick, soft);
             assert_eq!(
-                rules.review_limit(Player::Local),
+                rules.review_limit(Player::Local, false),
                 if soft { usize::MAX } else { 0 }
             );
-            assert_eq!(rules.review_limit(Player::Opponent), usize::from(soft));
+            assert_eq!(
+                rules.review_limit(Player::Opponent, false),
+                usize::from(soft)
+            );
             assert!(profile.allows_legal_card_help());
             assert!(profile.allows_opponent_eyes_help());
         }

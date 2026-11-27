@@ -177,6 +177,13 @@ fn configuration_error(setup: MatchSetup, seed: u64, reason: &str) -> Box<Failur
 
 fn check_setup(setup: MatchSetup, seed: u64) -> Result<(), Box<Failure>> {
     if setup.variant.profiles().contains(&setup.profile) {
+        if setup.schneider == SchneiderRule::Double && !setup.profile.allows_double_schneider() {
+            return Err(configuration_error(
+                setup,
+                seed,
+                "profile_requires_single_schneider",
+            ));
+        }
         Ok(())
     } else {
         Err(configuration_error(setup, seed, "unsupported_profile"))
@@ -259,9 +266,9 @@ fn record_match(
         }
     }
 
-    // At most 13 hands, each with fewer than 40 actions, under the current
-    // rules. The limit also catches a strategy that cannot make progress.
-    for _ in 0..520 {
+    // A match lasts at most 13 hands. Allow up to 64 actions per hand,
+    // including answering every claim window.
+    for _ in 0..832 {
         let next = if let Some(result) = run.state.hand().result() {
             totals.record_hand(result, seats);
             if let Some(match_result) = run.state.result() {
@@ -270,7 +277,11 @@ fn record_match(
             }
             hand += 1;
             RecordedAction::NextHand
-        } else if let Some(player) = run.state.hand().next_player() {
+        } else if let Some(player) = run
+            .state
+            .claim_player()
+            .or_else(|| run.state.hand().next_player())
+        {
             let slot = seats[player as usize];
             let side = &mut totals.sides[slot];
             let started = Instant::now();
@@ -310,6 +321,19 @@ fn record_match(
             }
             RecordedAction::Exchange { player } => {
                 totals.sides[seats[player as usize]].scores.exchanges += 1;
+            }
+            RecordedAction::Claim { player } => {
+                let scores = &mut totals.sides[seats[player as usize]].scores;
+                if run.state.hand().result().is_some_and(|result| {
+                    result.outcome.reason == crate::core::game::FinishReason::FalseClaim
+                }) {
+                    scores.false_claims += 1;
+                } else {
+                    scores.correct_claims += 1;
+                }
+            }
+            RecordedAction::ContinueClaim { player } if run.state.hand().eyes(player) >= 66 => {
+                totals.sides[seats[player as usize]].scores.missed_claims += 1;
             }
             _ => {}
         }

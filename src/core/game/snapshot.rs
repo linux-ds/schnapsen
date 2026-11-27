@@ -17,6 +17,8 @@ impl Game {
         if cards.len() != deck.len()
             || cards.into_iter().collect::<HashSet<_>>() != deck.iter().copied().collect()
             || self.played.len() > 2
+            || (self.claim_window.is_some()
+                && (!self.profile.manual_claim() || matches!(self.phase, Phase::Finished(_))))
             || self.trick_winners.len() != self.trick_index()
             || self
                 .talon
@@ -36,9 +38,10 @@ impl Game {
         let drawn = (initial_talon - self.talon.len()) / 2;
         if closure.is_none() {
             // An open-talon hand that finishes on a full trick awards it before drawing.
-            let without_final_draw = matches!(self.phase, Phase::Finished(_))
-                && !self.talon.is_empty()
-                && self.played.is_empty();
+            let without_final_draw = !self.talon.is_empty()
+                && self.played.is_empty()
+                && (matches!(self.phase, Phase::Finished(_))
+                    || matches!(self.claim_window, Some(ClaimWindow::AfterTrick(_))));
             if drawn
                 != (completed.saturating_sub(usize::from(without_final_draw)))
                     .min(initial_talon / 2)
@@ -120,6 +123,7 @@ impl Game {
             announcements: Vec::new(),
             phase: Phase::OpenTalon,
             public_memory: PublicMemory::default(),
+            claim_window: None,
         };
         let completed = self.trick_index();
         for index in 0..=completed {
@@ -160,6 +164,17 @@ impl Game {
                     && history.announcements == self.announcements;
             }
 
+            if self.profile.manual_claim()
+                && event.is_some()
+                && index == completed
+                && self.played.len() == 1
+            {
+                if let Some(valid) =
+                    self.validate_claim_boundary(&history, ClaimWindow::AfterMarriage(leader))
+                {
+                    return valid;
+                }
+            }
             let Some(&(follower, reply)) = plays.get(index * 2 + 1) else {
                 break;
             };
@@ -181,6 +196,13 @@ impl Game {
             let winner = self.trick_winners[index];
             history.tricks[winner as usize].push([lead, reply]);
             history.leader = winner;
+            if self.profile.manual_claim() && index + 1 == completed && self.played.is_empty() {
+                if let Some(valid) =
+                    self.validate_claim_boundary(&history, ClaimWindow::AfterTrick(winner))
+                {
+                    return valid;
+                }
+            }
             if history.finish_at_66(winner) || history.finish_at_66(winner.other()) {
                 return index + 1 == completed
                     && self.played.is_empty()
@@ -201,7 +223,40 @@ impl Game {
                 });
             }
         }
-        history.phase == self.phase && history.announcements == self.announcements
+        self.claim_window.is_none()
+            && history.phase == self.phase
+            && history.announcements == self.announcements
+    }
+
+    // A saved claim may only originate from the most recent legal window.
+    // Earlier windows, which have been declined, are reconstructed by play.
+    fn validate_claim_boundary(&self, history: &Game, window: ClaimWindow) -> Option<bool> {
+        let same_announcements = history.announcements == self.announcements;
+        if self.claim_window.is_some() {
+            return Some(
+                self.claim_window == Some(window)
+                    && history.phase == self.phase
+                    && same_announcements,
+            );
+        }
+        if let Phase::Finished(outcome) = self.phase {
+            let mut claimed = history.clone();
+            claimed.claim_window = Some(window);
+            claimed
+                .claim(window.player())
+                .expect("the reconstructed window belongs to this player");
+            if claimed.phase == self.phase {
+                return Some(same_announcements);
+            }
+            // FailedClosure can also follow the last trick without a claim.
+            if !matches!(
+                outcome.reason,
+                FinishReason::FailedClosure | FinishReason::LastTrick
+            ) {
+                return Some(false);
+            }
+        }
+        None
     }
 
     fn snapshot_hand<'a>(

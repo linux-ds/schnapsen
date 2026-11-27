@@ -10,11 +10,16 @@ use std::{
 
 use crate::{
     ai,
-    core::{cards::Card, game::Player, match_play::Match, rules::Difficulty},
+    core::{
+        cards::Card,
+        game::Player,
+        match_play::Match,
+        rules::{Difficulty, RuleProfile},
+    },
 };
 use serde::{Deserialize, Serialize};
 
-const VERSION: u64 = 3;
+const VERSION: u64 = 4;
 const MAX_BYTES: usize = 512 * 1024;
 const FILE_NAME: &str = "save.json";
 
@@ -214,7 +219,7 @@ fn decode(bytes: &[u8]) -> Result<(Snapshot, u64), SaveError> {
             }
             snapshot
         }
-        2 | VERSION => {
+        2 | 3 | VERSION => {
             let SaveFile {
                 version,
                 strategy_id,
@@ -228,6 +233,14 @@ fn decode(bytes: &[u8]) -> Result<(Snapshot, u64), SaveError> {
         }
         version => return Err(SaveError::UnsupportedVersion(version)),
     };
+    if header.version < VERSION
+        && !matches!(
+            snapshot.session.config().profile,
+            RuleProfile::Soft | RuleProfile::Sharp
+        )
+    {
+        return Err(SaveError::Corrupt);
+    }
     if !snapshot.session.validate_snapshot() {
         return Err(SaveError::Corrupt);
     }
@@ -508,6 +521,210 @@ mod tests {
                 .collect::<Vec<_>>(),
             [PublicEvent::CardPlayed { player, card }],
         );
+    }
+
+    #[test]
+    fn version_three_keeps_complete_house_history_and_backs_up_original() {
+        let directory = Directory::new();
+        let mut session = new_match(Variant::Sharp, SchneiderRule::Double);
+        let lead = session.hand().legal_cards(Player::Local)[0];
+        session.play_card(Player::Local, lead).unwrap();
+        let mut legacy: serde_json::Value =
+            serde_json::from_slice(&encode(&session, &[]).unwrap()).unwrap();
+        legacy["version"] = 3.into();
+        let original = serde_json::to_vec(&legacy).unwrap();
+        fs::write(directory.path(), &original).unwrap();
+
+        let mut store = directory.store();
+        let restored = store.load().unwrap().unwrap().session;
+        assert_eq!(restored, session);
+        assert_eq!(fs::read(directory.path()).unwrap(), original);
+        store.save(&restored, &[]).unwrap();
+
+        let migrated_bytes = fs::read(directory.path()).unwrap();
+        let (migrated, version) = decode(&migrated_bytes).unwrap();
+        assert_eq!(version, VERSION);
+        assert_eq!(migrated.session, session);
+        let backup = fs::read_dir(&directory.0)
+            .unwrap()
+            .map(Result::unwrap)
+            .find(|entry| {
+                entry
+                    .file_name()
+                    .to_string_lossy()
+                    .starts_with("legacy-v3-")
+            })
+            .unwrap();
+        assert_eq!(fs::read(backup.path().join(FILE_NAME)).unwrap(), original);
+    }
+
+    fn restore_pending_claim(
+        profile: RuleProfile,
+        want_correct: bool,
+    ) -> (Match, Directory, Player) {
+        let mut fixture = None;
+        for seed in 1..=16_u64 {
+            let mut session = Match::new(
+                Player::Local,
+                profile,
+                SchneiderRule::Single,
+                crate::testing::simulation::shuffle(seed),
+            );
+            for _ in 0..40 {
+                if let Some(player) = session.claim_player() {
+                    if (session.hand().eyes(player) >= 66) == want_correct {
+                        fixture = Some((session, player));
+                        break;
+                    }
+                    session.continue_claim(player).unwrap();
+                } else if let Some(player) = session.hand().next_player() {
+                    session
+                        .play_card(player, session.hand().legal_cards(player)[0])
+                        .unwrap();
+                } else if session.hand().result().is_none() {
+                    session.resolve_trick().unwrap();
+                } else {
+                    break;
+                }
+            }
+            if fixture.is_some() {
+                break;
+            }
+        }
+        let (session, player) = fixture.expect("expected a reproducible claim window");
+        let directory = Directory::new();
+        let selection: Vec<_> = session
+            .hand()
+            .view(Player::Local)
+            .hand
+            .first()
+            .copied()
+            .into_iter()
+            .collect();
+        let mut store = directory.store();
+        store.load().unwrap();
+        store.save(&session, &selection).unwrap();
+        let restored = directory.store().load().unwrap().unwrap();
+        assert_eq!(restored.session, session);
+        assert_eq!(restored.selection, selection);
+        assert_eq!(restored.session.claim_player(), Some(player));
+        (restored.session, directory, player)
+    }
+
+    #[test]
+    fn restores_pending_claim_windows_and_awards_each_hand_only_once() {
+        use crate::core::history::PublicEvent;
+
+        for (profile, id) in [
+            (RuleProfile::ClassicSoft, "classic_soft"),
+            (RuleProfile::ClassicSharp, "classic_sharp"),
+            (RuleProfile::TournamentSoft, "tournament_soft"),
+            (RuleProfile::TournamentSharp, "tournament_sharp"),
+        ] {
+            for correct in [false, true] {
+                let (mut session, directory, player) = restore_pending_claim(profile, correct);
+                let bytes = fs::read(directory.path()).unwrap();
+                let value: serde_json::Value = serde_json::from_slice(&bytes).unwrap();
+                assert_eq!(value["version"], VERSION);
+                assert_eq!(value["snapshot"]["session"]["config"]["profile"], id);
+
+                assert!(session.claim(player.other()).is_err());
+                assert_eq!(session.claim_player(), Some(player));
+                assert_eq!(session.hand().next_player(), None);
+                session.claim(player).unwrap();
+                assert_eq!(session.completed_hands(), 1);
+                let outcome = session.hand().result().unwrap().outcome;
+                assert_eq!(
+                    outcome.winner,
+                    if correct { player } else { player.other() }
+                );
+                assert_eq!(
+                    outcome.reason,
+                    if correct {
+                        crate::core::game::FinishReason::Claimed66
+                    } else {
+                        crate::core::game::FinishReason::FalseClaim
+                    },
+                );
+                assert_eq!(
+                    session
+                        .history()
+                        .public_events()
+                        .filter(|event| matches!(
+                            event,
+                            PublicEvent::Claimed { player: claimant, correct: awarded }
+                                if *claimant == player && *awarded == correct
+                        ))
+                        .count(),
+                    1,
+                );
+
+                let mut store = directory.store();
+                store.load().unwrap();
+                store.save(&session, &[]).unwrap();
+                let mut restored = directory.store().load().unwrap().unwrap().session;
+                assert_eq!(restored.claim_player(), None);
+                assert!(restored.claim(player).is_err());
+                assert_eq!(restored, session);
+                assert_eq!(restored.completed_hands(), 1);
+            }
+        }
+    }
+
+    #[test]
+    fn restored_announcement_can_be_declined_before_the_reply() {
+        use crate::core::history::PublicEvent;
+
+        let player = Player::Local;
+        let (mut session, marriage) = (1..=16)
+            .find_map(|seed| {
+                let session = Match::new(
+                    player,
+                    RuleProfile::ClassicSoft,
+                    SchneiderRule::Single,
+                    crate::testing::simulation::shuffle(seed),
+                );
+                let marriage = session.hand().legal_marriages(player).first().copied()?;
+                Some((session, marriage))
+            })
+            .expect("expected an opening marriage in the fixture");
+        let card = marriage.king();
+        session
+            .announce_and_play(player, marriage.suit, card)
+            .unwrap();
+        assert_eq!(session.claim_player(), Some(player));
+        assert_eq!(session.hand().next_player(), None);
+
+        let directory = Directory::new();
+        let mut store = directory.store();
+        store.load().unwrap();
+        store.save(&session, &[]).unwrap();
+        let mut restored = directory.store().load().unwrap().unwrap().session;
+        assert_eq!(restored, session);
+        restored.continue_claim(player).unwrap();
+        assert_eq!(restored.claim_player(), None);
+        assert_eq!(restored.hand().next_player(), Some(player.other()));
+        assert_eq!(restored.hand().view(player).played, &[(player, card)]);
+        assert_eq!(restored.completed_hands(), 0);
+        assert!(matches!(
+            restored.history().public_events().last(),
+            Some(PublicEvent::ClaimDeclined { player: claimant }) if *claimant == player
+        ));
+    }
+
+    #[test]
+    fn older_save_headers_cannot_select_a_new_profile() {
+        let game = new_match(RuleProfile::TournamentSoft, SchneiderRule::Single);
+        for version in [1, 2, 3] {
+            let mut value: serde_json::Value =
+                serde_json::from_slice(&encode(&game, &[]).unwrap()).unwrap();
+            value["version"] = version.into();
+            if version == 1 {
+                value.as_object_mut().unwrap().remove("strategy_id");
+            }
+            let bytes = serde_json::to_vec(&value).unwrap();
+            assert!(matches!(decode(&bytes), Err(SaveError::Corrupt)));
+        }
     }
 
     #[test]

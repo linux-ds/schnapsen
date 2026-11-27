@@ -7,8 +7,8 @@ mod medium;
 use crate::core::{
     cards::{Card, Suit},
     game::{
-        Announcement, CloseError, Exchange, ExchangeError, Marriage, MarriageError, PlayError,
-        Player,
+        Announcement, ClaimError, CloseError, Exchange, ExchangeError, Marriage, MarriageError,
+        PlayError, Player,
     },
     match_play::Match,
     observation::Observation,
@@ -21,6 +21,8 @@ pub enum Action {
     Announce { suit: Suit, card: Card },
     Exchange,
     Close,
+    Claim,
+    ContinueClaim,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -29,6 +31,8 @@ pub enum ActionEvent {
     Announced(Announcement),
     Exchanged(Exchange),
     Closed,
+    Claimed,
+    ClaimContinued,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -37,6 +41,7 @@ pub enum ActionError {
     Announce(MarriageError),
     Exchange(ExchangeError),
     Close(CloseError),
+    Claim(ClaimError),
 }
 
 trait Strategy: Sync {
@@ -79,6 +84,15 @@ pub fn strategy_id(difficulty: Difficulty) -> &'static str {
 }
 
 pub fn decide(difficulty: Difficulty, view: &Observation) -> Option<Action> {
+    if let Some(player) = view.claim_player {
+        return (player == view.player).then(|| {
+            if view.own_eyes >= view.target_eyes() {
+                Action::Claim
+            } else {
+                Action::ContinueClaim
+            }
+        });
+    }
     registration(difficulty).strategy.decide(view)
 }
 
@@ -88,6 +102,14 @@ pub fn apply(
     action: Action,
 ) -> Result<ActionEvent, ActionError> {
     match action {
+        Action::Claim => session
+            .claim(player)
+            .map(|_| ActionEvent::Claimed)
+            .map_err(ActionError::Claim),
+        Action::ContinueClaim => session
+            .continue_claim(player)
+            .map(|_| ActionEvent::ClaimContinued)
+            .map_err(ActionError::Claim),
         Action::Play(card) => session
             .play_card(player, card)
             .map(|()| ActionEvent::Played)
@@ -178,6 +200,60 @@ mod tests {
         game::{Game, Phase},
         rules::{RuleProfile, SchneiderRule},
     };
+
+    #[test]
+    fn each_strategy_claims_only_with_enough_eyes_in_a_manual_window() {
+        use crate::core::{
+            game::Player,
+            rules::{MatchConfig, RuleProfile},
+        };
+        let mut saw_continue = false;
+        let mut saw_claim = false;
+        for mut seed in 1..=16_u32 {
+            let mut session = Match::with_config(
+                Player::Local,
+                MatchConfig {
+                    profile: RuleProfile::ClassicSoft,
+                    ..MatchConfig::default()
+                },
+                |upper| {
+                    seed ^= seed << 13;
+                    seed ^= seed >> 17;
+                    seed ^= seed << 5;
+                    seed as usize % upper
+                },
+            );
+            while session.hand().result().is_none() {
+                if let Some(player) = session.claim_player() {
+                    let view = session.observation(player);
+                    let expected = if view.own_eyes >= 66 {
+                        saw_claim = true;
+                        Action::Claim
+                    } else {
+                        saw_continue = true;
+                        Action::ContinueClaim
+                    };
+                    for difficulty in Difficulty::ALL {
+                        assert_eq!(decide(difficulty, &view), Some(expected));
+                        assert_eq!(
+                            decide(difficulty, &session.observation(player.other())),
+                            None
+                        );
+                    }
+                    apply(&mut session, player, expected).unwrap();
+                } else if let Some(player) = session.hand().next_player() {
+                    let card = session.hand().legal_cards(player)[0];
+                    session.play_card(player, card).unwrap();
+                } else {
+                    session.resolve_trick().unwrap();
+                }
+            }
+            if saw_continue && saw_claim {
+                break;
+            }
+        }
+        assert!(saw_continue && saw_claim);
+    }
 
     #[test]
     fn chooses_first_legal_card_only_on_its_turn() {

@@ -99,3 +99,36 @@ fn importing_a_save_is_read_only() {
     directory.check(&["replay", "regression.json"]);
     assert_eq!(directory.bytes("save.json"), before);
 }
+
+#[test]
+fn tournament_cli_records_and_replays_manual_claims() {
+    let directory = Directory::new();
+    directory.check(&[
+        "record",
+        "--seed",
+        "19",
+        "--profile",
+        "tournament_sharp",
+        "--validate",
+        "--output",
+        "tournament.json",
+    ]);
+    directory.check(&["replay", "tournament.json"]);
+    let contents =
+        serde_json::from_slice::<serde_json::Value>(&directory.bytes("tournament.json")).unwrap();
+    assert_eq!(contents["start"]["setup"]["schneider"], "single");
+    let actions = contents["actions"].as_array().unwrap();
+    assert!(actions.iter().any(|action| action["action"] == "claim"));
+    assert!(actions
+        .iter()
+        .any(|action| action["action"] == "continue_claim"));
+    let rejected = directory.run(&[
+        "simulate",
+        "--profile",
+        "tournament_soft",
+        "--schneider",
+        "double",
+    ]);
+    assert!(!rejected.status.success());
+    assert!(String::from_utf8_lossy(&rejected.stderr).contains("requires_single_schneider"));
+}

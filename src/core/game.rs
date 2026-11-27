@@ -3,11 +3,13 @@ use serde::{Deserialize, Serialize};
 use super::{
     cards::{Card, Rank, Suit},
     observation::PublicMemory,
-    rules::{GameVariant, ProfileRules, RuleProfile},
+    rules::{GameVariant, ProfileRules, RuleProfile, TalonActionRule},
 };
 
 pub use super::rules::RuleProfile as Variant;
 
+#[cfg(test)]
+mod manual_tests;
 mod observe;
 mod snapshot;
 
@@ -133,9 +135,32 @@ pub enum CloseError {
 #[serde(rename_all = "snake_case")]
 pub enum FinishReason {
     Reached66,
+    Claimed66,
+    FalseClaim,
     LastTrick,
     SuccessfulClosure,
     FailedClosure,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ClaimWindow {
+    AfterTrick(Player),
+    AfterMarriage(Player),
+}
+
+impl ClaimWindow {
+    pub fn player(self) -> Player {
+        match self {
+            Self::AfterTrick(player) | Self::AfterMarriage(player) => player,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ClaimError {
+    NoWindow,
+    WrongPlayer,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -221,6 +246,8 @@ pub struct Game {
     phase: Phase,
     #[serde(default)]
     public_memory: PublicMemory,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    claim_window: Option<ClaimWindow>,
 }
 
 pub(super) struct DrawnCards {
@@ -275,6 +302,7 @@ impl Game {
             announcements: Vec::new(),
             phase: Phase::OpenTalon,
             public_memory: PublicMemory::default(),
+            claim_window: None,
         }
     }
 
@@ -290,7 +318,7 @@ impl Game {
     }
 
     pub fn trump_exchange(&self, player: Player) -> Result<Exchange, ExchangeError> {
-        self.check_talon_action(player)
+        self.check_talon_action(player, self.rules().exchange)
             .map_err(|error| match error {
                 CloseError::TalonNotOpen => ExchangeError::TalonNotOpen,
                 CloseError::TrickStarted => ExchangeError::TrickStarted,
@@ -337,23 +365,23 @@ impl Game {
     }
 
     pub fn check_close_talon(&self, player: Player) -> Result<(), CloseError> {
-        self.check_talon_action(player)
+        self.check_talon_action(player, self.rules().close)
     }
 
-    fn check_talon_action(&self, player: Player) -> Result<(), CloseError> {
+    fn check_talon_action(&self, player: Player, rule: TalonActionRule) -> Result<(), CloseError> {
         if self.phase != Phase::OpenTalon {
             return Err(CloseError::TalonNotOpen);
         }
-        if !self.played.is_empty() {
+        if !self.played.is_empty() || self.claim_window.is_some() {
             return Err(CloseError::TrickStarted);
         }
         if self.leader != player {
             return Err(CloseError::CannotLead);
         }
-        if self.trick_index() < self.rules().minimum_completed_tricks_for_talon_action {
+        if self.trick_index() < rule.after_tricks {
             return Err(CloseError::FirstTrickNotCompleted);
         }
-        if self.talon.len() < self.rules().minimum_talon_cards_for_action {
+        if self.talon.len() < rule.minimum_cards {
             return Err(CloseError::NotEnoughTalonCards);
         }
         Ok(())
@@ -490,7 +518,11 @@ impl Game {
             played: card,
         };
         self.announcements.push(event);
-        self.finish_at_66(player);
+        if self.profile.manual_claim() {
+            self.claim_window = Some(ClaimWindow::AfterMarriage(player));
+        } else {
+            self.finish_at_66(player);
+        }
         Ok(event)
     }
 
@@ -511,7 +543,9 @@ impl Game {
 
     /// Review from the local player's perspective, using the active rule profile.
     pub fn review_tricks(&self, owner: Player) -> Result<Vec<ReviewedTrick>, TrickReviewError> {
-        let limit = self.rules().review_limit(owner);
+        let limit = self
+            .rules()
+            .review_limit(owner, matches!(self.phase, Phase::Finished(_)));
         if limit == 0 {
             return Err(TrickReviewError::Forbidden);
         }
@@ -535,16 +569,69 @@ impl Game {
         }
     }
 
+    pub fn claim_window(&self) -> Option<ClaimWindow> {
+        self.claim_window
+    }
+
+    fn check_claim(&self, player: Player) -> Result<ClaimWindow, ClaimError> {
+        let window = self.claim_window.ok_or(ClaimError::NoWindow)?;
+        if window.player() != player {
+            return Err(ClaimError::WrongPlayer);
+        }
+        Ok(window)
+    }
+
+    pub fn claim(&mut self, player: Player) -> Result<(), ClaimError> {
+        self.check_claim(player)?;
+        self.claim_window = None;
+        if self.eyes(player) >= self.rules().target_eyes {
+            self.finish_win(player, FinishReason::Claimed66);
+        } else {
+            let closure = self.talon_closure();
+            let winner = player.other();
+            self.phase = Phase::Finished(Outcome {
+                winner,
+                reason: FinishReason::FalseClaim,
+                game_points: self.rules().false_claim_points(self.score(winner), closure),
+                closure,
+            });
+        }
+        Ok(())
+    }
+
+    pub fn continue_claim(&mut self, player: Player) -> Result<(), ClaimError> {
+        self.continue_claim_with_draw(player).map(|_| ())
+    }
+
+    pub(super) fn continue_claim_with_draw(
+        &mut self,
+        player: Player,
+    ) -> Result<Option<DrawnCards>, ClaimError> {
+        let window = self.check_claim(player)?;
+        self.claim_window = None;
+        Ok(match window {
+            ClaimWindow::AfterTrick(winner) => self.advance_after_trick(winner),
+            ClaimWindow::AfterMarriage(_) => None,
+        })
+    }
+
     fn finish_at_66(&mut self, player: Player) -> bool {
-        if self.eyes(player) < self.rules().automatic_finish_eyes {
+        if self.profile.manual_claim() || self.eyes(player) < self.rules().target_eyes {
             return false;
         }
+        self.finish_win(player, FinishReason::Reached66);
+        true
+    }
+
+    fn finish_win(&mut self, player: Player, open_reason: FinishReason) {
         match self.phase {
             Phase::ClosedTalon(closure) if player == closure.closer => {
                 self.phase = Phase::Finished(Outcome {
                     winner: player,
                     reason: FinishReason::SuccessfulClosure,
-                    game_points: self.rules().successful_closure_points(closure),
+                    game_points: self
+                        .rules()
+                        .successful_closure_points(closure, self.score(player.other())),
                     closure: Some(closure),
                 });
             }
@@ -552,17 +639,16 @@ impl Game {
             _ => {
                 self.phase = Phase::Finished(Outcome {
                     winner: player,
-                    reason: FinishReason::Reached66,
+                    reason: open_reason,
                     game_points: self.rules().winning_points(self.score(player.other())),
                     closure: None,
                 });
             }
         }
-        true
     }
 
     pub fn next_player(&self) -> Option<Player> {
-        if matches!(self.phase, Phase::Finished(_)) {
+        if matches!(self.phase, Phase::Finished(_)) || self.claim_window.is_some() {
             return None;
         }
         match self.played.len() {
@@ -651,10 +737,17 @@ impl Game {
         self.played.clear();
         self.leader = winner;
 
+        if self.profile.manual_claim() {
+            self.claim_window = Some(ClaimWindow::AfterTrick(winner));
+            return Ok((winner, None));
+        }
         if self.finish_at_66(winner) || self.finish_at_66(winner.other()) {
             return Ok((winner, None));
         }
+        Ok((winner, self.advance_after_trick(winner)))
+    }
 
+    fn advance_after_trick(&mut self, winner: Player) -> Option<DrawnCards> {
         let mut draw = None;
         if let Some(order) = self.game_variant.draw_order(winner, self.phase) {
             let cards = [self.talon[0], self.talon[1]];
@@ -686,7 +779,7 @@ impl Game {
                 });
             }
         }
-        Ok((winner, draw))
+        draw
     }
 
     pub fn view(&self, player: Player) -> View<'_> {
@@ -725,6 +818,7 @@ mod tests {
             let empty = match variant {
                 Variant::Soft => TrickReviewError::Empty,
                 Variant::Sharp => TrickReviewError::Forbidden,
+                _ => unreachable!("this test covers the house profiles"),
             };
             for owner in [Player::Local, Player::Opponent] {
                 assert_eq!(game.review_tricks(owner), Err(empty));
@@ -772,6 +866,7 @@ mod tests {
                                     && !game.hands[1].contains(&card)
                             ));
                         }
+                        _ => unreachable!("this test covers the house profiles"),
                     }
                 }
                 assert_eq!(game, before);
@@ -1371,6 +1466,9 @@ mod tests {
                     FinishReason::LastTrick => 1,
                     FinishReason::SuccessfulClosure => 2,
                     FinishReason::FailedClosure => 3,
+                    FinishReason::Claimed66 | FinishReason::FalseClaim => {
+                        panic!("house profile cannot claim")
+                    }
                 }] = true;
                 assert!((1..=3).contains(&result.outcome.game_points));
                 opponent_reached_66_after_closing |=

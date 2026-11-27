@@ -1,4 +1,5 @@
 use adw::{gtk, prelude::*};
+use schnapsen::core::rules::RuleProfile;
 
 use crate::app::settings::Preferences;
 
@@ -10,6 +11,7 @@ use super::{
 pub(super) fn present(
     settings: &Preferences,
     parent: &impl IsA<gtk::Widget>,
+    profile: RuleProfile,
 ) -> adw::PreferencesDialog {
     let dialog = adw::PreferencesDialog::builder()
         .title(tr!("Preferences"))
@@ -92,6 +94,10 @@ pub(super) fn present(
         .build();
     let preference = settings.clone();
     legal.connect_active_notify(move |row| preference.set_show_legal(row.is_active()));
+    legal.set_sensitive(profile.allows_legal_card_help());
+    if !legal.is_sensitive() {
+        legal.set_subtitle(&tr!("Unavailable with the active rules profile."));
+    }
     aids.add(&legal);
     let eyes = adw::SwitchRow::builder()
         .title(tr!("Show opponent’s card points"))
@@ -99,6 +105,10 @@ pub(super) fn present(
         .build();
     let preference = settings.clone();
     eyes.connect_active_notify(move |row| preference.set_show_opponent_eyes(row.is_active()));
+    eyes.set_sensitive(profile.allows_opponent_eyes_help());
+    if !eyes.is_sensitive() {
+        eyes.set_subtitle(&tr!("Unavailable with the active rules profile."));
+    }
     aids.add(&eyes);
     page.add(&aids);
     dialog.add(&page);

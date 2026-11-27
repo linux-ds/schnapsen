@@ -56,6 +56,13 @@ pub enum PublicEvent {
         exposed_trump: Option<Card>,
     },
     TalonExhausted,
+    Claimed {
+        player: Player,
+        correct: bool,
+    },
+    ClaimDeclined {
+        player: Player,
+    },
     HandFinished {
         outcome: Outcome,
     },

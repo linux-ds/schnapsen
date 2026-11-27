@@ -338,7 +338,11 @@ impl Table {
                 break;
             };
             match ai::apply(&mut self.session, player, action) {
-                Ok(ai::ActionEvent::Played) => return,
+                Ok(
+                    ai::ActionEvent::Played
+                    | ai::ActionEvent::Claimed
+                    | ai::ActionEvent::ClaimContinued,
+                ) => return,
                 Ok(ai::ActionEvent::Announced(event)) => {
                     self.visible_announcement = Some(event);
                     return;
@@ -366,8 +370,18 @@ impl Table {
             .expect("a complete trick was scheduled");
     }
 
+    pub fn decide_claim(&mut self, claim: bool) {
+        let result = if claim {
+            self.session.claim(Player::Local)
+        } else {
+            self.session.continue_claim(Player::Local)
+        };
+        debug_assert!(result.is_ok());
+    }
+
     pub fn opponent_to_play(&self) -> bool {
-        self.session.hand().next_player() == Some(Player::Opponent)
+        self.session.claim_player() == Some(Player::Opponent)
+            || self.session.hand().next_player() == Some(Player::Opponent)
     }
 
     pub fn local_eyes(&self) -> u8 {

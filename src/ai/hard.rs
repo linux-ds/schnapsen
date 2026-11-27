@@ -395,7 +395,10 @@ impl Search<'_> {
         let view = self.context.view;
         let points = fixed_points.unwrap_or_else(|| {
             if let Some(closure) = self.context.closure {
-                let (success, failure) = view.closure_points(closure.opponent_at_closing);
+                let (success, failure) = view.closure_points_at_end(
+                    closure.opponent_at_closing,
+                    position.scores[closure.closer.other() as usize],
+                );
                 if closure.closer == winner {
                     success
                 } else {

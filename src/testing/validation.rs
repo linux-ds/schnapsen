@@ -4,10 +4,10 @@
 use std::fmt;
 
 use crate::core::{
-    game::{FinishReason, Phase, Player, Score},
+    game::{ClaimWindow, FinishReason, Phase, Player, Score},
     history::{PrivateEvent, PublicEvent},
     match_play::Match,
-    rules::{GameVariant, SchneiderRule},
+    rules::{GameVariant, RuleProfile, SchneiderRule},
 };
 
 use super::case::RecordedAction;
@@ -82,9 +82,10 @@ pub fn validate(state: &Match) -> Result<(), ValidationError> {
 // does not call the engine's finish or scoring functions.
 fn validate_schnapsen_result(state: &Match) -> Result<(), ValidationError> {
     let Some(result) = state.hand().result() else {
-        if PLAYERS
-            .iter()
-            .any(|&player| state.hand().eyes(player) >= 66)
+        if !state.variant().manual_claim()
+            && PLAYERS
+                .iter()
+                .any(|&player| state.hand().eyes(player) >= 66)
         {
             return Err(ValidationError("hand remained active after 66 eyes"));
         }
@@ -93,22 +94,30 @@ fn validate_schnapsen_result(state: &Match) -> Result<(), ValidationError> {
     let outcome = result.outcome;
     let winner = result.score(outcome.winner);
     let loser = result.score(outcome.winner.other());
+    let manual = state.variant().manual_claim();
     let expected = match (outcome.reason, outcome.closure) {
-        (FinishReason::Reached66, None) if winner.eyes >= 66 => reference_points(loser),
-        (FinishReason::LastTrick, None) if winner.eyes < 66 && loser.eyes < 66 => 1,
+        (FinishReason::Reached66, None) if !manual && winner.eyes >= 66 => reference_points(loser),
+        (FinishReason::Claimed66, None) if manual && winner.eyes >= 66 => reference_points(loser),
+        (FinishReason::FalseClaim, closure) if manual && loser.eyes < 66 => {
+            let normal = if winner.tricks == 0 { 3 } else { 2 };
+            closure.map_or(normal, |closure| {
+                normal.max(reference_closure_loss(closure.opponent_at_closing))
+            })
+        }
+        (FinishReason::LastTrick, None) if manual || (winner.eyes < 66 && loser.eyes < 66) => 1,
         (FinishReason::SuccessfulClosure, Some(closure))
             if closure.closer == outcome.winner && winner.eyes >= 66 =>
         {
-            reference_points(closure.opponent_at_closing)
+            let opponent = match state.variant() {
+                RuleProfile::TournamentSoft | RuleProfile::TournamentSharp => loser,
+                _ => closure.opponent_at_closing,
+            };
+            reference_points(opponent)
         }
         (FinishReason::FailedClosure, Some(closure))
-            if closure.closer != outcome.winner && loser.eyes < 66 =>
+            if closure.closer != outcome.winner && (manual || loser.eyes < 66) =>
         {
-            if closure.opponent_at_closing.tricks == 0 {
-                3
-            } else {
-                2
-            }
+            reference_closure_loss(closure.opponent_at_closing)
         }
         _ => {
             return Err(ValidationError(
@@ -122,6 +131,14 @@ fn validate_schnapsen_result(state: &Match) -> Result<(), ValidationError> {
         ));
     }
     Ok(())
+}
+
+fn reference_closure_loss(score: Score) -> u8 {
+    if score.tricks == 0 {
+        3
+    } else {
+        2
+    }
 }
 
 fn reference_points(score: Score) -> u8 {
@@ -170,7 +187,10 @@ pub fn validate_transition(
     if finish.is_some()
         && !matches!(
             action,
-            RecordedAction::Announce { .. } | RecordedAction::ResolveTrick
+            RecordedAction::Announce { .. }
+                | RecordedAction::ResolveTrick
+                | RecordedAction::Claim { .. }
+                | RecordedAction::ContinueClaim { .. }
         )
     {
         return Err(ValidationError("unexpected hand completion"));
@@ -214,10 +234,19 @@ pub fn validate_transition(
         ));
     }
 
+    validate_claim_transition(before, *action, after)?;
     let table_before = before.hand().view(Player::Local).played;
     let table_after = after.hand().view(Player::Local).played;
     match *action {
-        RecordedAction::ResolveTrick => validate_draws(before, after)?,
+        RecordedAction::ResolveTrick => validate_draws(before, after, true)?,
+        RecordedAction::ContinueClaim { .. }
+            if matches!(
+                before.hand().claim_window(),
+                Some(ClaimWindow::AfterTrick(_))
+            ) =>
+        {
+            validate_draws(before, after, false)?;
+        }
         RecordedAction::Exchange { player } => validate_exchange(before, player, after)?,
         RecordedAction::Close { player } => validate_closure(before, player, after)?,
         RecordedAction::ResetBummerls if before.hand() != after.hand() => {
@@ -244,12 +273,90 @@ pub fn validate_transition(
     Ok(())
 }
 
-fn validate_draws(before: &Match, after: &Match) -> Result<(), ValidationError> {
+fn validate_claim_transition(
+    before: &Match,
+    action: RecordedAction,
+    after: &Match,
+) -> Result<(), ValidationError> {
+    if !before.variant().manual_claim() {
+        if after.claim_player().is_some() {
+            return Err(ValidationError("automatic profile opened a claim window"));
+        }
+        return Ok(());
+    }
+    let first_event = after
+        .history()
+        .entries()
+        .get(before.history().entries().len())
+        .map(|entry| &entry.public);
+    let want = match action {
+        RecordedAction::Announce { player, .. } => Some(ClaimWindow::AfterMarriage(player)),
+        RecordedAction::ResolveTrick => Some(ClaimWindow::AfterTrick(after.hand().leader())),
+        RecordedAction::Claim { player } => {
+            let correct = before.hand().eyes(player) >= 66;
+            let winner = if correct { player } else { player.other() };
+            let valid_result = after.hand().result().is_some_and(|result| {
+                result.outcome.winner == winner
+                    && (result.outcome.reason == FinishReason::FalseClaim) != correct
+            });
+            if before.claim_player() != Some(player)
+                || !valid_result
+                || first_event != Some(&PublicEvent::Claimed { player, correct })
+                || before.hand().view(player).played != after.hand().view(player).played
+                || before.hand().view(player).hidden_talon_count
+                    != after.hand().view(player).hidden_talon_count
+                || PLAYERS
+                    .iter()
+                    .any(|&side| before.hand().view(side).hand != after.hand().view(side).hand)
+            {
+                return Err(ValidationError(
+                    "claim changed cards or awarded the wrong result",
+                ));
+            }
+            None
+        }
+        RecordedAction::ContinueClaim { player } => {
+            if before.claim_player() != Some(player)
+                || first_event != Some(&PublicEvent::ClaimDeclined { player })
+            {
+                return Err(ValidationError(
+                    "declining a claim was recorded incorrectly",
+                ));
+            }
+            if matches!(
+                before.hand().claim_window(),
+                Some(ClaimWindow::AfterMarriage(_))
+            ) && (after.hand().next_player() != Some(player.other())
+                || after.hand().view(player).played != before.hand().view(player).played
+                || after.hand().view(player).hidden_talon_count
+                    != before.hand().view(player).hidden_talon_count
+                || PLAYERS
+                    .iter()
+                    .any(|&side| before.hand().view(side).hand != after.hand().view(side).hand))
+            {
+                return Err(ValidationError(
+                    "declining a marriage claim did not preserve the lead",
+                ));
+            }
+            None
+        }
+        _ => before.hand().claim_window(),
+    };
+    if after.hand().claim_window() != want {
+        return Err(ValidationError(
+            "claim window does not match the preceding action",
+        ));
+    }
+    Ok(())
+}
+
+fn validate_draws(before: &Match, after: &Match, resolves: bool) -> Result<(), ValidationError> {
     let before_view = before.hand().view(Player::Local);
     let after_view = after.hand().view(Player::Local);
-    if before_view.played.len() != 2 || !after_view.played.is_empty() {
+    let expected_plays = usize::from(resolves) * 2;
+    if before_view.played.len() != expected_plays || !after_view.played.is_empty() {
         return Err(ValidationError(
-            "trick resolution did not consume exactly two cards",
+            "invalid cards on the table during trick resolution",
         ));
     }
     let events = after
@@ -257,21 +364,30 @@ fn validate_draws(before: &Match, after: &Match) -> Result<(), ValidationError> 
         .entries()
         .get(before.history().entries().len()..)
         .ok_or(ValidationError("trick resolution removed history"))?;
-    let Some(PublicEvent::TrickResolved { winner }) = events.first().map(|entry| &entry.public)
-    else {
-        return Err(ValidationError("missing trick resolution event"));
+    let winner = if resolves {
+        let Some(PublicEvent::TrickResolved { winner }) = events.first().map(|entry| &entry.public)
+        else {
+            return Err(ValidationError("missing trick resolution event"));
+        };
+        *winner
+    } else {
+        before
+            .claim_player()
+            .ok_or(ValidationError("missing winner before draw"))?
     };
     let draw = events
         .iter()
         .find(|entry| matches!(entry.public, PublicEvent::CardsDrawn { .. }));
-    let must_draw = before.hand().phase() == Phase::OpenTalon && after.hand().result().is_none();
+    let must_draw = before.hand().phase() == Phase::OpenTalon
+        && after.hand().result().is_none()
+        && after.claim_player().is_none();
     if must_draw != draw.is_some() {
         return Err(ValidationError(
             "draw does not match the talon and finish state",
         ));
     }
     if let Some(entry) = draw {
-        let order = [*winner, winner.other()];
+        let order = [winner, winner.other()];
         let (
             PublicEvent::CardsDrawn {
                 order: recorded,

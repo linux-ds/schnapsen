@@ -3,8 +3,8 @@ use serde::{Deserialize, Serialize};
 use super::{
     cards::{Card, Suit},
     game::{
-        Announcement, CloseError, Exchange, ExchangeError, EyeBreakdown, Game, MarriageError,
-        Outcome, Phase, PlayError, Player, ResolveError, Variant,
+        Announcement, ClaimError, CloseError, DrawnCards, Exchange, ExchangeError, EyeBreakdown,
+        Game, MarriageError, Outcome, Phase, PlayError, Player, ResolveError, Variant,
     },
     history::{History, PrivateEvent, PublicEvent},
     observation::Observation,
@@ -74,6 +74,10 @@ impl Match {
         initial_bummerls: [u32; 2],
         choose_index: impl FnMut(usize) -> usize,
     ) -> Self {
+        let mut config = config;
+        if !config.profile.allows_double_schneider() {
+            config.schneider = SchneiderRule::Single;
+        }
         let (hand, shuffle_choices) = Self::deal(forehand, config, choose_index);
         let mut session = Self {
             hand,
@@ -163,6 +167,8 @@ impl Match {
     pub fn validate_snapshot(&self) -> bool {
         let start = self.config.variant.start_points();
         if !self.history.check_header(self.config)
+            || (!self.config.profile.allows_double_schneider()
+                && self.config.schneider == SchneiderRule::Double)
             || self.hand.game_variant() != self.config.variant
             || self.hand.variant() != self.config.profile
             || !self
@@ -316,6 +322,33 @@ impl Match {
         Ok(())
     }
 
+    pub fn claim_player(&self) -> Option<Player> {
+        self.hand.claim_window().map(|window| window.player())
+    }
+
+    pub fn claim(&mut self, player: Player) -> Result<(), ClaimError> {
+        self.hand.claim(player)?;
+        let result = self.hand.result().expect("a claim ends the hand");
+        self.history.push(
+            PublicEvent::Claimed {
+                player,
+                correct: result.outcome.winner == player,
+            },
+            None,
+        );
+        self.account_finished_hand();
+        Ok(())
+    }
+
+    pub fn continue_claim(&mut self, player: Player) -> Result<(), ClaimError> {
+        let draw = self.hand.continue_claim_with_draw(player)?;
+        self.history
+            .push(PublicEvent::ClaimDeclined { player }, None);
+        self.record_draw(draw);
+        self.account_finished_hand();
+        Ok(())
+    }
+
     pub fn resolve_trick(&mut self) -> Result<Player, ResolveError> {
         let previous =
             [Player::Local, Player::Opponent].map(|player| self.hand.eye_breakdown(player));
@@ -323,6 +356,12 @@ impl Match {
         self.history
             .push(PublicEvent::TrickResolved { winner }, None);
         self.record_eyes(winner, previous[winner as usize]);
+        self.record_draw(draw);
+        self.account_finished_hand();
+        Ok(winner)
+    }
+
+    fn record_draw(&mut self, draw: Option<DrawnCards>) {
         if let Some(draw) = draw {
             self.history.push(
                 PublicEvent::CardsDrawn {
@@ -335,8 +374,6 @@ impl Match {
                 self.history.push(PublicEvent::TalonExhausted, None);
             }
         }
-        self.account_finished_hand();
-        Ok(winner)
     }
 
     fn record_eyes(&mut self, player: Player, previous: EyeBreakdown) {

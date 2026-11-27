@@ -43,6 +43,12 @@ pub enum RecordedAction {
     Close {
         player: Player,
     },
+    Claim {
+        player: Player,
+    },
+    ContinueClaim {
+        player: Player,
+    },
     ResolveTrick,
     NextHand,
     ResetBummerls,
@@ -55,6 +61,8 @@ impl RecordedAction {
             Action::Announce { suit, card } => Self::Announce { player, suit, card },
             Action::Exchange => Self::Exchange { player },
             Action::Close => Self::Close { player },
+            Action::Claim => Self::Claim { player },
+            Action::ContinueClaim => Self::ContinueClaim { player },
         }
     }
 
@@ -77,6 +85,10 @@ impl RecordedAction {
                 .map_err(|error| format!("{error:?}")),
             Self::Close { player } => state
                 .close_talon(player)
+                .map_err(|error| format!("{error:?}")),
+            Self::Claim { player } => state.claim(player).map_err(|error| format!("{error:?}")),
+            Self::ContinueClaim { player } => state
+                .continue_claim(player)
                 .map_err(|error| format!("{error:?}")),
             Self::ResolveTrick => state
                 .resolve_trick()
@@ -303,6 +315,13 @@ fn validate_profile(config: crate::core::rules::MatchConfig) -> Result<(), Repla
     if !config.variant.profiles().contains(&config.profile) {
         return Err(ReplayError::initial("incompatible variant and profile"));
     }
+    if config.schneider == crate::core::rules::SchneiderRule::Double
+        && !config.profile.allows_double_schneider()
+    {
+        return Err(ReplayError::initial(
+            "profile requires single Schneider scoring",
+        ));
+    }
     Ok(())
 }
 
@@ -415,6 +434,8 @@ pub fn replay_history(history: &History) -> Result<Match, ReplayError> {
                 player: closure.closer,
             },
             PublicEvent::TrickResolved { .. } => RecordedAction::ResolveTrick,
+            PublicEvent::Claimed { player, .. } => RecordedAction::Claim { player },
+            PublicEvent::ClaimDeclined { player } => RecordedAction::ContinueClaim { player },
             PublicEvent::HandStarted { .. } => RecordedAction::NextHand,
             PublicEvent::BummerlsReset => RecordedAction::ResetBummerls,
             _ => {
@@ -501,6 +522,51 @@ mod tests {
             .unwrap_err()
             .message
             .contains("unsupported test-case version"));
+    }
+
+    #[test]
+    fn manual_claim_and_decline_replay_without_drawing_twice() {
+        use crate::core::{game::FinishReason, rules::RuleProfile};
+
+        let setup = MatchSetup {
+            profile: RuleProfile::ClassicSoft,
+            ..MatchSetup::default()
+        };
+        let mut state = Match::with_config(setup.forehand, setup.engine_config(false), shuffle(17));
+        let mut case = TestCase::new(CaseStart::Seed { setup, seed: 17 });
+        play_trick(&mut state, |action| case.actions.push(action));
+        let winner = state.claim_player().unwrap();
+        assert_eq!(state.hand().view(winner).hidden_talon_count, 9);
+        assert_eq!(state.hand().view(winner).hand.len(), 4);
+        assert!(state.hand().eyes(winner) <= 22);
+        let initial = state.clone();
+        for action in [
+            RecordedAction::Claim { player: winner },
+            RecordedAction::ContinueClaim { player: winner },
+        ] {
+            let mut state = initial.clone();
+            action.apply(&mut state, &mut shuffle(99)).unwrap();
+            validate_transition(&initial, &action, &state).unwrap();
+            let mut case = case.clone();
+            case.actions.push(action);
+            case.expected_history = Some(state.history().clone());
+            case.expected_end = Some(Box::new(state.clone()));
+            assert_eq!(case.replay().unwrap(), state);
+            assert_eq!(replay_history(state.history()).unwrap(), state);
+
+            if matches!(action, RecordedAction::Claim { .. }) {
+                let outcome = state.hand().result().unwrap().outcome;
+                assert_eq!(outcome.reason, FinishReason::FalseClaim);
+                assert_eq!(outcome.winner, winner.other());
+                assert_eq!(outcome.game_points, 3);
+                assert_eq!(state.hand().view(winner).hidden_talon_count, 9);
+            } else {
+                assert_eq!(state.hand().view(winner).hidden_talon_count, 7);
+                assert_eq!(state.hand().view(winner).hand.len(), 5);
+                assert_eq!(state.hand().next_player(), Some(winner));
+                assert!(state.continue_claim(winner).is_err());
+            }
+        }
     }
 
     #[test]

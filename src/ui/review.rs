@@ -33,6 +33,61 @@ pub(super) fn layer(
         }
     });
     scrim.add_controller(click);
+    let scroll = cards(tricks, theme);
+    let close = gtk::Button::with_label(&tr!("Close"));
+    close.add_css_class("suggested-action");
+    let header = adw::HeaderBar::builder()
+        .show_start_title_buttons(false)
+        .show_end_title_buttons(false)
+        .title_widget(&adw::WindowTitle::new(&title, ""))
+        .build();
+    header.pack_end(&close);
+    let content = adw::ToolbarView::new();
+    content.add_top_bar(&header);
+    content.set_content(Some(&scroll));
+    content.add_css_class("card");
+    content.set_halign(gtk::Align::Center);
+    content.set_valign(gtk::Align::Center);
+    content.set_overflow(gtk::Overflow::Hidden);
+    content.set_margin_start(12);
+    content.set_margin_end(12);
+    content.set_margin_top(12);
+    content.set_margin_bottom(12);
+    layer.add_overlay(&content);
+    let close_button = dismiss.clone();
+    close.connect_clicked(move |_| close_button());
+    let keys = gtk::EventControllerKey::new();
+    keys.set_propagation_phase(gtk::PropagationPhase::Capture);
+    keys.connect_key_pressed(move |_, key, _, _| {
+        if key == gdk::Key::Escape {
+            dismiss();
+            glib::Propagation::Stop
+        } else {
+            glib::Propagation::Proceed
+        }
+    });
+    layer.add_controller(keys);
+    (layer, close)
+}
+
+pub(super) fn dialog(
+    title: &str,
+    tricks: Vec<ReviewedTrick>,
+    theme: &'static FrontTheme,
+    parent: &impl IsA<gtk::Widget>,
+) {
+    let view = adw::ToolbarView::new();
+    view.add_top_bar(&adw::HeaderBar::new());
+    view.set_content(Some(&cards(tricks, theme)));
+    let dialog = adw::Dialog::builder()
+        .title(title)
+        .content_width(490)
+        .child(&view)
+        .build();
+    dialog.present(Some(parent));
+}
+
+fn cards(tricks: Vec<ReviewedTrick>, theme: &'static FrontTheme) -> gtk::ScrolledWindow {
     let flow = gtk::FlowBox::builder()
         .selection_mode(gtk::SelectionMode::None)
         .min_children_per_line(1)
@@ -74,7 +129,7 @@ pub(super) fn layer(
             .build();
         flow.insert(&child, -1);
     }
-    let scroll = gtk::ScrolledWindow::builder()
+    gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Never)
         .min_content_width(460)
         .max_content_width(690)
@@ -84,39 +139,5 @@ pub(super) fn layer(
         .propagate_natural_height(true)
         .vexpand(true)
         .child(&flow)
-        .build();
-    let close = gtk::Button::with_label(&tr!("Close"));
-    close.add_css_class("suggested-action");
-    let header = adw::HeaderBar::builder()
-        .show_start_title_buttons(false)
-        .show_end_title_buttons(false)
-        .title_widget(&adw::WindowTitle::new(&title, ""))
-        .build();
-    header.pack_end(&close);
-    let content = adw::ToolbarView::new();
-    content.add_top_bar(&header);
-    content.set_content(Some(&scroll));
-    content.add_css_class("card");
-    content.set_halign(gtk::Align::Center);
-    content.set_valign(gtk::Align::Center);
-    content.set_overflow(gtk::Overflow::Hidden);
-    content.set_margin_start(12);
-    content.set_margin_end(12);
-    content.set_margin_top(12);
-    content.set_margin_bottom(12);
-    layer.add_overlay(&content);
-    let close_button = dismiss.clone();
-    close.connect_clicked(move |_| close_button());
-    let keys = gtk::EventControllerKey::new();
-    keys.set_propagation_phase(gtk::PropagationPhase::Capture);
-    keys.connect_key_pressed(move |_, key, _, _| {
-        if key == gdk::Key::Escape {
-            dismiss();
-            glib::Propagation::Stop
-        } else {
-            glib::Propagation::Proceed
-        }
-    });
-    layer.add_controller(keys);
-    (layer, close)
+        .build()
 }

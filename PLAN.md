@@ -160,7 +160,7 @@ Die Tischdarstellung und die Hausregeln für Stichdarstellung und automatischen 
 
 ## Nächster Schritt
 
-Auftrag 27 behandelt weitere regionale Regelprofile und kann die Testmatrix und Replay-Fälle aus Auftrag 26 nutzen. Die offenen manuellen Eingabeprüfungen bleiben Teil der Abnahme.
+Die Roadmap sieht als Nächstes Auftrag 28 zu weiteren Spielvarianten vor. Die offenen manuellen Eingabeprüfungen bleiben Teil der Abnahme.
 
 ## Build in GNOME Builder
 
@@ -205,6 +205,26 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-27 – Auftrag 27
+
+- Die Quellen- und Entscheidungsmatrix in [RULE_AUDIT.md](RULE_AUDIT.md#profilmatrix-für-auftrag-27) dokumentiert sechs Profile. Hausregeln – Weich bleibt Standard. Klassische und Turnierprofile bieten manuelle Ausmeldung vor dem Nachziehen beziehungsweise vor der Antwort auf eine Ansage. Unter 66 wirksamen Augen gewinnt der Gegner zwei oder drei Spielpunkte.
+- Die Engine bewertet erfolgreiche Sperren klassisch nach dem gegnerischen Stand beim Zudrehen und im Turnierprofil nach dem Endstand. Die Turnierprofile zählen Schneider einfach. Laufende Augen und Lernhilfen sind in den manuellen Profilen gesperrt. Nach Handende lässt sich der freigegebene Stichstapel aus der Ergebnisansicht öffnen.
+- Partieauswahl nach Regelgruppe und Spielweise, deutsche und englische Texte, KI-Ausmeldung in allen drei Stufen sowie Spielstand Version 4 ergänzt. Migrationen von Version 1 bis 3 behalten die Hausregeln und sichern Originaldateien. Aufgezeichnete Ausmeldungen und Verzicht sind in `schnapsen_lab` nachspielbar. Validierung prüft auch ausstehendes Ziehen, Abschlussgründe und die jeweilige Zudrehwertung.
+- Die 60 validierten Gruppen über Seeds 1–224 ergaben 26.880 vollständige Partien und 163.173 Hände. Gespiegelte Strategien und jeweils zulässige Schneiderwertungen waren enthalten. In 141,29 Sekunden traten 0 ungültige Aktionen und 0 inkonsistente Zustände auf. Die KI meldete 93.457-mal korrekt aus, ohne falsche oder verpasste Ausmeldungen.
+
+| Profil | Partien | Hände | Mittel gegen Einfach | Schwer gegen Mittel |
+|---|---:|---:|---:|---:|
+| Hausregeln – Weich | 5.376 | 32.578 | 876:20 | 718:178 |
+| Hausregeln – Scharf | 5.376 | 32.753 | 880:16 | 716:180 |
+| Klassisch – Weich | 5.376 | 32.246 | 868:28 | 718:178 |
+| Klassisch – Scharf | 5.376 | 32.753 | 880:16 | 716:180 |
+| Turnier – Weich | 2.688 | 16.303 | 434:14 | 354:94 |
+| Turnier – Scharf | 2.688 | 16.540 | 440:8 | 357:91 |
+
+- Der separate Hausregellauf ergab 10.752 Partien und 65.331 Hände in 58,07 Sekunden. Alle 24 Gruppen stimmen in den gemeinsamen fachlichen JSON-Feldern mit Auftrag 26 überein. Die validierte Matrix erforderte keine Regelkorrektur.
+- Formatierung, Cargo-Check, 119 Tests, Clippy und Flatpak-Release-Build einschließlich Tests waren im GNOME SDK 51 erfolgreich. Ohne GTK bestanden 78 Tests und Clippy. Beide gettext-Kataloge wurden geprüft.
+- Der Turnierfall mit Seed 19 wurde exportiert und mit 74 Aktionen und drei Händen erfolgreich nachgespielt. Unter Wayland wurden gespeicherte Ausmeldefenster aller vier neuen Profile auf Deutsch und Englisch fortgesetzt. Richtige und falsche Meldungen wurden über die GTK-Schaltfläche ausgelöst und anschließend mit `validate-save` geprüft. Die manuelle Touch- und HiDPI-Abnahme bleibt offen.
 
 ### 2026-11-26 – Auftrag 26d
 

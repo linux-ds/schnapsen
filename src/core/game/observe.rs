@@ -47,6 +47,7 @@ impl Game {
             legal_marriages: self.legal_marriages(player),
             exchange: self.trump_exchange(player).ok(),
             can_close: self.check_close_talon(player).is_ok(),
+            claim_player: self.claim_window().map(|window| window.player()),
         }
     }
 
@@ -166,10 +167,10 @@ impl Game {
                 // so a physical deck permits at most one exchange per hand.
                 let index = event.completed_tricks;
                 let exchange = event.exchange;
-                let rules = self.rules();
-                if index < rules.minimum_completed_tricks_for_talon_action
+                let rule = self.rules().exchange;
+                if index < rule.after_tricks
                     || index > drawn
-                    || self.initial_talon_count() - 2 * index < rules.minimum_talon_cards_for_action
+                    || self.initial_talon_count() - 2 * index < rule.minimum_cards
                 {
                     return false;
                 }

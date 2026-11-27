@@ -27,10 +27,18 @@ pub(super) struct TableControls {
     pub king: glib::WeakRef<gtk::Button>,
     pub ober: glib::WeakRef<gtk::Button>,
     pub announcement: glib::WeakRef<gtk::Label>,
+    pub claim: glib::WeakRef<gtk::Button>,
+    pub continue_claim: glib::WeakRef<gtk::Button>,
 }
 
 impl TableControls {
     fn update(&self, table: &Table) {
+        let can_claim = table.session().claim_player() == Some(Player::Local);
+        for button in [&self.claim, &self.continue_claim] {
+            if let Some(button) = button.upgrade() {
+                button.set_visible(can_claim);
+            }
+        }
         if let Some(play) = self.play.upgrade() {
             play.set_visible(table.can_play_selected());
         }
@@ -394,7 +402,7 @@ impl TurnTimers {
             Err(error) => {
                 self.show_feedback(&match error {
                     TrickReviewError::Forbidden => {
-                        tr!("Tricks stay face down in Sharp Schnapsen.")
+                        tr!("These tricks cannot be reviewed under the active rules.")
                     }
                     TrickReviewError::Empty => tr!("This pile has no tricks yet."),
                 });
@@ -529,7 +537,7 @@ impl TurnTimers {
         self.controls.update(&table);
         self.update_effects((table.announcement(), table.exchange()));
         if let Some(hand) = table.result() {
-            let (dialog, advance) = result::dialog(hand, session);
+            let (dialog, advance) = result::dialog(hand, session, table.design().front);
             drop(table);
             let weak = Rc::downgrade(self);
             let dialog_ref = dialog.downgrade();
@@ -691,6 +699,8 @@ mod tests {
                 king: glib::WeakRef::new(),
                 ober: glib::WeakRef::new(),
                 announcement: glib::WeakRef::new(),
+                claim: glib::WeakRef::new(),
+                continue_claim: glib::WeakRef::new(),
             },
             shown_effects: Cell::new((None, None)),
             effects_timer: RefCell::new(None),

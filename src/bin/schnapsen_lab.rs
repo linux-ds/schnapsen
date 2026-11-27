@@ -34,13 +34,15 @@ schnapsen_lab from-save SAVE.json --output CASE.json [--seed N]
 
 Simulation: --seed N (first seed; default 1), --count N (seeds; default 1)
              --variant austrian_schnapsen
-             --profile soft|sharp, --schneider double|single
+             --profile soft|sharp|classic_soft|classic_sharp|tournament_soft|tournament_sharp
+             --schneider double|single (where permitted)
              --local easy|medium|hard, --opponent easy|medium|hard
              --forehand local|opponent, --mirror, --validate
              --output REPORT.json, --failure PREFIX
 Matrix:      --seed N, --count N, --variant ID, --forehand PLAYER,
              --output REPORT.json, --failure PREFIX
-             All profiles, both scoring settings and all pairings.
+             All profiles, permitted scoring settings and all pairings.
+             --house-only restricts the matrix to soft and sharp.
              Seats are mirrored and every action is validated.
 Record:      Same setup options as simulate, plus --validate and --failure.
              --mirror records the swapped seating.
@@ -52,6 +54,7 @@ struct Options {
     values: BTreeMap<String, String>,
     mirror: bool,
     validate: bool,
+    house_only: bool,
 }
 
 impl Options {
@@ -62,6 +65,7 @@ impl Options {
             let flag = match name.as_str() {
                 "--mirror" => &mut options.mirror,
                 "--validate" => &mut options.validate,
+                "--house-only" => &mut options.house_only,
                 _ if name.starts_with("--") => {
                     let value = args
                         .next_if(|value| !value.starts_with("--"))
@@ -101,8 +105,8 @@ impl Options {
         if let Some(key) = self.values.keys().next() {
             return Err(format!("unknown option {key}"));
         }
-        if self.mirror || self.validate {
-            return Err("unexpected --mirror or --validate".into());
+        if self.mirror || self.validate || self.house_only {
+            return Err("unexpected boolean option".into());
         }
         Ok(())
     }
@@ -137,10 +141,16 @@ fn game_setup(options: &mut Options) -> Result<MatchSetup, String> {
     if !variant.profiles().contains(&profile) {
         return Err("selected profile does not support the variant".into());
     }
+    let default_schneider = if profile.allows_double_schneider() {
+        SchneiderRule::Double
+    } else {
+        SchneiderRule::Single
+    };
+    let schneider = options.id("--schneider", default_schneider)?;
     Ok(MatchSetup {
         variant,
         profile,
-        schneider: options.id("--schneider", SchneiderRule::Double)?,
+        schneider,
         strategies: [
             options.id("--local", Difficulty::Easy)?,
             options.id("--opponent", Difficulty::Hard)?,
@@ -220,8 +230,15 @@ fn simulate(command: &str, mut options: Options) -> Result<(), String> {
         let variant = options.id("--variant", GameVariant::AustrianSchnapsen)?;
         let forehand = options.id("--forehand", Player::Local)?;
         let mut setups = Vec::new();
+        let house_only = std::mem::take(&mut options.house_only);
         for &profile in variant.profiles() {
+            if house_only && profile.manual_claim() {
+                continue;
+            }
             for schneider in [SchneiderRule::Double, SchneiderRule::Single] {
+                if schneider == SchneiderRule::Double && !profile.allows_double_schneider() {
+                    continue;
+                }
                 for (local, opponent) in simulation::PAIRINGS {
                     setups.push(MatchSetup {
                         variant,

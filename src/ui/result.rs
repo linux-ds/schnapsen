@@ -4,7 +4,13 @@ use schnapsen::core::{
     match_play::Match,
 };
 
-pub(super) fn dialog(result: HandResult, session: &Match) -> (adw::Dialog, gtk::Button) {
+use super::{design::FrontTheme, review};
+
+pub(super) fn dialog(
+    result: HandResult,
+    session: &Match,
+    theme: &'static FrontTheme,
+) -> (adw::Dialog, gtk::Button) {
     let partie = session.result();
     let title = match (result.outcome.winner, partie.is_some()) {
         (Player::Local, false) => tr!("You won!"),
@@ -26,6 +32,16 @@ pub(super) fn dialog(result: HandResult, session: &Match) -> (adw::Dialog, gtk::
     let body = gtk::Box::new(gtk::Orientation::Vertical, 12);
     body.append(&label(&title, "title-1"));
     body.append(&label(&reason(result.outcome.reason), "dim-label"));
+
+    let profile = session.config().profile;
+    if profile.manual_claim() && result.outcome.reason == FinishReason::SuccessfulClosure {
+        let basis = if profile.scores_closure_at_end() {
+            tr!("Stock closing scored using the opponent’s points at the end of the hand.")
+        } else {
+            tr!("Stock closing scored using the opponent’s points at the time of closing.")
+        };
+        body.append(&label(&basis, "dim-label"));
+    }
 
     let eyes = gtk::Box::new(gtk::Orientation::Horizontal, 30);
     eyes.set_halign(gtk::Align::Center);
@@ -72,6 +88,27 @@ pub(super) fn dialog(result: HandResult, session: &Match) -> (adw::Dialog, gtk::
         ));
     }
 
+    if profile.allows_finished_trick_review() {
+        let reviews = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        reviews.set_halign(gtk::Align::Center);
+        for (owner, caption) in [
+            (Player::Local, tr!("Your tricks")),
+            (Player::Opponent, tr!("Opponent’s tricks")),
+        ] {
+            if let Ok(tricks) = session.hand().review_tricks(owner) {
+                let button = gtk::Button::with_label(&caption);
+                button.set_height_request(44);
+                button.connect_clicked(move |button| {
+                    review::dialog(&caption, tricks.clone(), theme, button)
+                });
+                reviews.append(&button);
+            }
+        }
+        if reviews.first_child().is_some() {
+            body.append(&reviews);
+        }
+    }
+
     let scroll = gtk::ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Never)
         .propagate_natural_height(true)
@@ -112,6 +149,8 @@ fn statistic(caption: &str, value: u8) -> gtk::Box {
 
 fn reason(reason: FinishReason) -> String {
     match reason {
+        FinishReason::Claimed66 => tr!("Correctly claimed 66 card points"),
+        FinishReason::FalseClaim => tr!("False claim of 66 card points"),
         FinishReason::Reached66 => tr!("Reached 66 card points"),
         FinishReason::LastTrick => tr!("Decided by the last trick"),
         FinishReason::SuccessfulClosure => tr!("Closing the stock succeeded"),
@@ -121,8 +160,8 @@ fn reason(reason: FinishReason) -> String {
 
 fn grade(outcome: Outcome) -> Option<String> {
     match (outcome.reason, outcome.game_points) {
-        (FinishReason::Reached66, 2) => Some(tr!("Schneider")),
-        (FinishReason::Reached66, 3) => Some(tr!("Schwarz")),
+        (FinishReason::Reached66 | FinishReason::Claimed66, 2) => Some(tr!("Schneider")),
+        (FinishReason::Reached66 | FinishReason::Claimed66, 3) => Some(tr!("Schwarz")),
         (FinishReason::SuccessfulClosure, 2) => Some(tr!("Schneider after closing the stock")),
         (FinishReason::SuccessfulClosure, 3) => Some(tr!("Schwarz after closing the stock")),
         _ => None,
