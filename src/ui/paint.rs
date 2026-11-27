@@ -284,9 +284,13 @@ mod tests {
                     let cr = Context::new(&surface).unwrap();
                     trump(&cr, width.into(), height.into(), suit, theme).unwrap();
                     drop(cr);
+                    let (x, y, radius) = trump_indicator(width.into(), height.into());
+                    if theme.id == "schnapsen" {
+                        assert_test_symbol_colors(&mut surface, suit, x, y, radius);
+                        continue;
+                    }
                     let stride = surface.stride() as usize;
                     let data = surface.data().unwrap();
-                    let (x, y, radius) = trump_indicator(width.into(), height.into());
                     let (r, g, b) = theme.suit(suit).1;
                     let channels = [r, g, b].map(|channel| (channel * 255.0).round() as u32);
                     assert!(((y - radius) as usize..(y + radius) as usize).any(|row| {
@@ -301,6 +305,98 @@ mod tests {
                         })
                     }));
                 }
+            }
+        }
+    }
+
+    fn assert_test_symbol_colors(surface: &mut ImageSurface, suit: Suit, x: f64, y: f64, r: f64) {
+        let stride = surface.stride() as usize;
+        let data = surface.data().unwrap();
+        let mut first = false;
+        let mut second = false;
+        let mut bell_band = false;
+        for row in (y - r) as usize..(y + r).ceil() as usize {
+            for col in (x - r) as usize..(x + r).ceil() as usize {
+                let start = row * stride + col * 4;
+                let [a, red, green, blue] =
+                    u32::from_ne_bytes(data[start..start + 4].try_into().unwrap()).to_be_bytes();
+                if a != 255 {
+                    continue;
+                }
+                let is_green = i16::from(green) > i16::from(red) + 20 && green > blue;
+                match suit {
+                    Suit::Hearts => {
+                        first |= red > 200 && green < 95 && blue < 90;
+                        second |= (140..200).contains(&red) && green < 55 && blue < 80;
+                    }
+                    Suit::Bells => {
+                        first |= red > 165 && green > 115 && blue < 100;
+                        second |= is_green;
+                        bell_band |= red > 140 && green < 100 && blue < 80;
+                    }
+                    Suit::Acorns => {
+                        first |= (row as f64) < y && red > 165 && green > 115 && blue < 100;
+                        second |= (row as f64) >= y && is_green;
+                    }
+                    Suit::Leaves => {
+                        first |= green > 142 && red > 115 && blue < 100;
+                        second |= is_green;
+                    }
+                }
+            }
+        }
+        assert!(
+            first && second,
+            "Missing one of the two main colors for {suit:?}"
+        );
+        assert!(suit != Suit::Bells || bell_band, "Missing red bell band");
+    }
+
+    #[test]
+    fn schnapsen_test_ten_repeats_multicolored_symbols_on_small_cards() {
+        use schnapsen::core::cards::Rank;
+
+        let design = CardDesign::from_ids("schnapsen", "legacy");
+        let width = 56;
+        let scale = f64::from(width);
+        let height = (scale * ASPECT).ceil() as i32;
+        for suit in [Suit::Hearts, Suit::Bells, Suit::Leaves, Suit::Acorns] {
+            let mut surface = ImageSurface::create(Format::ARgb32, width, height).unwrap();
+            let cr = Context::new(&surface).unwrap();
+            cr.scale(scale, scale);
+            let face = Face::Front(Card {
+                suit,
+                rank: Rank::Ten,
+            });
+            card(&cr, face, false, false, false, design).unwrap();
+            drop(cr);
+            for (x, y) in [(0.33, 0.46), (0.50, ASPECT / 2.0), (0.67, 0.94)] {
+                assert_test_symbol_colors(&mut surface, suit, x * scale, y * scale, 0.12 * scale);
+            }
+        }
+    }
+
+    #[test]
+    fn schnapsen_test_front_renders_twenty_distinct_cards() {
+        use schnapsen::core::cards::full_deck;
+        use std::collections::HashSet;
+
+        let design = CardDesign::from_ids("schnapsen", "legacy");
+        assert_eq!(design.front.id, "schnapsen");
+        for width in [32, 88] {
+            let height = (f64::from(width) * ASPECT).ceil() as i32;
+            let mut fronts = HashSet::new();
+            for identity in full_deck() {
+                let mut surface = ImageSurface::create(Format::ARgb32, width, height).unwrap();
+                let cr = Context::new(&surface).unwrap();
+                let scale = f64::from(width);
+                cr.scale(scale, scale);
+                card(&cr, Face::Front(identity), false, false, false, design).unwrap();
+                drop(cr);
+                assert!(
+                    fronts.insert(surface.data().unwrap().to_vec()),
+                    "{identity:?}"
+                );
             }
         }
     }

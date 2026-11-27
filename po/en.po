@@ -792,3 +792,7 @@ msgstr "This card is no longer in your hand."
 #, rust-format
 msgid "The hand is already over."
 msgstr "The hand is already over."
+
+#: src/ui/design/fronts/schnapsen.rs:9
+msgid "Double German (Test)"
+msgstr "Double German (Test)"

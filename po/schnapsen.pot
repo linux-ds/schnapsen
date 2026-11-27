@@ -793,3 +793,7 @@ msgstr ""
 #, rust-format
 msgid "The hand is already over."
 msgstr ""
+
+#: src/ui/design/fronts/schnapsen.rs:9
+msgid "Double German (Test)"
+msgstr ""

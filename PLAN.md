@@ -34,7 +34,7 @@
 - Klick oder Tippen auf den verdeckten Stapel und **Z** starten die Bestätigung zum Zudrehen. Die bisher offene Trumpfkarte erscheint danach verdeckt quer auf dem Stapel.
 - `src/ui/turn.rs` steuert Computerzug und Stichauflösung mit GLib-Timern. Der Computer beginnt auch als Vorhand. Beim Hand- oder Partiewechsel werden alte Timer entfernt.
 - `src/ui/review.rs` zeigt die erlaubten Stichpaare in einem abgedunkelten GTK-Overlay mit anpassbarer Spaltenzahl und vertikalem Scrollen. Die Kartenzeichnung stammt vom Kartentisch. Klick oder Tippen außerhalb, Escape und „Schließen“ beenden die Übersicht mit Fokusrückgabe.
-- `src/ui/paint.rs` zeichnet Kartenfronten, einheitliche Rückseiten, Rahmen und Schatten mit Cairo. Ausgewählte Karten erhalten einen goldenen Rand, der sichtbare Tastaturfokus eine gestrichelte Innenlinie.
+- `src/ui/paint.rs` zeichnet Kartenfronten, einheitliche Rückseiten, Rahmen und Schatten mit Cairo. Ausgewählte Karten erhalten einen goldenen Rand, der sichtbare Tastaturfokus eine gestrichelte Innenlinie. Doppeldeutsch (Test) ist als zusätzliche Front in den Einstellungen auswählbar.
 - Die abschaltbare **Spielhilfe** markiert die legalen Karten. Über den Stichstapeln stehen die wirksamen eigenen Augen als Zahl und optional die gegnerischen Augen über eine separate Lernhilfe. Links stehen die Restpunkte und Bummerl beider Seiten sowie die Zahl abgeschlossener Hände. Kontextaktionen liegen in der Tischmitte. `src/ui/result.rs` zeigt den Handabschluss mit Augen und Spielpunkten. Beim Partieende kommen Bummerl und Reststand hinzu. Ausschließlich **Nächste Hand** oder **Neue Partie** schließen den Ergebnisdialog und setzen das Spiel fort.
 - Das Menü **Partie** zeigt österreichisches Zweierschnapsen und konfiguriert Regelprofil und Schneiderwertung für die nächste Partie. Die erste Partie startet weich mit doppelter Schneiderwertung. Bummerl lassen sich über eine getrennte Aktion mit Bestätigung zurücksetzen.
 - `src/lib.rs` exportiert `core::cards` mit Kartenidentität, Augenwert und vollständigem 20er-Kartensatz. Das Modul verwendet nur die Rust-Standardbibliothek.
@@ -156,11 +156,11 @@ Die funktionale Spielentwicklung hat Vorrang. Die vorhandene Darstellung reicht 
 
 ## In Arbeit
 
-Die Tischdarstellung und die Hausregeln für Stichdarstellung und automatischen Abschluss sind in [SPEC.md](SPEC.md) dokumentiert. Physischer Touch, HiDPI, Klick und Tippen auf beide Stichstapel sowie Scrollen bleiben zur manuellen Abnahme offen.
+Die Tischdarstellung und die Hausregeln für Stichdarstellung und automatischen Abschluss sind in [SPEC.md](SPEC.md) dokumentiert. Physischer Touch, HiDPI, Klick und Tippen auf beide Stichstapel sowie Scrollen bleiben zur manuellen Abnahme offen. Die Lesbarkeit der neuen Fronten am Tisch ist noch praktisch zu beurteilen.
 
 ## Nächster Schritt
 
-Die Roadmap sieht als Nächstes Auftrag 28 zu weiteren Spielvarianten vor. Die offenen manuellen Eingabeprüfungen bleiben Teil der Abnahme.
+Die Roadmap sieht als Nächstes Auftrag 28 zu weiteren Spielvarianten vor. Die offenen manuellen Eingabeprüfungen und die Sichtprüfung der Testfronten bei überlappenden Handkarten bleiben Teil der Abnahme.
 
 ## Build in GNOME Builder
 
@@ -205,6 +205,11 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-27 – Doppeldeutsches Testthema
+
+- Zusätzliche Cairo-Front mit A, K, O, U und X, neu gezeichneten Farbsymbolen, Mehrfachanordnung und Rangmedaillons für die Bildkarten. Die SVG-Referenzen dienten der Sichtung.
+- Acht gezielte Theme- und Renderer-Tests im GNOME SDK 51 bestanden. Der neue Test unterscheidet alle 20 Fronten bei 32 und 88 Pixel Breite. Beide Übersetzungen mit `msgfmt --check` geprüft.
 
 ### 2026-11-27 – Auftrag 27a
 

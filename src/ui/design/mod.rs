@@ -16,7 +16,7 @@ pub(crate) struct FrontTheme {
     label: &'static str,
     rank: fn(Rank) -> (&'static str, &'static str),
     suit: fn(Suit) -> (&'static str, Color),
-    symbol: fn(&Context, Suit),
+    symbol: fn(&Context, Suit) -> Result<(), Error>,
     render: fn(&Context, Card, &Self) -> Result<(), Error>,
 }
 
@@ -67,9 +67,9 @@ impl FrontTheme {
         let (r, g, b) = self.suit(suit).1;
         cr.set_source_rgb(r, g, b);
         cr.new_path();
-        (self.symbol)(cr, suit);
-        cr.fill()?;
-        cr.restore()
+        let result = (self.symbol)(cr, suit);
+        let restored = cr.restore();
+        result.and(restored)
     }
 }
 
@@ -91,7 +91,11 @@ impl CardBack {
     }
 }
 
-pub(crate) const FRONTS: &[FrontTheme] = &[fronts::DOUBLE_GERMAN, fronts::FRENCH];
+pub(crate) const FRONTS: &[FrontTheme] = &[
+    fronts::DOUBLE_GERMAN,
+    fronts::FRENCH,
+    fronts::schnapsen::THEME,
+];
 pub(crate) const BACKS: &[CardBack] = &[
     backs::LEGACY,
     backs::CLASSIC,

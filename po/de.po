@@ -800,3 +800,7 @@ msgstr "Die Hand ist bereits beendet."
 #, rust-format
 #~ msgid "Tricks stay face down in Sharp Schnapsen."
 #~ msgstr "Bei scharfem Schnapsen bleiben die Stiche verdeckt."
+
+#: src/ui/design/fronts/schnapsen.rs:9
+msgid "Double German (Test)"
+msgstr "Doppeldeutsch (Test)"

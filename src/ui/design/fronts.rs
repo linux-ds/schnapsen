@@ -1,7 +1,9 @@
 use super::{Color, FrontTheme};
+use ::schnapsen::core::cards::{Card, Rank, Suit};
 use adw::gtk::cairo::{Context, Error, FontSlant, FontWeight};
-use schnapsen::core::cards::{Card, Rank, Suit};
 use std::f64::consts::TAU;
+
+pub(super) mod schnapsen;
 
 fn draw_front(cr: &Context, card: Card, theme: &FrontTheme) -> Result<(), Error> {
     let value = crate::i18n::gettext(theme.rank(card.rank).0);
@@ -136,7 +138,10 @@ pub(super) const DOUBLE_GERMAN: FrontTheme = FrontTheme {
     label: msgid!("Double German"),
     rank: rank_german,
     suit: suit_german,
-    symbol: german_symbol,
+    symbol: |cr, suit| {
+        german_symbol(cr, suit);
+        cr.fill()
+    },
     render: draw_front,
 };
 
@@ -145,6 +150,9 @@ pub(super) const FRENCH: FrontTheme = FrontTheme {
     label: msgid!("French"),
     rank: rank_french,
     suit: suit_french,
-    symbol: french_symbol,
+    symbol: |cr, suit| {
+        french_symbol(cr, suit);
+        cr.fill()
+    },
     render: draw_front,
 };
