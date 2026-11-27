@@ -34,6 +34,16 @@
 - Review the final diff and check integration.
 - Never claim unexecuted tests passed.
 
+## Resource-Efficient Development
+- Read only the sections of files and documentation relevant to the current task.
+- Avoid redundant work and limit tool output to the information needed.
+- Use subagents only when there is a clear need and provide only the context relevant to their assignment.
+- Run focused tests during development. Group full test suites, large-scale simulations, and release builds at integration milestones.
+- Split large tasks into subtasks that can be completed independently.
+- Keep PLAN.md compact and record the current state, key decisions, and next steps so work can resume in a fresh session.
+- Keep completion reports brief.
+- Maintain quality, compliance with established rules, and existing safety requirements.
+
 ## Git
 - Prefer small, reviewable commits.
 - Review changes and verify tests before committing.
