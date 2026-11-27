@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Schnapsen\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-11-26 18:00+0100\n"
+"POT-Creation-Date: 2026-11-27 08:51+0100\n"
 "PO-Revision-Date: 2026-11-26 18:00+0100\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -28,8 +28,14 @@ msgid "A card game for GNOME"
 msgstr "A card game for GNOME"
 
 #: data/org.linuxds.Schnapsen.metainfo.xml.in:9
-msgid "Schnapsen is a native GNOME application for the Austrian card game. Play a hand against the computer and win by reaching 66 card points or taking the last trick."
-msgstr "Schnapsen is a native GNOME application for the Austrian card game. Play a hand against the computer and win by reaching 66 card points or taking the last trick."
+msgid ""
+"Schnapsen is a native GNOME application for the Austrian card game. Play a "
+"hand against the computer and win by reaching 66 card points or taking the "
+"last trick."
+msgstr ""
+"Schnapsen is a native GNOME application for the Austrian card game. Play a "
+"hand against the computer and win by reaching 66 card points or taking the "
+"last trick."
 
 #: data/org.linuxds.Schnapsen.metainfo.xml.in:12
 msgid "Linux DS Team"
@@ -128,23 +134,6 @@ msgstr "U"
 msgid "Unter"
 msgstr "Unter"
 
-#: src/ui/design/fronts/schnapsen.rs:25 src/ui/design/fronts.rs:44
-msgid "Hearts"
-msgstr "Hearts"
-
-#: src/ui/design/fronts/schnapsen.rs:26
-msgid "Bells"
-msgstr "Bells"
-
-#: src/ui/design/fronts/schnapsen.rs:27 src/ui/turn.rs:669
-#, rust-format
-msgid "Leaves"
-msgstr "Leaves"
-
-#: src/ui/design/fronts/schnapsen.rs:28
-msgid "Acorns"
-msgstr "Acorns"
-
 #. Translators: corner index for a queen in the French deck.
 #: src/ui/design/fronts.rs:33
 msgid "Q"
@@ -164,6 +153,10 @@ msgstr "J"
 msgid "Jack"
 msgstr "Jack"
 
+#: src/ui/design/fronts.rs:44 src/ui/design/fronts/schnapsen.rs:25
+msgid "Hearts"
+msgstr "Hearts"
+
 #: src/ui/design/fronts.rs:45
 msgid "Diamonds"
 msgstr "Diamonds"
@@ -177,13 +170,26 @@ msgstr "Spades"
 msgid "Clubs"
 msgstr "Clubs"
 
+#: src/ui/design/fronts.rs:94
+msgid "French"
+msgstr "French"
+
 #: src/ui/design/fronts/schnapsen.rs:9
 msgid "Double German"
 msgstr "Double German"
 
-#: src/ui/design/fronts.rs:94
-msgid "French"
-msgstr "French"
+#: src/ui/design/fronts/schnapsen.rs:26
+msgid "Bells"
+msgstr "Bells"
+
+#: src/ui/design/fronts/schnapsen.rs:27 src/ui/turn.rs:669
+#, rust-format
+msgid "Leaves"
+msgstr "Leaves"
+
+#: src/ui/design/fronts/schnapsen.rs:28
+msgid "Acorns"
+msgstr "Acorns"
 
 #: src/ui/design/mod.rs:38
 #, rust-format
@@ -297,8 +303,10 @@ msgstr "Manual claims. Stock closing is scored at the time of closing."
 
 #: src/ui/mod.rs:146
 #, rust-format
-msgid "Manual claims. Successful stock closing is scored at the end of the hand."
-msgstr "Manual claims. Successful stock closing is scored at the end of the hand."
+msgid ""
+"Manual claims. Successful stock closing is scored at the end of the hand."
+msgstr ""
+"Manual claims. Successful stock closing is scored at the end of the hand."
 
 #: src/ui/mod.rs:155
 #, rust-format
@@ -417,13 +425,17 @@ msgstr "You lost the match."
 
 #: src/ui/result.rs:39
 #, rust-format
-msgid "Stock closing scored using the opponent’s points at the end of the hand."
-msgstr "Stock closing scored using the opponent’s points at the end of the hand."
+msgid ""
+"Stock closing scored using the opponent’s points at the end of the hand."
+msgstr ""
+"Stock closing scored using the opponent’s points at the end of the hand."
 
 #: src/ui/result.rs:41
 #, rust-format
-msgid "Stock closing scored using the opponent’s points at the time of closing."
-msgstr "Stock closing scored using the opponent’s points at the time of closing."
+msgid ""
+"Stock closing scored using the opponent’s points at the time of closing."
+msgstr ""
+"Stock closing scored using the opponent’s points at the time of closing."
 
 #: src/ui/result.rs:49
 #, rust-format
@@ -636,8 +648,14 @@ msgstr "Close the stock?"
 
 #: src/ui/turn.rs:345
 #, rust-format
-msgid "Neither player draws any more cards. From now on, you must follow suit and win the trick if possible, or play trump if you cannot follow suit. You must reach at least 66 card points, or the computer wins."
-msgstr "Neither player draws any more cards. From now on, you must follow suit and win the trick if possible, or play trump if you cannot follow suit. You must reach at least 66 card points, or the computer wins."
+msgid ""
+"Neither player draws any more cards. From now on, you must follow suit and "
+"win the trick if possible, or play trump if you cannot follow suit. You must "
+"reach at least 66 card points, or the computer wins."
+msgstr ""
+"Neither player draws any more cards. From now on, you must follow suit and "
+"win the trick if possible, or play trump if you cannot follow suit. You must "
+"reach at least 66 card points, or the computer wins."
 
 #: src/ui/turn.rs:346
 #, rust-format
@@ -656,8 +674,12 @@ msgstr "Reset the Bummerl counters?"
 
 #: src/ui/turn.rs:358
 #, rust-format
-msgid "Both Bummerl counters will be set to zero. The current match score stays the same."
-msgstr "Both Bummerl counters will be set to zero. The current match score stays the same."
+msgid ""
+"Both Bummerl counters will be set to zero. The current match score stays the "
+"same."
+msgstr ""
+"Both Bummerl counters will be set to zero. The current match score stays the "
+"same."
 
 #: src/ui/turn.rs:359
 #, rust-format
@@ -693,8 +715,12 @@ msgstr[1] "{count} hands played"
 
 #: src/ui/turn.rs:520
 #, rust-format
-msgid "Top: {opponent_points}, {opponent_bummerls}. {hands}. Bottom: {local_points}, {local_bummerls}. Trump: {suit}."
-msgstr "Top: {opponent_points}, {opponent_bummerls}. {hands}. Bottom: {local_points}, {local_bummerls}. Trump: {suit}."
+msgid ""
+"Top: {opponent_points}, {opponent_bummerls}. {hands}. Bottom: "
+"{local_points}, {local_bummerls}. Trump: {suit}."
+msgstr ""
+"Top: {opponent_points}, {opponent_bummerls}. {hands}. Bottom: "
+"{local_points}, {local_bummerls}. Trump: {suit}."
 
 #: src/ui/turn.rs:530
 #, rust-format

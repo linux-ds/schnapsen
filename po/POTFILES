@@ -3,6 +3,7 @@ data/org.linuxds.Schnapsen.metainfo.xml.in
 data/org.linuxds.Schnapsen.gschema.xml
 src/ui/design/backs.rs
 src/ui/design/fronts.rs
+src/ui/design/fronts/schnapsen.rs
 src/ui/design/mod.rs
 src/ui/mod.rs
 src/ui/paint.rs
