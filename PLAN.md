@@ -206,6 +206,12 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 
 ## Änderungsprotokoll
 
+### 2026-11-27 – Auftrag 27a
+
+- Der Bundle-Export übernimmt den Linux-DS-Remote von Monthly, den öffentlichen GPG-Schlüssel und `x86_64/master`. Die [README](README.md#linux-ds-flatpak-releases-and-updates) dokumentiert Signierung, Veröffentlichung und Migration älterer Bundles.
+- Neues Bundle aus dem vorhandenen SDK-Build exportiert. Ref, App- und Runtime-URL, Schlüssel, OSTree-Import und Commit-Gleichheit geprüft. In isolierter Installation wechselte das alte Bundle den Origin und erhielt ein reguläres Update. Spielstand- und Einstellungsdateien blieben erhalten.
+- Serverstand geprüft. Der Schnapsen-Ref fehlt. Für die Freigabe den signierten Ref mit AppStream und signierter Summary über den bestehenden Deployment-Prozess veröffentlichen. Produktionssignierung, Veröffentlichung und Spieltests waren nicht Teil dieses Laufs.
+
 ### 2026-11-27 – Auftrag 27
 
 - Die Quellen- und Entscheidungsmatrix in [RULE_AUDIT.md](RULE_AUDIT.md#profilmatrix-für-auftrag-27) dokumentiert sechs Profile. Hausregeln – Weich bleibt Standard. Klassische und Turnierprofile bieten manuelle Ausmeldung vor dem Nachziehen beziehungsweise vor der Antwort auf eine Ansage. Unter 66 wirksamen Augen gewinnt der Gegner zwei oder drei Spielpunkte.
