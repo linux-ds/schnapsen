@@ -2,7 +2,7 @@ use super::{rank_german, suit_german, Color, FrontTheme};
 use crate::ui::layout::ASPECT;
 use adw::gtk::cairo::{Context, Error, FontSlant, FontWeight, LineJoin};
 use schnapsen::core::cards::{Card, Rank, Suit};
-use std::f64::consts::{PI, TAU};
+use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 
 pub(in crate::ui::design) const THEME: FrontTheme = FrontTheme {
     id: "schnapsen",
@@ -212,42 +212,57 @@ fn draw(cr: &Context, card: Card, theme: &FrontTheme) -> Result<(), Error> {
         cr.save()?;
         cr.translate(x, y);
         cr.rotate(angle);
-        cr.set_source_rgb(r, g, b);
-        draw_index(cr, value, 0.16, 0.203, 0.22)?;
-        theme.draw_symbol(cr, card.suit, 0.16, 0.365, 0.15)?;
+        match card.rank {
+            Rank::King => theme.draw_symbol(cr, card.suit, 0.24, 0.26, 0.30)?,
+            Rank::Ober => {
+                let size = 0.30;
+                let top = ASPECT * 0.10;
+                theme.draw_symbol(cr, card.suit, 0.24, top + size / 2.0, size)?;
+            }
+            Rank::Unter => theme.draw_symbol(cr, card.suit, 0.19, ASPECT / 3.0, 0.25)?,
+            Rank::Ace => {
+                for (x, tilt) in [(0.21, -FRAC_PI_4), (0.79, FRAC_PI_4)] {
+                    cr.save()?;
+                    cr.translate(x, 0.21);
+                    cr.rotate(tilt);
+                    theme.draw_symbol(cr, card.suit, 0.0, 0.0, 0.28)?;
+                    cr.restore()?;
+                }
+            }
+            Rank::Ten => {
+                cr.set_source_rgb(r, g, b);
+                draw_index(cr, value, 0.50, 0.12, 0.21)?;
+                match card.suit {
+                    Suit::Hearts | Suit::Bells => {
+                        for x in [0.24, 0.76] {
+                            for y in [0.28, 0.36, 0.44, 0.52] {
+                                theme.draw_symbol(cr, card.suit, x, y, 0.19)?;
+                            }
+                        }
+                        for y in [0.36, 0.47] {
+                            theme.draw_symbol(cr, card.suit, 0.50, y, 0.19)?;
+                        }
+                    }
+                    Suit::Leaves | Suit::Acorns => {
+                        for (x, angle) in [(0.24, -FRAC_PI_2), (0.76, FRAC_PI_2)] {
+                            for y in [0.26, 0.33, 0.40, 0.47, 0.54] {
+                                cr.save()?;
+                                cr.translate(x, y);
+                                cr.rotate(angle);
+                                theme.draw_symbol(cr, card.suit, 0.0, 0.0, 0.19)?;
+                                cr.restore()?;
+                            }
+                        }
+                    }
+                }
+            }
+        }
         cr.restore()?;
     }
 
-    match card.rank {
-        Rank::Ace => {
-            for y in [center - 0.235, center + 0.235] {
-                theme.draw_symbol(cr, card.suit, 0.50, y, 0.39)?;
-            }
-        }
-        Rank::Ten => {
-            for (x, y) in [
-                (0.33, 0.46),
-                (0.67, 0.46),
-                (0.50, center),
-                (0.33, 0.94),
-                (0.67, 0.94),
-            ] {
-                theme.draw_symbol(cr, card.suit, x, y, 0.24)?;
-            }
-        }
-        Rank::King | Rank::Ober | Rank::Unter => {
-            cr.new_sub_path();
-            cr.arc(0.50, center, 0.224, 0.0, TAU);
-            cr.set_source_rgba(r, g, b, 0.10);
-            cr.fill_preserve()?;
-            cr.set_source_rgb(r, g, b);
-            cr.set_line_width(0.019);
-            cr.stroke()?;
-            draw_index(cr, value, 0.50, center, 0.39)?;
-            for y in [center - 0.405, center + 0.405] {
-                theme.draw_symbol(cr, card.suit, 0.50, y, 0.26)?;
-            }
-        }
+    if card.rank != Rank::Ten {
+        cr.set_source_rgb(r, g, b);
+        draw_index(cr, value, 0.50, center, 0.56)?;
     }
     Ok(())
 }

@@ -286,7 +286,7 @@ mod tests {
                     drop(cr);
                     let (x, y, radius) = trump_indicator(width.into(), height.into());
                     if theme.id == "schnapsen" {
-                        assert_test_symbol_colors(&mut surface, suit, x, y, radius);
+                        assert_test_symbol_colors(&mut surface, suit, x, y, [radius, radius]);
                         continue;
                     }
                     let stride = surface.stride() as usize;
@@ -309,14 +309,20 @@ mod tests {
         }
     }
 
-    fn assert_test_symbol_colors(surface: &mut ImageSurface, suit: Suit, x: f64, y: f64, r: f64) {
+    fn assert_test_symbol_colors(
+        surface: &mut ImageSurface,
+        suit: Suit,
+        x: f64,
+        y: f64,
+        [rx, ry]: [f64; 2],
+    ) {
         let stride = surface.stride() as usize;
         let data = surface.data().unwrap();
         let mut first = false;
         let mut second = false;
         let mut bell_band = false;
-        for row in (y - r) as usize..(y + r).ceil() as usize {
-            for col in (x - r) as usize..(x + r).ceil() as usize {
+        for row in (y - ry) as usize..(y + ry).ceil() as usize {
+            for col in (x - rx) as usize..(x + rx).ceil() as usize {
                 let start = row * stride + col * 4;
                 let [a, red, green, blue] =
                     u32::from_ne_bytes(data[start..start + 4].try_into().unwrap()).to_be_bytes();
@@ -370,8 +376,35 @@ mod tests {
             });
             card(&cr, face, false, false, false, design).unwrap();
             drop(cr);
-            for (x, y) in [(0.33, 0.46), (0.50, ASPECT / 2.0), (0.67, 0.94)] {
-                assert_test_symbol_colors(&mut surface, suit, x * scale, y * scale, 0.12 * scale);
+            let columns: &[_] = match suit {
+                Suit::Hearts | Suit::Bells => &[0.24, 0.50, 0.76],
+                Suit::Leaves | Suit::Acorns => &[0.24, 0.76],
+            };
+            for &x in columns {
+                assert_test_symbol_colors(
+                    &mut surface,
+                    suit,
+                    x * scale,
+                    0.40 * scale,
+                    [0.11 * scale, 0.23 * scale],
+                );
+            }
+
+            let stride = surface.stride() as usize;
+            let data = surface.data().unwrap();
+            let center_row = (ASPECT / 2.0 * scale) as usize * stride;
+            let paper = &data[center_row + 4 * 8..center_row + 4 * 9];
+            assert!(data[center_row + 4 * 9..center_row + 4 * 48]
+                .chunks_exact(4)
+                .all(|pixel| pixel == paper));
+            if matches!(suit, Suit::Leaves | Suit::Acorns) {
+                let center_col = width as usize / 2 * 4;
+                let top = (0.22 * scale).ceil() as usize;
+                let bottom = ((ASPECT - 0.22) * scale).floor() as usize;
+                for row in top..bottom {
+                    let offset = row * stride + center_col;
+                    assert_eq!(&data[offset..offset + 4], paper, "{suit:?}");
+                }
             }
         }
     }
