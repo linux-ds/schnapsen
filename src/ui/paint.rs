@@ -285,7 +285,7 @@ mod tests {
                     trump(&cr, width.into(), height.into(), suit, theme).unwrap();
                     drop(cr);
                     let (x, y, radius) = trump_indicator(width.into(), height.into());
-                    if theme.id == "schnapsen" {
+                    if theme.id == "double-german" {
                         assert_test_symbol_colors(&mut surface, suit, x, y, [radius, radius]);
                         continue;
                     }
@@ -359,10 +359,10 @@ mod tests {
     }
 
     #[test]
-    fn schnapsen_test_ten_repeats_multicolored_symbols_on_small_cards() {
+    fn double_german_ten_repeats_multicolored_symbols_on_small_cards() {
         use schnapsen::core::cards::Rank;
 
-        let design = CardDesign::from_ids("schnapsen", "legacy");
+        let design = CardDesign::from_ids("double-german", "legacy");
         let width = 56;
         let scale = f64::from(width);
         let height = (scale * ASPECT).ceil() as i32;
@@ -410,12 +410,12 @@ mod tests {
     }
 
     #[test]
-    fn schnapsen_test_front_renders_twenty_distinct_cards() {
+    fn double_german_front_renders_twenty_distinct_cards() {
         use schnapsen::core::cards::full_deck;
         use std::collections::HashSet;
 
-        let design = CardDesign::from_ids("schnapsen", "legacy");
-        assert_eq!(design.front.id, "schnapsen");
+        let design = CardDesign::from_ids("double-german", "legacy");
+        assert_eq!(design.front.id, "double-german");
         for width in [32, 88] {
             let height = (f64::from(width) * ASPECT).ceil() as i32;
             let mut fronts = HashSet::new();

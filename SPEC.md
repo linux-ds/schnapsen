@@ -94,9 +94,9 @@ Die Profile bündeln die bestehenden Hausregeln für Ansagen und deren Wirksamke
 
 ### Kartendesigns und persönliche Einstellungen
 
-`ui::design` registriert Kartenfronten und Kartenrücken getrennt. Die programmatisch gezeichneten Fronten Doppeldeutsch und Französisch arbeiten auf demselben Kartenmodell. Französisch stellt Schellen als Karo, Grün als Pik, Eichel als Kreuz sowie Ober und Unter als Dame und Bube dar. Herz bleibt Herz. Der gemeinsame Cairo-Renderer zeichnet Karten am Tisch, Trumpfsymbole, die Stichübersicht und Vorschauen der Kartenrücken.
+`ui::design` registriert Kartenfronten und Kartenrücken getrennt. Die programmatisch gezeichneten Fronten Doppeldeutsch und Französisch arbeiten auf demselben Kartenmodell. Doppeldeutsch ist der Standard und zeigt die Werte A, K, O, U und X. Französisch stellt Schellen als Karo, Grün als Pik, Eichel als Kreuz sowie Ober und Unter als Dame und Bube dar. Herz bleibt Herz. Der gemeinsame Cairo-Renderer zeichnet Karten am Tisch, Trumpfsymbole, die Stichübersicht und Vorschauen der Kartenrücken.
 
-Das native Einstellungsfenster speichert Designs und Spielhilfen über GSettings. Die Spielhilfen unterliegen weiterhin dem aktiven Regelprofil. Unbekannte Design-IDs fallen auf Doppeldeutsch beziehungsweise den bisherigen Kartenrücken zurück. Der Schlüssel für Audio ist vorbereitet. Eine Audiooption erscheint erst mit der Wiedergabe.
+Das native Einstellungsfenster speichert Designs und Spielhilfen über GSettings. Die Spielhilfen unterliegen weiterhin dem aktiven Regelprofil. Die gespeicherten Front-IDs `double-german` und `schnapsen` wählen beide Doppeldeutsch. Die ID `french` wählt weiterhin Französisch. Unbekannte Design-IDs fallen auf Doppeldeutsch beziehungsweise den bisherigen Kartenrücken zurück. Der Schlüssel für Audio ist vorbereitet. Eine Audiooption erscheint erst mit der Wiedergabe.
 
 Für einen weiteren Rücken kann beispielsweise ein Modul mit einer Cairo-Zeichenfunktion ergänzt und ein Eintrag mit unveränderlicher ID, Anzeigename und Renderer in `BACKS` registriert werden. Eine weitere Front wird analog in `FRONTS` registriert und liefert zusätzlich Bezeichnungen und Farbsymbole. Ein späterer Renderer kann etwa vorbereitete SVG-Ressourcen in den übergebenen Cairo-Kontext zeichnen. Änderungen am Kartenmodell oder an den Spielregeln sind dafür nicht erforderlich.
 

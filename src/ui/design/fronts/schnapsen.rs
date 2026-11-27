@@ -1,12 +1,12 @@
-use super::{rank_german, suit_german, Color, FrontTheme};
+use super::{rank_german, Color, FrontTheme};
 use crate::ui::layout::ASPECT;
 use adw::gtk::cairo::{Context, Error, FontSlant, FontWeight, LineJoin};
 use schnapsen::core::cards::{Card, Rank, Suit};
 use std::f64::consts::{FRAC_PI_2, FRAC_PI_4, PI, TAU};
 
-pub(in crate::ui::design) const THEME: FrontTheme = FrontTheme {
-    id: "schnapsen",
-    label: msgid!("Double German (Test)"),
+pub(in crate::ui::design) const DOUBLE_GERMAN: FrontTheme = FrontTheme {
+    id: "double-german",
+    label: msgid!("Double German"),
     rank,
     suit,
     symbol,
@@ -21,13 +21,12 @@ fn rank(rank: Rank) -> (&'static str, &'static str) {
 }
 
 fn suit(suit: Suit) -> (&'static str, Color) {
-    let color = match suit {
-        Suit::Hearts => (0.73, 0.08, 0.14),
-        Suit::Bells => (0.56, 0.32, 0.03),
-        Suit::Leaves => (0.12, 0.38, 0.18),
-        Suit::Acorns => (0.36, 0.20, 0.11),
-    };
-    (suit_german(suit).0, color)
+    match suit {
+        Suit::Hearts => (msgid!("Hearts"), (0.73, 0.08, 0.14)),
+        Suit::Bells => (msgid!("Bells"), (0.56, 0.32, 0.03)),
+        Suit::Leaves => (msgid!("Leaves"), (0.12, 0.38, 0.18)),
+        Suit::Acorns => (msgid!("Acorns"), (0.36, 0.20, 0.11)),
+    }
 }
 
 fn symbol(cr: &Context, suit: Suit) -> Result<(), Error> {

@@ -91,11 +91,7 @@ impl CardBack {
     }
 }
 
-pub(crate) const FRONTS: &[FrontTheme] = &[
-    fronts::DOUBLE_GERMAN,
-    fronts::FRENCH,
-    fronts::schnapsen::THEME,
-];
+pub(crate) const FRONTS: &[FrontTheme] = &[fronts::schnapsen::DOUBLE_GERMAN, fronts::FRENCH];
 pub(crate) const BACKS: &[CardBack] = &[
     backs::LEGACY,
     backs::CLASSIC,
@@ -124,6 +120,12 @@ impl Default for CardDesign {
 impl CardDesign {
     pub fn from_ids(front: &str, back: &str) -> Self {
         let default = Self::default();
+        // Earlier builds saved this ID for the double German test front.
+        let front = if front == "schnapsen" {
+            "double-german"
+        } else {
+            front
+        };
         Self {
             front: FRONTS
                 .iter()
@@ -185,7 +187,7 @@ mod tests {
             ranks.map(|rank| german.rank(rank)),
             [
                 ("A", "Ace"),
-                ("10", "Ten"),
+                ("X", "Ten"),
                 ("K", "King"),
                 ("O", "Ober"),
                 ("U", "Unter")
@@ -227,6 +229,21 @@ mod tests {
                 .len(),
             BACKS.len()
         );
+    }
+
+    #[test]
+    fn default_and_saved_front_ids_resolve_to_the_registered_choices() {
+        assert_eq!(
+            FRONTS.iter().map(|theme| theme.id).collect::<Vec<_>>(),
+            ["double-german", "french"]
+        );
+        let default = CardDesign::default().front;
+        for id in ["double-german", "schnapsen"] {
+            let design = CardDesign::from_ids(id, "alpine");
+            assert!(std::ptr::eq(design.front, default));
+            assert_eq!(design.back.id, "alpine");
+        }
+        assert_eq!(CardDesign::from_ids("french", "alpine").front.id, "french");
     }
 
     #[test]

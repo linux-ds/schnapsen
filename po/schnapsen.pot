@@ -93,96 +93,96 @@ msgstr ""
 msgid "Minimal"
 msgstr ""
 
-#: src/ui/design/fronts.rs:20
+#: src/ui/design/fronts.rs:22
 msgid "A"
 msgstr ""
 
-#: src/ui/design/fronts.rs:20
+#: src/ui/design/fronts.rs:22
 msgid "Ace"
 msgstr ""
 
-#: src/ui/design/fronts.rs:21
+#: src/ui/design/fronts.rs:23 src/ui/design/fronts/schnapsen.rs:18
 msgid "Ten"
 msgstr ""
 
-#: src/ui/design/fronts.rs:22
+#: src/ui/design/fronts.rs:24
 msgid "K"
 msgstr ""
 
-#: src/ui/design/fronts.rs:22
+#: src/ui/design/fronts.rs:24
 msgid "King"
 msgstr ""
 
-#: src/ui/design/fronts.rs:23
+#: src/ui/design/fronts.rs:25
 msgid "O"
 msgstr ""
 
-#: src/ui/design/fronts.rs:23
+#: src/ui/design/fronts.rs:25
 msgid "Ober"
 msgstr ""
 
-#: src/ui/design/fronts.rs:24
+#: src/ui/design/fronts.rs:26
 msgid "U"
 msgstr ""
 
-#: src/ui/design/fronts.rs:24
+#: src/ui/design/fronts.rs:26
 msgid "Unter"
 msgstr ""
 
-#: src/ui/design/fronts.rs:30 src/ui/design/fronts.rs:90
+#: src/ui/design/fronts/schnapsen.rs:25 src/ui/design/fronts.rs:44
 msgid "Hearts"
 msgstr ""
 
-#: src/ui/design/fronts.rs:31
+#: src/ui/design/fronts/schnapsen.rs:26
 msgid "Bells"
 msgstr ""
 
-#: src/ui/design/fronts.rs:32 src/ui/turn.rs:669
+#: src/ui/design/fronts/schnapsen.rs:27 src/ui/turn.rs:669
 #, rust-format
 msgid "Leaves"
 msgstr ""
 
-#: src/ui/design/fronts.rs:33
+#: src/ui/design/fronts/schnapsen.rs:28
 msgid "Acorns"
 msgstr ""
 
 #. Translators: corner index for a queen in the French deck.
-#: src/ui/design/fronts.rs:79
+#: src/ui/design/fronts.rs:33
 msgid "Q"
 msgstr ""
 
-#: src/ui/design/fronts.rs:79
+#: src/ui/design/fronts.rs:33
 msgid "Queen"
 msgstr ""
 
 #. Translators: corner index for a jack in the French deck.
-#: src/ui/design/fronts.rs:81
+#: src/ui/design/fronts.rs:35
 msgid "J"
 msgstr ""
 
-#: src/ui/design/fronts.rs:81 src/ui/turn.rs:677
+#: src/ui/design/fronts.rs:35 src/ui/turn.rs:677
 #, rust-format
 msgid "Jack"
 msgstr ""
 
-#: src/ui/design/fronts.rs:91
+#: src/ui/design/fronts.rs:45
 msgid "Diamonds"
 msgstr ""
 
-#: src/ui/design/fronts.rs:92 src/ui/turn.rs:673
+#: src/ui/design/fronts.rs:46 src/ui/turn.rs:673
 #, rust-format
 msgid "Spades"
 msgstr ""
 
-#: src/ui/design/fronts.rs:93
+#: src/ui/design/fronts.rs:47
 msgid "Clubs"
 msgstr ""
 
-#: src/ui/design/fronts.rs:136
+#: src/ui/design/fronts/schnapsen.rs:9
 msgid "Double German"
 msgstr ""
 
-#: src/ui/design/fronts.rs:145
+#: src/ui/design/fronts.rs:94
 msgid "French"
 msgstr ""
 
@@ -792,8 +792,4 @@ msgstr ""
 #: src/ui/turn.rs:640
 #, rust-format
 msgid "The hand is already over."
-msgstr ""
-
-#: src/ui/design/fronts/schnapsen.rs:9
-msgid "Double German (Test)"
 msgstr ""

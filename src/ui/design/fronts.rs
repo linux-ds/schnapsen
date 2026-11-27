@@ -27,54 +27,6 @@ fn rank_german(rank: Rank) -> (&'static str, &'static str) {
     }
 }
 
-fn suit_german(suit: Suit) -> (&'static str, Color) {
-    match suit {
-        Suit::Hearts => (msgid!("Hearts"), (0.67, 0.15, 0.21)),
-        Suit::Bells => (msgid!("Bells"), (0.56, 0.32, 0.04)),
-        Suit::Leaves => (msgid!("Leaves"), (0.12, 0.37, 0.24)),
-        Suit::Acorns => (msgid!("Acorns"), (0.29, 0.19, 0.14)),
-    }
-}
-
-fn german_symbol(cr: &Context, suit: Suit) {
-    match suit {
-        Suit::Hearts => {
-            cr.move_to(0.50, 0.93);
-            cr.curve_to(-0.48, 0.17, 0.27, -0.19, 0.50, 0.30);
-            cr.curve_to(0.73, -0.19, 1.48, 0.17, 0.50, 0.93);
-        }
-        Suit::Bells => {
-            cr.move_to(0.12, 0.72);
-            cr.curve_to(0.34, 0.65, 0.17, 0.10, 0.50, 0.08);
-            cr.curve_to(0.83, 0.10, 0.66, 0.65, 0.88, 0.72);
-            cr.line_to(0.88, 0.81);
-            cr.line_to(0.12, 0.81);
-            cr.close_path();
-            cr.new_sub_path();
-            cr.arc(0.50, 0.88, 0.088, 0.0, TAU);
-        }
-        Suit::Leaves => {
-            cr.move_to(0.14, 0.92);
-            cr.line_to(0.07, 0.85);
-            cr.line_to(0.24, 0.69);
-            cr.curve_to(0.04, 0.34, 0.32, 0.13, 0.94, 0.06);
-            cr.curve_to(0.86, 0.68, 0.65, 0.95, 0.31, 0.76);
-        }
-        Suit::Acorns => {
-            cr.move_to(0.16, 0.47);
-            cr.curve_to(0.13, 0.72, 0.30, 0.88, 0.50, 0.96);
-            cr.curve_to(0.70, 0.88, 0.87, 0.72, 0.84, 0.47);
-            cr.close_path();
-            cr.move_to(0.09, 0.40);
-            cr.curve_to(0.09, 0.22, 0.29, 0.14, 0.47, 0.15);
-            cr.line_to(0.54, 0.04);
-            cr.line_to(0.66, 0.07);
-            cr.line_to(0.60, 0.16);
-            cr.curve_to(0.78, 0.18, 0.91, 0.26, 0.91, 0.40);
-        }
-    }
-}
-
 fn rank_french(rank: Rank) -> (&'static str, &'static str) {
     match rank {
         // Translators: corner index for a queen in the French deck.
@@ -106,7 +58,11 @@ fn stem(cr: &Context) {
 
 fn french_symbol(cr: &Context, suit: Suit) {
     match suit {
-        Suit::Hearts => german_symbol(cr, suit),
+        Suit::Hearts => {
+            cr.move_to(0.50, 0.93);
+            cr.curve_to(-0.48, 0.17, 0.27, -0.19, 0.50, 0.30);
+            cr.curve_to(0.73, -0.19, 1.48, 0.17, 0.50, 0.93);
+        }
         Suit::Bells => {
             cr.move_to(0.50, 0.04);
             cr.line_to(0.88, 0.50);
@@ -132,18 +88,6 @@ fn french_symbol(cr: &Context, suit: Suit) {
         }
     }
 }
-
-pub(super) const DOUBLE_GERMAN: FrontTheme = FrontTheme {
-    id: "double-german",
-    label: msgid!("Double German"),
-    rank: rank_german,
-    suit: suit_german,
-    symbol: |cr, suit| {
-        german_symbol(cr, suit);
-        cr.fill()
-    },
-    render: draw_front,
-};
 
 pub(super) const FRENCH: FrontTheme = FrontTheme {
     id: "french",

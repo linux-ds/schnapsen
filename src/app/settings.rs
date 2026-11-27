@@ -135,6 +135,13 @@ mod tests {
                 assert_eq!(settings.window_state(), (900, 700, true));
                 assert!(settings.show_legal());
                 assert!(settings.show_opponent_eyes());
+                settings.0.set_string(FRONT, "schnapsen").unwrap();
+                gio::Settings::sync();
+            }
+            Ok("read-legacy") => {
+                let settings = Preferences::new();
+                assert_eq!(settings.front_id(), "schnapsen");
+                assert_eq!(settings.back_id(), "alpine");
             }
             _ => {
                 let nonce = SystemTime::now()
@@ -144,7 +151,7 @@ mod tests {
                 let directory = env::temp_dir()
                     .join(format!("schnapsen-settings-{}-{nonce}", std::process::id()));
                 fs::create_dir(&directory).unwrap();
-                for mode in ["write", "read"] {
+                for mode in ["write", "read", "read-legacy"] {
                     let output = Command::new(env::current_exe().unwrap())
                         .args([
                             "--exact",

@@ -88,96 +88,96 @@ msgstr "Ornament"
 msgid "Minimal"
 msgstr "Minimal"
 
-#: src/ui/design/fronts.rs:20
+#: src/ui/design/fronts.rs:22
 msgid "A"
 msgstr "A"
 
-#: src/ui/design/fronts.rs:20
+#: src/ui/design/fronts.rs:22
 msgid "Ace"
 msgstr "Ass"
 
-#: src/ui/design/fronts.rs:21
+#: src/ui/design/fronts.rs:23 src/ui/design/fronts/schnapsen.rs:18
 msgid "Ten"
 msgstr "Zehn"
 
-#: src/ui/design/fronts.rs:22
+#: src/ui/design/fronts.rs:24
 msgid "K"
 msgstr "K"
 
-#: src/ui/design/fronts.rs:22
+#: src/ui/design/fronts.rs:24
 msgid "King"
 msgstr "König"
 
-#: src/ui/design/fronts.rs:23
+#: src/ui/design/fronts.rs:25
 msgid "O"
 msgstr "O"
 
-#: src/ui/design/fronts.rs:23
+#: src/ui/design/fronts.rs:25
 msgid "Ober"
 msgstr "Ober"
 
-#: src/ui/design/fronts.rs:24
+#: src/ui/design/fronts.rs:26
 msgid "U"
 msgstr "U"
 
-#: src/ui/design/fronts.rs:24
+#: src/ui/design/fronts.rs:26
 msgid "Unter"
 msgstr "Unter"
 
-#: src/ui/design/fronts.rs:30 src/ui/design/fronts.rs:90
+#: src/ui/design/fronts/schnapsen.rs:25 src/ui/design/fronts.rs:44
 msgid "Hearts"
 msgstr "Herz"
 
-#: src/ui/design/fronts.rs:31
+#: src/ui/design/fronts/schnapsen.rs:26
 msgid "Bells"
 msgstr "Schellen"
 
-#: src/ui/design/fronts.rs:32 src/ui/turn.rs:669
+#: src/ui/design/fronts/schnapsen.rs:27 src/ui/turn.rs:669
 #, rust-format
 msgid "Leaves"
 msgstr "Grün"
 
-#: src/ui/design/fronts.rs:33
+#: src/ui/design/fronts/schnapsen.rs:28
 msgid "Acorns"
 msgstr "Eichel"
 
 #. Translators: corner index for a queen in the French deck.
-#: src/ui/design/fronts.rs:79
+#: src/ui/design/fronts.rs:33
 msgid "Q"
 msgstr "D"
 
-#: src/ui/design/fronts.rs:79
+#: src/ui/design/fronts.rs:33
 msgid "Queen"
 msgstr "Dame"
 
 #. Translators: corner index for a jack in the French deck.
-#: src/ui/design/fronts.rs:81
+#: src/ui/design/fronts.rs:35
 msgid "J"
 msgstr "B"
 
-#: src/ui/design/fronts.rs:81 src/ui/turn.rs:677
+#: src/ui/design/fronts.rs:35 src/ui/turn.rs:677
 #, rust-format
 msgid "Jack"
 msgstr "Bube"
 
-#: src/ui/design/fronts.rs:91
+#: src/ui/design/fronts.rs:45
 msgid "Diamonds"
 msgstr "Karo"
 
-#: src/ui/design/fronts.rs:92 src/ui/turn.rs:673
+#: src/ui/design/fronts.rs:46 src/ui/turn.rs:673
 #, rust-format
 msgid "Spades"
 msgstr "Pik"
 
-#: src/ui/design/fronts.rs:93
+#: src/ui/design/fronts.rs:47
 msgid "Clubs"
 msgstr "Kreuz"
 
-#: src/ui/design/fronts.rs:136
+#: src/ui/design/fronts/schnapsen.rs:9
 msgid "Double German"
 msgstr "Doppeldeutsch"
 
-#: src/ui/design/fronts.rs:145
+#: src/ui/design/fronts.rs:94
 msgid "French"
 msgstr "Französisch"
 
@@ -800,7 +800,3 @@ msgstr "Die Hand ist bereits beendet."
 #, rust-format
 #~ msgid "Tricks stay face down in Sharp Schnapsen."
 #~ msgstr "Bei scharfem Schnapsen bleiben die Stiche verdeckt."
-
-#: src/ui/design/fronts/schnapsen.rs:9
-msgid "Double German (Test)"
-msgstr "Doppeldeutsch (Test)"
