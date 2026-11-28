@@ -1,5 +1,17 @@
 # Änderungsprotokoll
 
+## Schnapsen 0.5.1 – Flatpak-Integrationsupdate
+
+Dieses Update bereitet Schnapsen für die Integration in das Linux-DS-Flatpak-Repository vor.
+
+### Funktionen
+
+- Das Flatpak verwendet GNOME Platform 50. Beim Export werden der AppStream-Katalog und die Symbole geprüft.
+
+### Bekannte Einschränkungen
+
+Die bekannten Einschränkungen von 0.5.0 gelten weiterhin.
+
 ## Schnapsen 0.5.0 – Erste öffentliche Testversion
 
 Die erste öffentliche Testversion von Schnapsen, einem nativen GNOME-Kartenspiel des Linux DS Teams.

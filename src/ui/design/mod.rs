@@ -240,7 +240,7 @@ mod tests {
         let default = CardDesign::default().front;
         for id in ["double-german", "schnapsen"] {
             let design = CardDesign::from_ids(id, "alpine");
-            assert!(std::ptr::eq(design.front, default));
+            assert_eq!(design.front.id, default.id);
             assert_eq!(design.back.id, "alpine");
         }
         assert_eq!(CardDesign::from_ids("french", "alpine").front.id, "french");

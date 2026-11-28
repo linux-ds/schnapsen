@@ -17,6 +17,11 @@
   <translation type="gettext">schnapsen</translation>
   <launchable type="desktop-id">org.linuxds.Schnapsen.desktop</launchable>
   <releases>
+    <release version="0.5.1" date="2026-11-28">
+      <description>
+        <p>Updates the Flatpak to GNOME Platform 50 and verifies the AppStream catalog and icons during export.</p>
+      </description>
+    </release>
     <release version="0.5.0" date="2026-11-27">
       <description>
         <p>Introduces the new Double German card design as the default and adds an About dialog.</p>

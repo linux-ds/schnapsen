@@ -359,12 +359,12 @@ Diese Punkte blockieren nicht den Beginn der Regel-Engine, müssen aber vor dem 
 
 Der Release-Ref lautet `app/org.linuxds.Schnapsen/x86_64/master`. Die App-Updates kommen aus `https://update.linux-ds.org/flatpak/`, die GNOME-Laufzeitumgebung von Flathub.
 
-Die App auf dem Host mit dem Flatpak-Manifest bauen und in eine lokale Staging-Kopie des Linux-DS-Repositories exportieren. Für die Signierung dieselbe Konfiguration wie Monthly verwenden. Der öffentliche Schlüsselfingerprint lautet `E4C9EF78D422A21FA20DB7A7BBFF7B34B6DF591B`.
+Auf dem Host zuerst den [Integrationswrapper](README.md#linux-ds-integration-build-and-export) ausführen und dessen Prüfbericht kontrollieren. Anschließend den geprüften Build aus dem Ausgabeverzeichnis `target/linux-ds-flatpak/app` in eine lokale Staging-Kopie des Linux-DS-Repositories exportieren. Für die Signierung dieselbe Konfiguration wie Monthly verwenden. Der öffentliche Schlüsselfingerprint lautet `E4C9EF78D422A21FA20DB7A7BBFF7B34B6DF591B`.
 
 ```sh
 flatpak build-export --arch=x86_64 --no-update-summary \
     --gpg-sign=E4C9EF78D422A21FA20DB7A7BBFF7B34B6DF591B \
-    /path/to/staging-repo .flatpak-build master
+    /path/to/staging-repo target/linux-ds-flatpak/app master
 flatpak build-update-repo --generate-static-deltas \
     --gpg-sign=E4C9EF78D422A21FA20DB7A7BBFF7B34B6DF591B /path/to/staging-repo
 sh build-aux/build-flatpak-bundle.sh /path/to/staging-repo \

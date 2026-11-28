@@ -2,7 +2,7 @@
 
 Schnapsen is a native GNOME implementation of the Austrian two-player card game. It uses Rust, GTK 4, and libadwaita. It is maintained by the [Linux DS Team](https://linux-ds.org/). Source code and issues are hosted on [GitHub](https://github.com/linux-ds/schnapsen).
 
-**Status (0.5.0):** Playable prototype in active development. The game includes soft and sharp Schnapsen with [documented house rules](RULE_AUDIT.md), three computer difficulties, automatic save and resume, and German and English localization. It supports mouse, keyboard, and touch input. Double German is the default card face. French faces and card backs can be selected independently.
+**Status (0.5.1):** Playable prototype in active development. The game includes soft and sharp Schnapsen with [documented house rules](RULE_AUDIT.md), three computer difficulties, automatic save and resume, and German and English localization. It supports mouse, keyboard, and touch input. Double German is the default card face. French faces and card backs can be selected independently.
 
 ## Release notes
 
@@ -21,7 +21,7 @@ Update an installed copy through your software center or with `flatpak update or
 
 ## Build and run
 
-The supported build environment is **GNOME SDK 51** with the stable Rust extension and the matching GNOME Platform runtime.
+The supported build environment is **GNOME SDK 50** with the stable Rust extension and the matching GNOME Platform runtime.
 
 - **GNOME Builder:** Open the project folder, select `org.linuxds.Schnapsen.json` as the build configuration, then select **Build** and **Run**. Allow Builder to fetch the required Flatpak runtimes and Cargo sources on the first build.
 - **Flatpak CLI:** With the SDK, runtime, Rust extension, and `flatpak-builder` available, run the following commands from the repository root.
@@ -32,6 +32,23 @@ The supported build environment is **GNOME SDK 51** with the stable Rust extensi
   ```
 
 The Flatpak build runs the Cargo test suite through Meson. See the [development plan](PLAN.md) for the Builder-based terminal workflow and the roadmap.
+
+## Linux DS integration build and export
+
+On the host, use GNOME Builder, Flatpak, OSTree, and Python 3.11 or newer.
+Install GNOME Platform 50, GNOME SDK 50, and the Rust SDK extension for
+Freedesktop 25.08 from Flathub. Run the integration wrapper from the checkout
+with a new or empty output directory.
+
+```sh
+python3 build-aux/build-flatpak.py target/linux-ds-flatpak --state-dir .flatpak-builder
+```
+
+The wrapper builds the manifest and checks the composed AppStream catalog and
+PNG icons before export. It imports the resulting `x86_64/master` bundle into an
+isolated OSTree repository, verifies its contents, and writes `verification.json`
+next to the bundle. This produces an unsigned local integration artifact.
+The signing procedure is documented in [SPEC.md](SPEC.md#flatpak-release-für-linux-ds).
 
 ## Tests
 

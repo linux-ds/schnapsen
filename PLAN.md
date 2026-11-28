@@ -1,6 +1,6 @@
 # GNOME Schnapsen – Entwicklungsplan
 
-**Status:** Mehrhand-Partien gegen den Computer mit Restpunkten, Bummerl-Wertung und profilabhängiger Stichübersicht. Flatpak-Entwicklung mit GNOME SDK 51.  
+**Status:** Mehrhand-Partien gegen den Computer mit Restpunkten, Bummerl-Wertung und profilabhängiger Stichübersicht. Flatpak-Integration mit GNOME SDK 50.
 **Verbindliche Produktanforderungen:** [`SPEC.md`](SPEC.md)  
 **Arbeitsanweisungen für Codex:** [`AGENTS.md`](AGENTS.md).
 
@@ -34,7 +34,7 @@
 - Klick oder Tippen auf den verdeckten Stapel und **Z** starten die Bestätigung zum Zudrehen. Die bisher offene Trumpfkarte erscheint danach verdeckt quer auf dem Stapel.
 - `src/ui/turn.rs` steuert Computerzug und Stichauflösung mit GLib-Timern. Der Computer beginnt auch als Vorhand. Beim Hand- oder Partiewechsel werden alte Timer entfernt.
 - `src/ui/review.rs` zeigt die erlaubten Stichpaare in einem abgedunkelten GTK-Overlay mit anpassbarer Spaltenzahl und vertikalem Scrollen. Die Kartenzeichnung stammt vom Kartentisch. Klick oder Tippen außerhalb, Escape und „Schließen“ beenden die Übersicht mit Fokusrückgabe.
-- `src/ui/paint.rs` zeichnet Kartenfronten, einheitliche Rückseiten, Rahmen und Schatten mit Cairo. Ausgewählte Karten erhalten einen goldenen Rand, der sichtbare Tastaturfokus eine gestrichelte Innenlinie. Doppeldeutsch ist die Standardfront. Eine gespeicherte französische Auswahl bleibt gültig. Das Hauptmenü enthält einen nativen Infodialog für Version 0.5.0.
+- `src/ui/paint.rs` zeichnet Kartenfronten, einheitliche Rückseiten, Rahmen und Schatten mit Cairo. Ausgewählte Karten erhalten einen goldenen Rand, der sichtbare Tastaturfokus eine gestrichelte Innenlinie. Doppeldeutsch ist die Standardfront. Eine gespeicherte französische Auswahl bleibt gültig. Das Hauptmenü enthält einen nativen Infodialog für die aktuelle Version.
 - Die abschaltbare **Spielhilfe** markiert die legalen Karten. Über den Stichstapeln stehen die wirksamen eigenen Augen als Zahl und optional die gegnerischen Augen über eine separate Lernhilfe. Links stehen die Restpunkte und Bummerl beider Seiten sowie die Zahl abgeschlossener Hände. Kontextaktionen liegen in der Tischmitte. `src/ui/result.rs` zeigt den Handabschluss mit Augen und Spielpunkten. Beim Partieende kommen Bummerl und Reststand hinzu. Ausschließlich **Nächste Hand** oder **Neue Partie** schließen den Ergebnisdialog und setzen das Spiel fort.
 - Das Menü **Partie** zeigt österreichisches Zweierschnapsen und konfiguriert Regelprofil und Schneiderwertung für die nächste Partie. Die erste Partie startet weich mit doppelter Schneiderwertung. Bummerl lassen sich über eine getrennte Aktion mit Bestätigung zurücksetzen.
 - `src/lib.rs` exportiert `core::cards` mit Kartenidentität, Augenwert und vollständigem 20er-Kartensatz. Das Modul verwendet nur die Rust-Standardbibliothek.
@@ -165,7 +165,7 @@ Die Roadmap sieht als Nächstes Auftrag 28 zu weiteren Spielvarianten vor. Die o
 ## Build in GNOME Builder
 
 1. In GNOME Builder den Projektordner öffnen. In den Build-Einstellungen `org.linuxds.Schnapsen.json` als aktive Konfiguration auswählen.
-2. Falls Builder nach Runtimes fragt, `org.gnome.Platform//51`, `org.gnome.Sdk//51` und `org.freedesktop.Sdk.Extension.rust-stable//26.08` aus Flathub bereitstellen. Die erste Vorbereitung benötigt Zugriff auf Flathub und `static.crates.io`.
+2. Falls Builder nach Runtimes fragt, `org.gnome.Platform//50`, `org.gnome.Sdk//50` und `org.freedesktop.Sdk.Extension.rust-stable//25.08` aus Flathub bereitstellen. Die erste Vorbereitung benötigt Zugriff auf Flathub und `static.crates.io`.
 3. **Bauen** wählen und in der Build-Ausgabe das Modul `cargo-dependencies` beziehungsweise dessen Cache-Treffer sowie den Cargo-Release-Build prüfen.
 4. **Ausführen** wählen. Erwartet wird ein Fenster „Schnapsen“ mit gemischter Anfangsverteilung und Reststand 7:7.
 
@@ -205,6 +205,11 @@ python3 flatpak-cargo-generator.py -o cargo-sources.json Cargo.lock
 | 2026-11-23 | GNOME Platform und SDK 51 mit Rust-Erweiterung 26.08 | Aktueller stabiler GNOME-Zweig und passende Freedesktop-SDK-Erweiterung |
 
 ## Änderungsprotokoll
+
+### 2026-11-28 – Linux-DS-Flatpak-Integration
+
+- GNOME Platform und SDK 50 mit Rust-Erweiterung 25.08 sind der neue Integrationsstandard. App-ID und Desktop-Kategorien bleiben gleich. Die Integrationsversion ist 0.5.1.
+- Der vollständige Wrapper-Lauf bestand die Cargo-Tests, AppStream-Compose und OSTree-Integritätsprüfung. Das importierte Bundle enthält den Katalog und fünf PNG-Icons. Platform 50 startete das Fenster und lieferte Wayland-Bildpuffer. Keine Veröffentlichung.
 
 ### 2026-11-27 – Infodialog und Version 0.5.0
 

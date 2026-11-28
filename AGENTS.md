@@ -44,6 +44,12 @@
 - Keep completion reports brief.
 - Maintain quality, compliance with established rules, and existing safety requirements.
 
+## Linux DS Flatpak Build and Export
+- Use GNOME Platform and SDK 50 with the Rust SDK extension for Freedesktop 25.08.
+- On the host, run `python3 build-aux/build-flatpak.py target/linux-ds-flatpak --state-dir .flatpak-builder` with a new or empty output directory.
+- Use the wrapper for integration exports. It checks the composed AppStream catalog and cached PNG icons before export and again after importing the bundle into an isolated OSTree repository. Retain `verification.json` with the bundle.
+- Follow the staging and signing procedure in SPEC.md for a signed release.
+
 ## Git
 - Prefer small, reviewable commits.
 - Review changes and verify tests before committing.

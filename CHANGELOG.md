@@ -1,5 +1,17 @@
 # Changelog
 
+## Schnapsen 0.5.1 – Flatpak integration update
+
+This update prepares Schnapsen for integration into the Linux DS Flatpak repository.
+
+### Features
+
+- Updates the Flatpak to GNOME Platform 50 and verifies the AppStream catalog and icons during export.
+
+### Known limitations
+
+The known limitations of 0.5.0 still apply.
+
 ## Schnapsen 0.5.0 – Public Preview
 
 The first public test version of Schnapsen, a native GNOME card game by the Linux DS Team.

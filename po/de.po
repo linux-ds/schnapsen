@@ -1,7 +1,7 @@
 # Deutsche Übersetzung für Schnapsen.
 msgid ""
 msgstr ""
-"Project-Id-Version: Schnapsen 0.5.0\n"
+"Project-Id-Version: Schnapsen 0.5.1\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2026-11-27 08:56+0100\n"
 "PO-Revision-Date: 2026-11-25 00:00+0100\n"
@@ -38,6 +38,10 @@ msgid "Linux DS Team"
 msgstr "Linux DS Team"
 
 #: data/org.linuxds.Schnapsen.metainfo.xml.in:22
+msgid "Updates the Flatpak to GNOME Platform 50 and verifies the AppStream catalog and icons during export."
+msgstr "Das Flatpak verwendet GNOME Platform 50. Beim Export werden der AppStream-Katalog und die Symbole geprüft."
+
+#: data/org.linuxds.Schnapsen.metainfo.xml.in:27
 msgid ""
 "Introduces the new Double German card design as the default and adds an "
 "About dialog."
